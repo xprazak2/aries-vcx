@@ -85,6 +85,16 @@ impl From<AriesVcxCoreErrorKind> for LibvcxErrorKind {
                 LibvcxErrorKind::DuplicationMasterSecret
             }
             AriesVcxCoreErrorKind::DuplicationDid => LibvcxErrorKind::DuplicationDid,
+
+            AriesVcxCoreErrorKind::AskarBackend => LibvcxErrorKind::AskarBackend,
+            AriesVcxCoreErrorKind::AskarBusy => LibvcxErrorKind::AskarBusy,
+            AriesVcxCoreErrorKind::AskarCustom => LibvcxErrorKind::AskarCustom,
+            AriesVcxCoreErrorKind::AskarDuplicate => LibvcxErrorKind::AskarDuplicate,
+            AriesVcxCoreErrorKind::AskarEncryption => LibvcxErrorKind::AskarEncryption,
+            AriesVcxCoreErrorKind::AskarInput => LibvcxErrorKind::AskarInput,
+            AriesVcxCoreErrorKind::AskarNotFound => LibvcxErrorKind::AskarNotFound,
+            AriesVcxCoreErrorKind::AskarUnexpected => LibvcxErrorKind::AskarUnexpected,
+            AriesVcxCoreErrorKind::AskarUnsupported => LibvcxErrorKind::AskarUnsupported,
             AriesVcxCoreErrorKind::LoggingError => LibvcxErrorKind::LoggingError,
             AriesVcxCoreErrorKind::EncodeError => LibvcxErrorKind::EncodeError,
             AriesVcxCoreErrorKind::UnknownError => LibvcxErrorKind::UnknownError,
