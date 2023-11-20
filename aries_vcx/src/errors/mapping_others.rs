@@ -109,15 +109,7 @@ impl From<AriesVcxCoreError> for AriesVcxError {
                 AriesVcxErrorKind::DuplicationMasterSecret
             }
             AriesVcxCoreErrorKind::DuplicationDid => AriesVcxErrorKind::DuplicationDid,
-            AriesVcxCoreErrorKind::AskarBackend => AriesVcxErrorKind::AskarBackend,
-            AriesVcxCoreErrorKind::AskarBusy => AriesVcxErrorKind::AskarBusy,
-            AriesVcxCoreErrorKind::AskarCustom => AriesVcxErrorKind::AskarCustom,
-            AriesVcxCoreErrorKind::AskarDuplicate => AriesVcxErrorKind::AskarDuplicate,
-            AriesVcxCoreErrorKind::AskarEncryption => AriesVcxErrorKind::AskarEncryption,
-            AriesVcxCoreErrorKind::AskarInput => AriesVcxErrorKind::AskarInput,
-            AriesVcxCoreErrorKind::AskarNotFound => AriesVcxErrorKind::AskarNotFound,
-            AriesVcxCoreErrorKind::AskarUnexpected => AriesVcxErrorKind::AskarUnexpected,
-            AriesVcxCoreErrorKind::AskarUnsupported => AriesVcxErrorKind::AskarUnsupported,
+            AriesVcxCoreErrorKind::WalletUnexpected => AriesVcxErrorKind::WalletUnexpected,
             AriesVcxCoreErrorKind::LoggingError => AriesVcxErrorKind::LoggingError,
             AriesVcxCoreErrorKind::EncodeError => AriesVcxErrorKind::EncodeError,
             AriesVcxCoreErrorKind::UnknownError => AriesVcxErrorKind::UnknownError,
@@ -215,17 +207,7 @@ impl From<AriesVcxError> for AriesVcxCoreError {
                 AriesVcxCoreErrorKind::DuplicationMasterSecret
             }
             AriesVcxErrorKind::DuplicationDid => AriesVcxCoreErrorKind::DuplicationDid,
-
-            AriesVcxErrorKind::AskarBackend => AriesVcxCoreErrorKind::AskarBackend,
-            AriesVcxErrorKind::AskarBusy => AriesVcxCoreErrorKind::AskarBusy,
-            AriesVcxErrorKind::AskarCustom => AriesVcxCoreErrorKind::ActionNotSupported,
-            AriesVcxErrorKind::AskarDuplicate => AriesVcxCoreErrorKind::ActionNotSupported,
-            AriesVcxErrorKind::AskarEncryption => AriesVcxCoreErrorKind::ActionNotSupported,
-            AriesVcxErrorKind::AskarInput => AriesVcxCoreErrorKind::ActionNotSupported,
-            AriesVcxErrorKind::AskarNotFound => AriesVcxCoreErrorKind::ActionNotSupported,
-            AriesVcxErrorKind::AskarUnexpected => AriesVcxCoreErrorKind::ActionNotSupported,
-            AriesVcxErrorKind::AskarUnsupported => AriesVcxCoreErrorKind::ActionNotSupported,
-
+            AriesVcxErrorKind::WalletUnexpected => AriesVcxCoreErrorKind::WalletUnexpected,
             AriesVcxErrorKind::LoggingError => AriesVcxCoreErrorKind::LoggingError,
             AriesVcxErrorKind::EncodeError => AriesVcxCoreErrorKind::EncodeError,
             AriesVcxErrorKind::UnknownError => AriesVcxCoreErrorKind::UnknownError,

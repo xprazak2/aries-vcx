@@ -1,5 +1,6 @@
 pub mod error;
 mod mapping_agency_client;
+#[cfg(feature = "askar")]
 mod mapping_askar;
 #[cfg(feature = "credx")]
 mod mapping_credx;

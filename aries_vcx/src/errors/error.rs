@@ -123,25 +123,8 @@ pub enum AriesVcxErrorKind {
     DuplicationMasterSecret,
     #[error("Attempted to add a DID to wallet when that DID already exists in wallet")]
     DuplicationDid,
-
-    #[error("An unexpected error from the store backend")]
-    AskarBackend,
-    #[error("The store backend was too busy to handle the request")]
-    AskarBusy,
-    #[error("A custom error type for external integrations")]
-    AskarCustom,
-    #[error("An insert operation failed due to a unique key conflict")]
-    AskarDuplicate,
-    #[error("An encryption or decryption operation failed")]
-    AskarEncryption,
-    #[error("The input parameters to the method were incorrect")]
-    AskarInput,
-    #[error("The requested record was not found")]
-    AskarNotFound,
-    #[error("An unexpected error occurred")]
-    AskarUnexpected,
-    #[error("An unsupported operation was requested")]
-    AskarUnsupported,
+    #[error("Unexpected wallet error")]
+    WalletUnexpected,
 
     // Logger
     #[error("Logging Error")]

@@ -6,27 +6,27 @@ impl From<aries_askar::Error> for AriesVcxCoreError {
     fn from(err: aries_askar::Error) -> Self {
         match err.kind() {
             ErrorKind::Backend => {
-                AriesVcxCoreError::from_msg(AriesVcxCoreErrorKind::AskarBackend, err)
+                AriesVcxCoreError::from_msg(AriesVcxCoreErrorKind::WalletUnexpected, err)
             }
-            ErrorKind::Busy => AriesVcxCoreError::from_msg(AriesVcxCoreErrorKind::AskarBusy, err),
+            ErrorKind::Busy => AriesVcxCoreError::from_msg(AriesVcxCoreErrorKind::WalletUnexpected, err),
             ErrorKind::Custom => {
-                AriesVcxCoreError::from_msg(AriesVcxCoreErrorKind::AskarCustom, err)
+                AriesVcxCoreError::from_msg(AriesVcxCoreErrorKind::WalletUnexpected, err)
             }
             ErrorKind::Duplicate => {
-                AriesVcxCoreError::from_msg(AriesVcxCoreErrorKind::AskarDuplicate, err)
+                AriesVcxCoreError::from_msg(AriesVcxCoreErrorKind::DuplicationWalletRecord, err)
             }
             ErrorKind::Encryption => {
-                AriesVcxCoreError::from_msg(AriesVcxCoreErrorKind::AskarEncryption, err)
+                AriesVcxCoreError::from_msg(AriesVcxCoreErrorKind::WalletUnexpected, err)
             }
-            ErrorKind::Input => AriesVcxCoreError::from_msg(AriesVcxCoreErrorKind::AskarInput, err),
+            ErrorKind::Input => AriesVcxCoreError::from_msg(AriesVcxCoreErrorKind::WalletUnexpected, err),
             ErrorKind::NotFound => {
-                AriesVcxCoreError::from_msg(AriesVcxCoreErrorKind::AskarNotFound, err)
+                AriesVcxCoreError::from_msg(AriesVcxCoreErrorKind::WalletRecordNotFound, err)
             }
             ErrorKind::Unexpected => {
-                AriesVcxCoreError::from_msg(AriesVcxCoreErrorKind::AskarUnexpected, err)
+                AriesVcxCoreError::from_msg(AriesVcxCoreErrorKind::WalletUnexpected, err)
             }
             ErrorKind::Unsupported => {
-                AriesVcxCoreError::from_msg(AriesVcxCoreErrorKind::AskarUnsupported, err)
+                AriesVcxCoreError::from_msg(AriesVcxCoreErrorKind::WalletUnexpected, err)
             }
         }
     }

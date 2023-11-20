@@ -91,6 +91,7 @@ impl AskarWallet {
     }
 }
 
+#[cfg(feature = "askar")]
 #[async_trait]
 impl BaseWallet for AskarWallet {
     #[cfg(feature = "vdrtools_wallet")]
@@ -225,7 +226,6 @@ mod test {
     use super::*;
 
     #[tokio::test]
-    #[cfg_attr(not(feature = "askar_tests"), ignore)]
     async fn test_should_create_askar_wallet() {
         let uri = "postgres://postgres:postgres@localhost/askar";
 

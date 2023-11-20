@@ -15,16 +15,6 @@ pub struct MyDidInfo {
     pub ledger_type: Option<String>,
 }
 
-impl MyDidInfo {
-    pub fn new(method_name: Option<&str>, seed: Option<&str>) -> Self {
-        Self {
-            method_name: method_name.map(|item| DidMethod(item.into())),
-            seed: seed.map(|item| item.into()),
-            ..Self::default()
-        }
-    }
-}
-
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct TheirDidInfo {
     pub did: DidValue,

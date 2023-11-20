@@ -1,4 +1,5 @@
 pub mod agency_client_wallet;
+#[cfg(feature = "askar")]
 pub mod askar;
 pub mod base_wallet;
 #[cfg(feature = "vdrtools_wallet")]
