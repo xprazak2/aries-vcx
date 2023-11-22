@@ -16,6 +16,20 @@ use crate::{
     wallet::{base_wallet::BaseWallet, structs_io::UnpackMessageOutput},
 };
 
+#[derive(Serialize, Deserialize)]
+pub struct Record {
+    // Wallet record type
+    #[serde(rename = "type")]
+    pub type_: String,
+    // Wallet record id
+    pub id: String,
+    // Wallet record value
+    pub value: String,
+    // Wallet record tags
+    pub tags: HashMap<String, String>,
+}
+
+
 #[derive(Debug)]
 pub struct AskarWallet {
     pub backend: Store,
@@ -89,6 +103,22 @@ impl AskarWallet {
             )
         })
     }
+
+    async fn add(&self, record: Record) -> VcxCoreResult<()> {
+        let mut session = self.backend.session(self.profile.clone()).await?;
+        session.insert(record.type_, record.id, record.value);
+        Ok(())
+    }
+
+    // async fn get<R>(&self, id: &Self::RecordIdRef) -> VcxCoreResult<R>
+    // where
+    //     R: WalletRecord<Self>;
+
+    // async fn update(&self, update: Self::Record) -> VcxCoreResult<()>;
+
+    // async fn delete<R>(&self, id: &Self::RecordIdRef) -> VcxCoreResult<()>
+    // where
+    //     R: WalletRecord<Self>;
 }
 
 #[cfg(feature = "askar")]
