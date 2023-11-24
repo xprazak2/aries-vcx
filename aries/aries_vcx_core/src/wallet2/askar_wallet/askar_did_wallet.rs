@@ -1,13 +1,14 @@
-use aries_askar::crypto::alg::{Chacha20Types, EcCurves};
-use aries_askar::kms::{KeyAlg, LocalKey};
+use aries_askar::{
+    crypto::alg::{Chacha20Types, EcCurves},
+    kms::{KeyAlg, LocalKey},
+};
 use async_trait::async_trait;
 
-use crate::errors::error::{AriesVcxCoreError, AriesVcxCoreErrorKind};
-use crate::wallet2::{DidWallet, Key, UnpackedMessage};
-use crate::{errors::error::VcxCoreResult, wallet2::DidData};
-
-use super::packing::Packing;
-use super::{AskarWallet, RngMethod};
+use super::{packing::Packing, AskarWallet, RngMethod};
+use crate::{
+    errors::error::{AriesVcxCoreError, AriesVcxCoreErrorKind, VcxCoreResult},
+    wallet2::{DidData, DidWallet, Key, UnpackedMessage},
+};
 
 pub enum SigType {
     EdDSA,
@@ -50,16 +51,21 @@ impl TryFrom<KeyAlg> for SigType {
 impl DidWallet for AskarWallet {
     async fn create_and_store_my_did(
         &self,
-        seed: &str,
+        seed: Option<&str>,
         _did_method_name: Option<&str>,
     ) -> VcxCoreResult<DidData> {
         let mut tx = self.backend.transaction(self.profile.clone()).await?;
+
+        let fix_seed = match seed {
+            Some(val) => val,
+            None => "",
+        };
 
         let (did, local_key) = self
             .insert_key(
                 &mut tx,
                 KeyAlg::Ed25519,
-                seed.as_bytes(),
+                fix_seed.as_bytes(),
                 RngMethod::RandomDet,
             )
             .await?;
@@ -91,10 +97,15 @@ impl DidWallet for AskarWallet {
         ))
     }
 
-    async fn replace_did_key(&self, did: &str, seed: &str) -> VcxCoreResult<String> {
+    async fn replace_did_key_start(&self, did: &str, seed: Option<&str>) -> VcxCoreResult<String> {
         let mut tx = self.backend.transaction(self.profile.clone()).await?;
 
         let data = self.find_did(&mut tx, did).await?;
+
+        let fix_seed = match seed {
+            Some(val) => val,
+            None => "",
+        };
 
         if let Some(did_data) = data {
             let key_name = &did_data.verkey[0..16];
@@ -103,7 +114,7 @@ impl DidWallet for AskarWallet {
                 .insert_key(
                     &mut tx,
                     KeyAlg::Ed25519,
-                    seed.as_bytes(),
+                    fix_seed.as_bytes(),
                     RngMethod::RandomDet,
                 )
                 .await?;
@@ -123,6 +134,10 @@ impl DidWallet for AskarWallet {
             AriesVcxCoreErrorKind::InvalidDid,
             "did not found",
         ))
+    }
+
+    async fn replace_did_key_apply(&self, did: &str) -> VcxCoreResult<()> {
+        Ok(())
     }
 
     async fn sign(&self, key_name: &str, msg: &[u8]) -> VcxCoreResult<Vec<u8>> {
@@ -199,11 +214,15 @@ impl DidWallet for AskarWallet {
 #[cfg(test)]
 mod test {
     use super::*;
-
-    use crate::errors::error::AriesVcxCoreErrorKind;
-    use crate::wallet2::askar_wallet::askar_utils::local_key_to_public_key_bytes;
-    use crate::wallet2::askar_wallet::test_helper::create_test_wallet;
-    use crate::wallet2::utils::bytes_to_bs58;
+    use crate::{
+        errors::error::AriesVcxCoreErrorKind,
+        wallet2::{
+            askar_wallet::{
+                askar_utils::local_key_to_public_key_bytes, test_helper::create_test_wallet,
+            },
+            utils::bytes_to_bs58,
+        },
+    };
 
     #[tokio::test]
     async fn test_askar_should_sign_and_verify() {
@@ -275,8 +294,9 @@ mod test {
 
         let recipient_key = LocalKey::generate(KeyAlg::Ed25519, true).unwrap();
 
-        // Kid is base58 pubkey, we need to use it as a name in askar to be able to retrieve the key. Somewhat awkward.
-        // Also does not align with `create_and_store_my_did` which generates keys with names using only first 16 bytes of (pub)key
+        // Kid is base58 pubkey, we need to use it as a name in askar to be able to retrieve the
+        // key. Somewhat awkward. Also does not align with `create_and_store_my_did` which
+        // generates keys with names using only first 16 bytes of (pub)key
         let kid = bytes_to_bs58(&local_key_to_public_key_bytes(&recipient_key).unwrap());
         session
             .insert_key(&kid, &recipient_key, None, None, None)
@@ -309,8 +329,9 @@ mod test {
 
         let recipient_key = LocalKey::generate(KeyAlg::Ed25519, true).unwrap();
 
-        // Kid is base58 pubkey, we need to use it as a name in askar to be able to retrieve the key. Somewhat awkward.
-        // Also does not align with `create_and_store_my_did` which generates keys with names using only first 16 bytes of (pub)key
+        // Kid is base58 pubkey, we need to use it as a name in askar to be able to retrieve the
+        // key. Somewhat awkward. Also does not align with `create_and_store_my_did` which
+        // generates keys with names using only first 16 bytes of (pub)key
         let kid = bytes_to_bs58(&local_key_to_public_key_bytes(&recipient_key).unwrap());
         session
             .insert_key(&kid, &recipient_key, None, None, None)

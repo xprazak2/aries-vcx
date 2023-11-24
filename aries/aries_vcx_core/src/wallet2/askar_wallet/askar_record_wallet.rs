@@ -4,7 +4,7 @@ use async_trait::async_trait;
 use super::AskarWallet;
 use crate::{
     errors::error::{AriesVcxCoreError, AriesVcxCoreErrorKind, VcxCoreResult},
-    wallet2::{EntryTag, Record, RecordUpdate, RecordWallet, SearchFilter},
+    wallet2::{Record, RecordUpdate, RecordWallet, SearchFilter},
 };
 
 #[async_trait]

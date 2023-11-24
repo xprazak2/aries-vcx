@@ -5,9 +5,8 @@ use aries_askar::{
 };
 use async_trait::async_trait;
 
-use crate::errors::error::{AriesVcxCoreError, AriesVcxCoreErrorKind, VcxCoreResult};
-
 use super::{BaseWallet2, DidData};
+use crate::errors::error::{AriesVcxCoreError, AriesVcxCoreErrorKind, VcxCoreResult};
 
 pub mod askar_did_wallet;
 pub mod askar_record_wallet;
