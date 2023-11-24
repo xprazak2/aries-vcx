@@ -395,6 +395,7 @@ version = "0.1.0"
 dependencies = [
  "agency_client",
  "async-trait",
+ "bs58 0.5.0",
  "derive_builder",
  "futures",
  "indy-api-types",
@@ -409,6 +410,7 @@ dependencies = [
  "rand 0.8.5",
  "serde",
  "serde_json",
+ "test_utils",
  "thiserror",
  "time 0.3.20",
  "tokio",
