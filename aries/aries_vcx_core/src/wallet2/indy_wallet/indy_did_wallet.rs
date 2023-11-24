@@ -111,12 +111,13 @@ impl DidWallet for IndySdkWallet {
 
 #[cfg(test)]
 mod tests {
+
     use rand::{distributions::Alphanumeric, Rng};
     use test_utils::devsetup::create_indy_test_wallet_handle;
 
     use crate::{
         wallet::indy::IndySdkWallet,
-        wallet2::{DidWallet, Key},
+        wallet2::{utils::random_seed, DidWallet, Key},
     };
 
     #[tokio::test]
@@ -150,11 +151,7 @@ mod tests {
     async fn test_indy_should_rotate_keys() {
         let wallet = IndySdkWallet::new(create_indy_test_wallet_handle().await);
 
-        let seed: String = rand::thread_rng()
-            .sample_iter(Alphanumeric)
-            .take(32)
-            .map(char::from)
-            .collect();
+        let seed = random_seed();
 
         let did_data = DidWallet::create_and_store_my_did(&wallet, Some(&seed), None)
             .await
@@ -164,11 +161,7 @@ mod tests {
 
         assert_eq!(did_data.verkey, key);
 
-        let new_seed: String = rand::thread_rng()
-            .sample_iter(Alphanumeric)
-            .take(32)
-            .map(char::from)
-            .collect();
+        let new_seed = random_seed();
 
         let res = wallet
             .replace_did_key_start(&did_data.did, Some(&new_seed))

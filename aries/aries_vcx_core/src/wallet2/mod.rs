@@ -1,21 +1,46 @@
 use std::collections::HashMap;
 
+use aries_askar::entry::{Entry, EntryKind, TagFilter};
 use async_trait::async_trait;
 use derive_builder::Builder;
 #[cfg(feature = "vdrtools_wallet")]
 use indy_api_types::domain::wallet::Record as IndyRecord;
 use serde::{Deserialize, Serialize};
 
-use self::entry_tag::{EntryTag, EntryTags};
-use crate::{errors::error::VcxCoreResult, wallet::structs_io::UnpackMessageOutput};
+use self::entry_tag::EntryTags;
+use crate::{
+    errors::error::{AriesVcxCoreError, AriesVcxCoreErrorKind, VcxCoreResult},
+    wallet::structs_io::UnpackMessageOutput,
+};
 
 #[cfg(feature = "vdrtools_wallet")]
 pub mod indy_wallet;
 
+#[cfg(feature = "askar_wallet")]
+pub mod askar_wallet;
+
+pub mod crypto_box;
 pub mod entry_tag;
+pub mod utils;
 
 pub struct Key {
     pub pubkey_bs58: String,
+}
+
+#[derive(Clone, Default)]
+pub enum RngMethod {
+    #[default]
+    RandomDet,
+    Bls,
+}
+
+impl From<RngMethod> for Option<&str> {
+    fn from(value: RngMethod) -> Self {
+        match value {
+            RngMethod::RandomDet => None,
+            RngMethod::Bls => Some("bls_keygen"),
+        }
+    }
 }
 
 #[derive(Debug, Default, Clone, Builder)]
@@ -28,6 +53,7 @@ pub struct Record {
 }
 
 #[derive(Debug, Default, Clone, Builder)]
+#[builder(setter(strip_option))]
 pub struct RecordUpdate {
     pub category: String,
     pub name: String,
@@ -40,11 +66,7 @@ pub struct RecordUpdate {
 #[cfg(feature = "vdrtools_wallet")]
 impl From<IndyRecord> for Record {
     fn from(ir: IndyRecord) -> Self {
-        let tags = ir
-            .tags
-            .into_iter()
-            .map(|(key, value)| EntryTag::Plaintext(key, value))
-            .collect();
+        let tags = ir.tags.into_iter().map(From::from).collect();
         Self {
             name: ir.id,
             category: ir.type_,
@@ -74,7 +96,44 @@ impl From<Record> for IndyRecord {
     }
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize)]
+#[cfg(feature = "askar_wallet")]
+impl TryFrom<Entry> for Record {
+    type Error = AriesVcxCoreError;
+
+    fn try_from(entry: Entry) -> Result<Self, Self::Error> {
+        let string_value = std::str::from_utf8(&entry.value).map_err(|err| {
+            AriesVcxCoreError::from_msg(AriesVcxCoreErrorKind::WalletUnexpected, err)
+        })?;
+
+        Ok(Self {
+            category: entry.category,
+            name: entry.name,
+            value: string_value.into(),
+            tags: entry.tags.into_iter().map(From::from).collect(),
+        })
+    }
+}
+
+#[cfg(feature = "askar_wallet")]
+impl From<Record> for Entry {
+    fn from(record: Record) -> Self {
+        Self {
+            category: record.category,
+            name: record.name,
+            value: record.value.into(),
+            kind: EntryKind::Item,
+            tags: record.tags.into_iter().map(From::from).collect(),
+        }
+    }
+}
+
+#[derive(Debug, Deserialize, Serialize)]
+pub struct DidData {
+    pub did: String,
+    pub verkey: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct UnpackedMessage {
     pub message: String,
     pub recipient_verkey: String,
@@ -92,13 +151,8 @@ impl From<UnpackMessageOutput> for UnpackedMessage {
     }
 }
 
-#[derive(Debug, Deserialize, Serialize)]
-pub struct DidData {
-    pub did: String,
-    pub verkey: String,
-}
-
 pub enum SearchFilter {
+    TagFilter(TagFilter),
     JsonFilter(String),
 }
 

@@ -32,8 +32,8 @@ use crate::{
     },
     wallet::{base_wallet::BaseWallet, structs_io::UnpackMessageOutput},
     wallet2::{
-        BaseWallet2, Record, RecordBuilder, RecordUpdate, RecordUpdateBuilder, RecordWallet,
-        SearchFilter,
+        entry_tag::EntryTags, BaseWallet2, Record, RecordBuilder, RecordUpdate,
+        RecordUpdateBuilder, RecordWallet, SearchFilter,
     },
 };
 

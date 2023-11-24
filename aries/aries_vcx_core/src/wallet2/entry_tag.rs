@@ -1,5 +1,7 @@
 use std::collections::HashMap;
 
+#[cfg(feature = "askar_wallet")]
+use aries_askar::entry::EntryTag as AskarEntryTag;
 use serde::{Deserialize, Serialize};
 
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
@@ -23,6 +25,26 @@ impl From<(String, String)> for EntryTag {
             EntryTag::Plaintext(value.0.trim_start_matches('~').into(), value.1)
         } else {
             EntryTag::Encrypted(value.0, value.1)
+        }
+    }
+}
+
+#[cfg(feature = "askar_wallet")]
+impl From<AskarEntryTag> for EntryTag {
+    fn from(value: AskarEntryTag) -> Self {
+        match value {
+            AskarEntryTag::Encrypted(key, val) => Self::Encrypted(key, val),
+            AskarEntryTag::Plaintext(key, val) => Self::Plaintext(key, val),
+        }
+    }
+}
+
+#[cfg(feature = "askar_wallet")]
+impl From<EntryTag> for AskarEntryTag {
+    fn from(value: EntryTag) -> Self {
+        match value {
+            EntryTag::Encrypted(key, val) => Self::Encrypted(key, val),
+            EntryTag::Plaintext(key, val) => Self::Plaintext(key, val),
         }
     }
 }
@@ -100,6 +122,7 @@ impl From<EntryTags> for Vec<EntryTag> {
     }
 }
 
+#[cfg(feature = "vdrtools_wallet")]
 impl From<EntryTags> for HashMap<String, String> {
     fn from(value: EntryTags) -> Self {
         let tags: Vec<EntryTag> = value.into();
@@ -112,6 +135,7 @@ impl From<EntryTags> for HashMap<String, String> {
     }
 }
 
+#[cfg(feature = "vdrtools_wallet")]
 impl From<HashMap<String, String>> for EntryTags {
     fn from(value: HashMap<String, String>) -> Self {
         Self {
