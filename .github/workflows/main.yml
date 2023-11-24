@@ -143,7 +143,7 @@ jobs:
     runs-on: ubuntu-20.04
     strategy:
       matrix:
-        backend: ["credx,vdrtools_wallet", "vdr_proxy_ledger"]
+        backend: ["credx,vdrtools_wallet", "vdr_proxy_ledger", "askar_wallet"]
     steps:
       - name: "Git checkout"
         uses: actions/checkout@v3
@@ -273,7 +273,25 @@ jobs:
           default: true
           skip-docker-setup: true
       - name: "Run workspace unit tests"
-        run: RUST_TEST_THREADS=1 cargo test --workspace --lib --exclude aries-vcx-agent --exclude libvdrtools --exclude wallet_migrator --exclude mediator
+        run: RUST_TEST_THREADS=1 cargo test --workspace --lib --exclude aries-vcx-agent --exclude libvdrtools --exclude wallet_migrator --exclude mediator --exclude aries_vcx_core
+
+  test-aries_vcx_core:
+    needs: workflow-setup
+    runs-on: ubuntu-20.04
+    strategy:
+      matrix:
+        wallet: ["vdrtools_wallet", "askar_wallet"]
+    steps:
+      - name: "Git checkout"
+        uses: actions/checkout@v3
+      - name: "Setup rust testing environment"
+        uses: ./.github/actions/setup-testing-rust
+        with:
+          rust-toolchain-version: ${{ env.RUST_TOOLCHAIN_VERSION }}
+          default: true
+          skip-docker-setup: true
+      - name: "Run workspace unit tests"
+        run: cargo test --manifest-path="aries/aries_vcx_core/Cargo.toml" -F ${{ matrix.wallet }}
 
   test-integration-aries-vcx:
     needs: workflow-setup
