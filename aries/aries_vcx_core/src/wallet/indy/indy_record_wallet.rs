@@ -6,7 +6,7 @@ use vdrtools::Locator;
 
 use super::{indy_tags::IndyTags, SEARCH_OPTIONS, WALLET_OPTIONS};
 use crate::{
-    errors::error::{AriesVcxCoreError, VcxCoreResult},
+    errors::error::{AriesVcxCoreError, AriesVcxCoreErrorKind, VcxCoreResult},
     wallet::{
         base_wallet::{record::Record, search_filter::SearchFilter, RecordWallet},
         entry_tags::EntryTags,
@@ -92,6 +92,7 @@ impl RecordWallet for IndySdkWallet {
             .await?)
     }
 
+    #[allow(unreachable_patterns)]
     async fn search_record(
         &self,
         category: &str,
@@ -100,6 +101,10 @@ impl RecordWallet for IndySdkWallet {
         let json_filter = search_filter
             .map(|filter| match filter {
                 SearchFilter::JsonFilter(inner) => Ok::<String, AriesVcxCoreError>(inner),
+                _ => Err(AriesVcxCoreError::from_msg(
+                    AriesVcxCoreErrorKind::InvalidInput,
+                    "filter type not supported",
+                )),
             })
             .transpose()?;
 

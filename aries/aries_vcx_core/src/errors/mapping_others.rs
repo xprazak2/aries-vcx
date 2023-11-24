@@ -1,6 +1,7 @@
 use std::sync::PoisonError;
 
 use did_parser::ParseError;
+use public_key::PublicKeyError;
 
 use crate::errors::error::{AriesVcxCoreError, AriesVcxCoreErrorKind};
 
@@ -28,5 +29,11 @@ impl From<ParseError> for AriesVcxCoreError {
 impl From<Box<dyn std::error::Error>> for AriesVcxCoreError {
     fn from(err: Box<dyn std::error::Error>) -> Self {
         AriesVcxCoreError::from_msg(AriesVcxCoreErrorKind::InvalidState, err.to_string())
+    }
+}
+
+impl From<PublicKeyError> for AriesVcxCoreError {
+    fn from(value: PublicKeyError) -> Self {
+        AriesVcxCoreError::from_msg(AriesVcxCoreErrorKind::NotBase58, value)
     }
 }

@@ -75,30 +75,28 @@ pub trait RecordWallet {
 
 #[cfg(test)]
 mod tests {
-    use rand::{distributions::Alphanumeric, Rng};
-
     use super::BaseWallet;
     use crate::{
         errors::error::AriesVcxCoreErrorKind,
         wallet::{
-            base_wallet::{DidWallet, Record, RecordWallet},
-            entry_tags::EntryTags,
+            base_wallet::Record,
+            entry_tags::{EntryTag, EntryTags},
+            utils::{did_from_key, random_seed},
         },
     };
 
-    fn random_seed() -> String {
-        rand::thread_rng()
-            .sample_iter(Alphanumeric)
-            .take(32)
-            .map(char::from)
-            .collect()
-    }
-
-    async fn build_test_wallet() -> impl BaseWallet {
+    #[allow(unreachable_code)]
+    async fn build_test_wallet() -> Box<dyn BaseWallet> {
         #[cfg(feature = "vdrtools_wallet")]
         {
             use crate::wallet::indy::tests::dev_setup_indy_wallet;
-            dev_setup_indy_wallet().await
+            return dev_setup_indy_wallet().await;
+        }
+
+        #[cfg(feature = "askar_wallet")]
+        {
+            use crate::wallet::askar::tests::dev_setup_askar_wallet;
+            dev_setup_askar_wallet().await
         }
     }
 
@@ -119,31 +117,85 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn did_wallet_should_rotate_keys() {
+    async fn did_wallet_should_replace_did_key_repeatedly() {
         let wallet = build_test_wallet().await;
 
-        let did_data = wallet
+        let first_data = wallet.create_and_store_my_did(None, None).await.unwrap();
+
+        let new_key = wallet
+            .replace_did_key_start(first_data.did(), Some(&random_seed()))
+            .await
+            .unwrap();
+
+        wallet
+            .replace_did_key_apply(first_data.did())
+            .await
+            .unwrap();
+
+        let new_verkey = wallet.key_for_did(first_data.did()).await.unwrap();
+
+        assert_eq!(did_from_key(new_key), did_from_key(new_verkey));
+
+        let second_new_key = wallet
+            .replace_did_key_start(first_data.did(), Some(&random_seed()))
+            .await
+            .unwrap();
+
+        wallet
+            .replace_did_key_apply(first_data.did())
+            .await
+            .unwrap();
+
+        let second_new_verkey = wallet.key_for_did(first_data.did()).await.unwrap();
+
+        assert_eq!(
+            did_from_key(second_new_key),
+            did_from_key(second_new_verkey)
+        );
+    }
+
+    #[tokio::test]
+    async fn did_wallet_should_replace_did_key_interleaved() {
+        let wallet = build_test_wallet().await;
+
+        let first_data = wallet.create_and_store_my_did(None, None).await.unwrap();
+
+        let second_data = wallet
             .create_and_store_my_did(Some(&random_seed()), None)
             .await
             .unwrap();
 
-        let key = wallet.key_for_did(did_data.did()).await.unwrap();
-
-        assert_eq!(did_data.verkey(), &key);
-
-        let res = wallet
-            .replace_did_key_start(did_data.did(), Some(&random_seed()))
+        let first_new_key = wallet
+            .replace_did_key_start(first_data.did(), Some(&random_seed()))
             .await
             .unwrap();
 
-        wallet.replace_did_key_apply(did_data.did()).await.unwrap();
+        let second_new_key = wallet
+            .replace_did_key_start(second_data.did(), Some(&random_seed()))
+            .await
+            .unwrap();
 
-        let new_key = wallet.key_for_did(did_data.did()).await.unwrap();
-        assert_eq!(res, new_key);
+        wallet
+            .replace_did_key_apply(second_data.did())
+            .await
+            .unwrap();
+        wallet
+            .replace_did_key_apply(first_data.did())
+            .await
+            .unwrap();
+
+        let first_new_verkey = wallet.key_for_did(first_data.did()).await.unwrap();
+        let second_new_verkey = wallet.key_for_did(second_data.did()).await.unwrap();
+
+        assert_eq!(did_from_key(first_new_key), did_from_key(first_new_verkey));
+        assert_eq!(
+            did_from_key(second_new_key),
+            did_from_key(second_new_verkey)
+        );
     }
 
     #[tokio::test]
-    async fn did_wallet_should_pack_and_unpack() {
+    async fn did_wallet_should_pack_and_unpack_authcrypt() {
         let wallet = build_test_wallet().await;
 
         let sender_data = wallet.create_and_store_my_did(None, None).await.unwrap();
@@ -158,6 +210,24 @@ mod tests {
                 vec![receiver_data.verkey().clone()],
                 msg.as_bytes(),
             )
+            .await
+            .unwrap();
+
+        let unpacked = wallet.unpack_message(&packed).await.unwrap();
+
+        assert_eq!(msg, unpacked.message);
+    }
+
+    #[tokio::test]
+    async fn did_wallet_should_pack_and_unpack_anoncrypt() {
+        let wallet = build_test_wallet().await;
+
+        let receiver_data = wallet.create_and_store_my_did(None, None).await.unwrap();
+
+        let msg = "pack me";
+
+        let packed = wallet
+            .pack_message(None, vec![receiver_data.verkey().clone()], msg.as_bytes())
             .await
             .unwrap();
 
@@ -264,7 +334,7 @@ mod tests {
         let category = "my";
         let value1 = "xxx";
         let value2 = "yyy";
-        let tags1: EntryTags = vec![("a".into(), "b".into())].into();
+        let tags1: EntryTags = vec![EntryTag::new("a", "b")].into();
         let tags2 = EntryTags::default();
 
         let record = Record::builder()
@@ -297,7 +367,7 @@ mod tests {
         let category = "my";
         let value1 = "xxx";
         let value2 = "yyy";
-        let tags: EntryTags = vec![("a".into(), "b".into())].into();
+        let tags: EntryTags = vec![EntryTag::new("a", "b")].into();
 
         let record = Record::builder()
             .name(name.into())
@@ -324,8 +394,8 @@ mod tests {
         let name = "foo";
         let category = "my";
         let value = "xxx";
-        let tags1: EntryTags = vec![("a".into(), "b".into())].into();
-        let tags2: EntryTags = vec![("c".into(), "d".into())].into();
+        let tags1: EntryTags = vec![EntryTag::new("a", "b")].into();
+        let tags2: EntryTags = vec![EntryTag::new("c", "d")].into();
 
         let record = Record::builder()
             .name(name.into())
