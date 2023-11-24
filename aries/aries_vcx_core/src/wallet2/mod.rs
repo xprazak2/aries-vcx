@@ -1,3 +1,7 @@
+
+use std::collections::HashMap;
+
+use aries_askar::entry::{Entry, EntryKind, TagFilter};
 use async_trait::async_trait;
 use derive_builder::Builder;
 #[cfg(feature = "vdrtools_wallet")]
@@ -6,13 +10,37 @@ use public_key::Key;
 use serde::{Deserialize, Serialize};
 
 use self::entry_tag::EntryTags;
-use crate::{errors::error::VcxCoreResult, wallet::structs_io::UnpackMessageOutput};
+
+use crate::{
+    errors::error::{AriesVcxCoreError, AriesVcxCoreErrorKind, VcxCoreResult},
+    wallet::structs_io::UnpackMessageOutput,
+};
 
 #[cfg(feature = "vdrtools_wallet")]
 pub mod indy_wallet;
 
+#[cfg(feature = "askar_wallet")]
+pub mod askar_wallet;
+
+pub mod crypto_box;
 pub mod entry_tag;
 pub mod utils;
+
+#[derive(Clone, Default)]
+pub enum RngMethod {
+    #[default]
+    RandomDet,
+    Bls,
+}
+
+impl From<RngMethod> for Option<&str> {
+    fn from(value: RngMethod) -> Self {
+        match value {
+            RngMethod::RandomDet => None,
+            RngMethod::Bls => Some("bls_keygen"),
+        }
+    }
+}
 
 #[derive(Debug, Default, Clone, Builder)]
 pub struct Record {
@@ -35,6 +63,57 @@ impl From<IndyRecord> for Record {
     }
 }
 
+#[cfg(feature = "vdrtools_wallet")]
+impl From<Record> for IndyRecord {
+    fn from(record: Record) -> Self {
+        let tags = record
+            .tags
+            .into_iter()
+            .fold(HashMap::new(), |mut memo, item| {
+                let (key, value) = item.into();
+                memo.insert(key, value);
+                memo
+            });
+        Self {
+            id: record.name,
+            type_: record.category,
+            value: record.value,
+            tags,
+        }
+    }
+}
+
+#[cfg(feature = "askar_wallet")]
+impl TryFrom<Entry> for Record {
+    type Error = AriesVcxCoreError;
+
+    fn try_from(entry: Entry) -> Result<Self, Self::Error> {
+        let string_value = std::str::from_utf8(&entry.value).map_err(|err| {
+            AriesVcxCoreError::from_msg(AriesVcxCoreErrorKind::WalletUnexpected, err)
+        })?;
+
+        Ok(Self {
+            category: entry.category,
+            name: entry.name,
+            value: string_value.into(),
+            tags: entry.tags.into_iter().map(From::from).collect(),
+        })
+    }
+}
+
+#[cfg(feature = "askar_wallet")]
+impl From<Record> for Entry {
+    fn from(record: Record) -> Self {
+        Self {
+            category: record.category,
+            name: record.name,
+            value: record.value.into(),
+            kind: EntryKind::Item,
+            tags: record.tags.into_iter().map(From::from).collect(),
+        }
+    }
+}
+
 #[derive(Debug, Deserialize, Serialize)]
 pub struct DidData {
     did: String,
@@ -42,6 +121,7 @@ pub struct DidData {
 }
 
 pub enum SearchFilter {
+    TagFilter(TagFilter),
     JsonFilter(String),
 }
 
