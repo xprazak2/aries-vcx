@@ -32,7 +32,12 @@ use aries_vcx_core::{
         request_submitter::vdr_ledger::{IndyVdrLedgerPool, IndyVdrSubmitter},
         response_cacher::in_memory::{InMemoryResponseCacher, InMemoryResponseCacherConfig},
     },
-    wallet::{base_wallet::BaseWallet, mock_wallet::MockWallet},
+    wallet::{
+        base_wallet::BaseWallet,
+        indy::{IndySdkWallet, WalletConfigBuilder},
+        mock_wallet::MockWallet,
+    },
+    wallet2::BaseWallet2,
     PoolConfig, ResponseParser,
 };
 #[cfg(feature = "vdr_proxy_ledger")]
@@ -49,6 +54,7 @@ use chrono::{DateTime, Duration, Utc};
 use lazy_static::lazy_static;
 use libvcx_logger::init_test_logging;
 use log::{debug, info, warn};
+use serde_json::json;
 
 use crate::{
     constants::{INSTITUTION_DID, POOL1_TXN, TRUSTEE_SEED},
@@ -268,6 +274,40 @@ pub async fn dev_build_indy_wallet(key_seed: &str) -> (String, impl BaseWallet) 
 
     let (public_did, wallet_handle) = dev_setup_wallet_indy(key_seed).await;
     (public_did, IndySdkWallet::new(wallet_handle))
+}
+
+#[cfg(feature = "vdrtools_wallet")]
+pub async fn create_indy_test_wallet_handle() -> WalletHandle {
+    use aries_vcx_core::{
+        wallet::indy::{wallet::create_and_open_wallet, IndySdkWallet},
+        wallet2::{BaseWallet2, DidWallet, RecordWallet},
+    };
+
+    let db_name = format!("mysqltest_{}", uuid::Uuid::new_v4()).replace('-', "_");
+    let storage_config = json!({
+        "read_host": "localhost",
+        "write_host": "localhost",
+        "port": 3306,
+        "db_name": db_name,
+        "default_connection_limit": 50
+    })
+    .to_string();
+    let storage_credentials = json!({
+        "user": "root",
+        "pass": "mysecretpassword"
+    })
+    .to_string();
+    let config_wallet = WalletConfigBuilder::default()
+        .wallet_name(format!("faber_wallet_{}", uuid::Uuid::new_v4()))
+        .wallet_key(DEFAULT_WALLET_KEY)
+        .wallet_key_derivation(WALLET_KDF_RAW)
+        .wallet_type("mysql")
+        .storage_config(storage_config)
+        .storage_credentials(storage_credentials)
+        .build()
+        .unwrap();
+
+    create_and_open_wallet(&config_wallet).await.unwrap()
 }
 
 #[allow(unreachable_code)]
