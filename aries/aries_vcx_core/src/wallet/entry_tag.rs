@@ -2,10 +2,33 @@ use serde::{ser::SerializeMap, Deserialize, Serialize};
 
 use crate::errors::error::AriesVcxCoreError;
 
+#[cfg(feature = "askar_wallet")]
+use aries_askar::entry::EntryTag as AskarEntryTag;
+
 #[derive(Clone, Debug, Serialize, Deserialize, Eq, PartialEq, PartialOrd, Ord)]
 pub enum EntryTag {
     Encrypted(String, String),
     Plaintext(String, String),
+}
+
+#[cfg(feature = "askar_wallet")]
+impl From<AskarEntryTag> for EntryTag {
+    fn from(value: AskarEntryTag) -> Self {
+        match value {
+            AskarEntryTag::Encrypted(key, val) => Self::Encrypted(key, val),
+            AskarEntryTag::Plaintext(key, val) => Self::Plaintext(key, val),
+        }
+    }
+}
+
+#[cfg(feature = "askar_wallet")]
+impl From<EntryTag> for AskarEntryTag {
+    fn from(value: EntryTag) -> Self {
+        match value {
+            EntryTag::Encrypted(key, val) => Self::Encrypted(key, val),
+            EntryTag::Plaintext(key, val) => Self::Plaintext(key, val),
+        }
+    }
 }
 
 #[derive(Debug, Default, Clone, PartialEq)]
