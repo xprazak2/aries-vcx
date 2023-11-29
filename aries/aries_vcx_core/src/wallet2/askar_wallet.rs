@@ -5,13 +5,13 @@ use aries_askar::{
 };
 use async_trait::async_trait;
 use futures::stream::BoxStream;
+use serde::{Deserialize, Serialize};
 
-use crate::{
-    errors::error::{AriesVcxCoreError, AriesVcxCoreErrorKind, VcxCoreResult}
-};
+use crate::errors::error::{AriesVcxCoreError, AriesVcxCoreErrorKind, VcxCoreResult};
 
 use super::{DidWallet, RecordWallet, SigType, Wallet};
 
+#[derive(Clone)]
 pub enum RngMethod {
     Bls,
     RandomDet,
@@ -24,6 +24,13 @@ impl From<RngMethod> for Option<&str> {
             RngMethod::Bls => Some("bls_keygen"),
         }
     }
+}
+
+pub struct DidEntry {
+    category: String,
+    name: String,
+    value: DidData,
+    tags: Vec<EntryTag>,
 }
 
 #[derive(Debug)]
@@ -69,6 +76,66 @@ impl AskarWallet {
             )
         })
     }
+
+    async fn rotate_key(&self, did: &str, new_key_name: &str) -> VcxCoreResult<()> {
+        let mut session = self.backend.session(self.profile.clone()).await?;
+
+        let entries = session.fetch_all(Some(&did), None, None, false).await?;
+
+        let mut data: Option<DidEntry> = None;
+        for entry in entries.iter() {
+            if let Some(val) = entry.value.as_opt_str() {
+                println!("val: {:?}, name: {:?}", val, entry.name);
+
+                let res: DidData = serde_json::from_str(val)?;
+                if res.current {
+                    data = Some(DidEntry { category: entry.category.clone(), name: entry.name.clone(), value: res, tags: entry.tags.clone() });
+                }
+            }
+        }
+
+        if let Some(mut did_entry) = data {
+            // insert new did
+            let key_entry = self.fetch_key_entry(&mut session, &new_key_name).await?;
+
+            let local_key = key_entry.load_local_key()?;
+            let verkey = bs58::encode(local_key.to_public_bytes()?).into_string();
+
+            if let Some(_) = session.fetch(&did, &new_key_name, false).await? {
+                return  Err(AriesVcxCoreError::from_msg(AriesVcxCoreErrorKind::DuplicationDid, "did with given verkey already exists"));
+            }
+
+            let did_data = DidData{ did: did.to_string(), verkey, current: true};
+            let did_data = serde_json::to_string(&did_data)?;
+
+            let res = session
+            .insert(
+                &did,
+                &new_key_name,
+                did_data.as_bytes(),
+                Some(&did_entry.tags),
+                None
+            )
+            .await?;
+
+            // insert new did end
+
+            did_entry.value.current = false;
+            let did_entry_data = serde_json::to_string(&did_entry.value)?;
+
+            let rs = session.replace(&did_entry.category, &did_entry.name, did_entry_data.as_bytes(), Some(&did_entry.tags), None).await?;
+
+            // Ok(did)
+        }
+
+        // let found_did = dids.iter().find(|did| {
+        //     let val: DidData = serde_json::from_str(did.value.as_opt);
+        //     return false;
+        // }).collect();
+
+        Ok(())
+    }
+
 }
 
 pub struct Record {
@@ -85,13 +152,27 @@ pub struct RecordId {
     for_update: bool,
 }
 
-pub struct DidAttrs {
-    key_name: String,
-    category: String,
-    tags: Option<Vec<EntryTag>>,
-    expiry_ms: Option<i64>,
+#[derive(Debug, Serialize, Deserialize)]
+pub struct DidData {
+    did: String,
+    verkey: String,
+    current: bool
 }
 
+#[derive(Clone)]
+pub struct DidAttrs {
+    key_name: String,
+    // category: String,
+    tags: Option<Vec<EntryTag>>,
+    // expiry_ms: Option<i64>,
+}
+
+pub struct FindDidKeyAttrs {
+    did: String,
+    tags: Option<TagFilter>
+}
+
+#[derive(Clone)]
 pub struct KeyAttrs {
     name: String,
     alg: KeyAlg,
@@ -108,9 +189,10 @@ impl Wallet for AskarWallet {}
 #[async_trait]
 impl DidWallet for AskarWallet {
     type DidAttrs = DidAttrs;
-    type CreatedDid = ();
+    type CreatedDid = String;
     type DidKey = Option<KeyEntry>;
     type KeyAttrs = KeyAttrs;
+    type FindDidKeyAttrs = FindDidKeyAttrs;
 
     async fn create_key(&self, key_attrs: Self::KeyAttrs) -> Result<(), AriesVcxCoreError> {
         let mut session = self.backend.session(self.profile.clone()).await?;
@@ -131,6 +213,10 @@ impl DidWallet for AskarWallet {
             .await?)
     }
 
+    // async fn insert_did(&self, session: &mut Session, key_name: &str, did: &str, ) -> VcxCoreResult<Self::CreatedDid> {
+
+    // }
+
     async fn create_did(&self, attrs: Self::DidAttrs) -> VcxCoreResult<Self::CreatedDid> {
         let mut session = self.backend.session(self.profile.clone()).await?;
 
@@ -138,26 +224,67 @@ impl DidWallet for AskarWallet {
 
         let local_key = key_entry.load_local_key()?;
 
-        let did_bytes = &local_key.to_public_bytes()?[0..16];
+        let verkey = bs58::encode(local_key.to_public_bytes()?).into_string();
 
-        let did = bs58::encode(did_bytes).into_string();
-        Ok(session
-            .insert(
-                &attrs.category,
-                &did,
-                &did_bytes,
-                attrs.tags.as_deref(),
-                attrs.expiry_ms,
-            )
-            .await?)
+        let did = verkey[0..16].to_string();
+
+        if let Some(_) = session.fetch(&did, &attrs.key_name, false).await? {
+            return  Err(AriesVcxCoreError::from_msg(AriesVcxCoreErrorKind::DuplicationDid, "did with given verkey already exists"));
+        }
+
+        let did_data = DidData{ did: did.clone(), verkey, current: true};
+        let did_data = serde_json::to_string(&did_data)?;
+
+        let res = session
+        .insert(
+            &did,
+            &attrs.key_name,
+            did_data.as_bytes(),
+            attrs.tags.as_deref(),
+            None,
+        )
+        .await?;
+
+        Ok(did)
     }
 
-    async fn did_key(&self, did: &str) -> VcxCoreResult<Self::DidKey> {
+    async fn did_key(&self, attrs: Self::FindDidKeyAttrs) -> VcxCoreResult<Self::DidKey> {
         let mut session = self.backend.session(self.profile.clone()).await?;
-        Ok(session.fetch_key(did, false).await?)
+
+        let entries = session.fetch_all(Some(&attrs.did), attrs.tags, None, false).await?;
+
+        let mut data: Option<DidEntry> = None;
+        for entry in entries.iter() {
+            if let Some(val) = entry.value.as_opt_str() {
+                println!("val: {:?}, name: {:?}", val, entry.name);
+
+                let res: DidData = serde_json::from_str(val)?;
+                if res.current {
+                    data = Some(DidEntry { category: entry.category.clone(), name: entry.name.clone(), value: res, tags: entry.tags.clone() });
+                }
+            }
+        }
+
+        if let Some(entry) = data {
+            let key_entry = self.fetch_key_entry(&mut session, &entry.name).await?;
+            return Ok(Some(key_entry));
+        }
+
+        Ok(None)
     }
 
-    async fn replace_did_key(&self, did: &str) -> VcxCoreResult<Self::DidKey> {
+    async fn replace_did_key(&self, did: &str, new_key_name: &str) -> VcxCoreResult<Self::DidKey> {
+        let mut session = self.backend.session(self.profile.clone()).await?;
+
+        let dids = session.fetch_all(Some(&did), None, None, false).await?;
+
+        // let found_did = dids.iter().find(|did| {
+        //     let val: DidData = serde_json::from_str(did.value);
+        //     return false;
+        // }).collect();
+
+
+
         todo!("Not yet implemented");
     }
 
@@ -240,12 +367,14 @@ impl RecordWallet for AskarWallet {
             })
     }
 
-    async fn update_record(&self, update: Self::Record) -> VcxCoreResult<()> {
-        todo!("Not yet implemented");
+    async fn update_record(&self, record: Self::Record) -> VcxCoreResult<()> {
+        let mut session = self.backend.session(self.profile.clone()).await?;
+        Ok(session.replace(&record.category, &record.name, &record.value, record.tags.as_deref(), record.expiry_ms).await?)
     }
 
     async fn delete_record(&self, id: &Self::RecordId) -> VcxCoreResult<()> {
-        todo!("Not yet implemented");
+        let mut session = self.backend.session(self.profile.clone()).await?;
+        Ok(session.remove(&id.category, &id.name).await?)
     }
 
     async fn search_record(
@@ -289,7 +418,7 @@ mod test {
             None.into(),
             true,
             None,
-        )
+            )
         .await
         .unwrap();
 
@@ -329,5 +458,96 @@ mod test {
             all.push(item.unwrap());
         }
         assert_eq!(2, all.len());
+    }
+
+    #[tokio::test]
+    async fn test_askar_should_rotate_key() {
+        let wallet = AskarWallet::create(
+            "sqlite:memory:",
+            StoreKeyMethod::Unprotected,
+            None.into(),
+            true,
+            None,
+        )
+        .await
+        .unwrap();
+
+        let first_key_name = "first".to_string();
+        let first_key_attrs = KeyAttrs{
+            name: first_key_name.clone(),
+            alg: KeyAlg::Ed25519,
+            seed: "foo".into(),
+            rng_method: RngMethod::RandomDet,
+            metadata: None,
+            tags: None,
+            expiry_ms: None
+        };
+        let first_key = wallet.create_key(first_key_attrs).await.unwrap();
+
+        let second_key_name = "second".to_string();
+        let second_key_attrs = KeyAttrs{
+            name: second_key_name.clone(),
+            alg: KeyAlg::Ed25519,
+            seed: "bar".into(),
+            rng_method: RngMethod::RandomDet,
+            metadata: None,
+            tags: None,
+            expiry_ms: None
+        };
+        let second_key = wallet.create_key(second_key_attrs).await.unwrap();
+
+        let did_attrs = DidAttrs {
+            key_name: first_key_name,
+            tags: None,
+        };
+        let did = wallet.create_did(did_attrs.clone()).await.unwrap();
+        let rot = wallet.rotate_key(&did, &second_key_name).await.unwrap();
+
+        let third_key_name = "third".to_string();
+        let third_key_attrs = KeyAttrs{
+            name: third_key_name.clone(),
+            alg: KeyAlg::Ed25519,
+            seed: "baz".into(),
+            rng_method: RngMethod::RandomDet,
+            metadata: None,
+            tags: None,
+            expiry_ms: None
+        };
+        let third_key = wallet.create_key(third_key_attrs).await.unwrap();
+
+        let rot = wallet.rotate_key(&did, &third_key_name).await.unwrap();
+
+        let did_key_attrs = FindDidKeyAttrs {did: did.clone(), tags: None};
+        let res = wallet.did_key(did_key_attrs).await.unwrap().unwrap();
+        assert_eq!(third_key_name, res.name());
+    }
+
+
+    #[tokio::test]
+    async fn test_askar_should_not_create_key_repeatedly() {
+        let wallet = AskarWallet::create(
+            "sqlite:memory:",
+            StoreKeyMethod::Unprotected,
+            None.into(),
+            true,
+            None,
+        )
+        .await
+        .unwrap();
+
+        let first_key_name = "first".to_string();
+        let first_key_attrs = KeyAttrs{
+            name: first_key_name.clone(),
+            alg: KeyAlg::Ed25519,
+            seed: "foo".into(),
+            rng_method: RngMethod::RandomDet,
+            metadata: None,
+            tags: None,
+            expiry_ms: None
+        };
+        let first_key = wallet.create_key(first_key_attrs.clone()).await.unwrap();
+        let create_err = wallet.create_key(first_key_attrs).await.unwrap_err();
+
+        assert_eq!(AriesVcxCoreErrorKind::DuplicationWalletRecord, create_err.kind());
     }
 }

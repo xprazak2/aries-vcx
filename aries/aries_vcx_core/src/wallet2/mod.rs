@@ -33,14 +33,15 @@ pub trait DidWallet {
     type CreatedDid;
     type DidKey;
     type KeyAttrs;
+    type FindDidKeyAttrs;
 
     async fn create_key(&self, key_attrs: Self::KeyAttrs) -> VcxCoreResult<()>;
 
     async fn create_did(&self, attrs: Self::DidAttrs) -> VcxCoreResult<Self::CreatedDid>;
 
-    async fn did_key(&self, did: &str) -> VcxCoreResult<Self::DidKey>;
+    async fn did_key(&self, attrs: Self::FindDidKeyAttrs) -> VcxCoreResult<Self::DidKey>;
 
-    async fn replace_did_key(&self, did: &str) -> VcxCoreResult<Self::DidKey>;
+    async fn replace_did_key(&self, did: &str, new_key_name: &str) -> VcxCoreResult<Self::DidKey>;
 
     async fn sign(&self, verkey_name: &str, msg: &[u8], sig_type: SigType) -> VcxCoreResult<Vec<u8>>;
 
