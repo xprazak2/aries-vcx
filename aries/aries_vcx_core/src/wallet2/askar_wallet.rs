@@ -85,7 +85,6 @@ impl AskarWallet {
         let mut data: Option<DidEntry> = None;
         for entry in entries.iter() {
             if let Some(val) = entry.value.as_opt_str() {
-                println!("val: {:?}, name: {:?}", val, entry.name);
 
                 let res: DidData = serde_json::from_str(val)?;
                 if res.current {
@@ -128,16 +127,12 @@ impl AskarWallet {
             // Ok(did)
         }
 
-        // let found_did = dids.iter().find(|did| {
-        //     let val: DidData = serde_json::from_str(did.value.as_opt);
-        //     return false;
-        // }).collect();
-
         Ok(())
     }
 
 }
 
+#[derive(Default, Clone)]
 pub struct Record {
     pub category: String,
     pub name: String,
@@ -146,10 +141,55 @@ pub struct Record {
     pub expiry_ms: Option<i64>,
 }
 
+impl Record {
+    pub fn set_name(mut self, new_name: &str) -> Self{
+        self.name = new_name.to_owned();
+        self
+    }
+
+    pub fn set_category(mut self, new_category: &str) -> Self{
+        self.category = new_category.to_owned();
+        self
+    }
+
+    pub fn set_value(mut self, new_value: &SecretBytes) -> Self {
+        self.value = new_value.to_owned();
+        self
+    }
+
+    pub fn set_tags(mut self, new_tags: Vec<EntryTag>) -> Self {
+        self.tags = Some(new_tags);
+        self
+    }
+
+    pub fn set_expiry_ms(mut self, new_expiry_ms: i64) -> Self {
+        self.expiry_ms = Some(new_expiry_ms);
+        self
+    }
+}
+
+#[derive(Default)]
 pub struct RecordId {
     name: String,
     category: String,
     for_update: bool,
+}
+
+impl RecordId {
+    pub fn set_name(mut self, new_name: &str) -> Self {
+        self.name = new_name.to_string();
+        self
+    }
+
+    pub fn set_category(mut self, new_category: &str) -> Self {
+        self.category = new_category.to_string();
+        self
+    }
+
+    pub fn set_for_update(mut self, new_for_update: bool) -> Self {
+        self.for_update = new_for_update;
+        self
+    }
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -256,7 +296,6 @@ impl DidWallet for AskarWallet {
         let mut data: Option<DidEntry> = None;
         for entry in entries.iter() {
             if let Some(val) = entry.value.as_opt_str() {
-                println!("val: {:?}, name: {:?}", val, entry.name);
 
                 let res: DidData = serde_json::from_str(val)?;
                 if res.current {
@@ -407,20 +446,131 @@ impl RecordWallet for AskarWallet {
 mod test {
     use super::*;
     use futures::StreamExt;
+    use uuid::Uuid;
 
     use crate::wallet2::askar_wallet::AskarWallet;
 
-    #[tokio::test]
-    async fn test_askar_should_find_records() {
-        let wallet = AskarWallet::create(
-            "sqlite:memory:",
+    async fn create_test_wallet() -> AskarWallet {
+        AskarWallet::create(
+            "sqlite://:memory:",
             StoreKeyMethod::Unprotected,
             None.into(),
             true,
-            None,
+            Some(Uuid::new_v4().to_string()),
             )
         .await
-        .unwrap();
+        .unwrap()
+    }
+
+    #[tokio::test]
+    async fn test_askar_should_delete_record() {
+        let wallet = create_test_wallet().await;
+
+        let name1 = "delete-me-1".to_string();
+        let category1 = "my".to_string();
+        let value1 = "ff".to_string();
+
+        let record1 = Record::default()
+            .set_name(&name1)
+            .set_category(&category1)
+            .set_value(&value1.into());
+
+        wallet.add_record(record1).await.unwrap();
+
+        let name2 = "do-not-delete-me".to_string();
+        let category2 = "my".to_string();
+        let value2 = "gg".to_string();
+
+        let record2 = Record::default()
+            .set_name(&name2)
+            .set_category(&category2)
+            .set_value(&value2.into());
+
+        wallet.add_record(record2).await.unwrap();
+
+        let record1_id = RecordId::default().set_name(&name1).set_category(&category1);
+        wallet.delete_record(&record1_id).await.unwrap();
+        let err = wallet.get_record(&record1_id).await.unwrap_err();
+        assert_eq!(AriesVcxCoreErrorKind::WalletRecordNotFound, err.kind());
+
+        let record2_id = RecordId::default().set_name(&name2).set_category(&category2);
+        wallet.get_record(&record2_id).await.unwrap();
+    }
+
+    #[tokio::test]
+    async fn test_askar_should_get_record() {
+        let wallet = create_test_wallet().await;
+
+        let name1 = "foobar".to_string();
+        let category1 = "my".to_string();
+        let value1 = "ff".to_string();
+
+        let record1 = Record::default()
+            .set_name(&name1)
+            .set_category(&category1)
+            .set_value(&value1.clone().into());
+
+        wallet.add_record(record1).await.unwrap();
+
+        let name2 = "foofar".to_string();
+        let category2 = "your".to_string();
+        let value2 = "gg".to_string();
+
+        let record2 = Record::default()
+            .set_name(&name2)
+            .set_category(&category2)
+            .set_value(&value2.clone().into());
+
+        wallet.add_record(record2).await.unwrap();
+
+        let record1_id = RecordId::default().set_name(&name1).set_category(&category1);
+        let found1 = wallet.get_record(&record1_id).await.unwrap();
+        assert_eq!(value1, secret_bytes_to_string(&found1.value));
+
+        let record3_id = RecordId::default().set_name(&name1).set_category(&category2);
+        let err1 = wallet.get_record(&record3_id).await.unwrap_err();
+
+        assert_eq!(AriesVcxCoreErrorKind::WalletRecordNotFound, err1.kind())
+    }
+
+    #[tokio::test]
+    async fn test_askar_should_update_record() {
+        let wallet = create_test_wallet().await;
+
+        let name = "test-name".to_string();
+        let category = "test-category".to_string();
+        let value = "test-value".to_string();
+
+        let record = Record::default()
+            .set_name(&name)
+            .set_category(&category)
+            .set_value(&value.clone().into());
+
+        wallet.add_record(record.clone()).await.unwrap();
+
+        let updated_value = "updated-test-value".to_string();
+        let record = record.set_value(&updated_value.clone().into());
+
+        wallet.update_record(record.clone()).await.unwrap();
+
+        let record_id = RecordId::default().set_name(&name).set_category(&category);
+        let found = wallet.get_record(&record_id).await.unwrap();
+        assert_eq!(updated_value, secret_bytes_to_string(&found.value));
+
+        let other_category = "other-test-category".to_string();
+        let record = record.set_category(&other_category);
+        let err = wallet.update_record(record.clone()).await.unwrap_err();
+
+        assert_eq!(AriesVcxCoreErrorKind::WalletRecordNotFound, err.kind());
+    }
+
+    fn secret_bytes_to_string(sb: &SecretBytes) -> String {
+        std::str::from_utf8(&sb.to_vec()).unwrap().to_string()
+    }
+
+    #[tokio::test]
+    async fn test_askar_should_find_records() {
+        let wallet = create_test_wallet().await;
 
         let record1 = Record {
             category: "my".into(),
@@ -462,15 +612,7 @@ mod test {
 
     #[tokio::test]
     async fn test_askar_should_rotate_key() {
-        let wallet = AskarWallet::create(
-            "sqlite:memory:",
-            StoreKeyMethod::Unprotected,
-            None.into(),
-            true,
-            None,
-        )
-        .await
-        .unwrap();
+        let wallet = create_test_wallet().await;
 
         let first_key_name = "first".to_string();
         let first_key_attrs = KeyAttrs{
@@ -525,15 +667,7 @@ mod test {
 
     #[tokio::test]
     async fn test_askar_should_not_create_key_repeatedly() {
-        let wallet = AskarWallet::create(
-            "sqlite:memory:",
-            StoreKeyMethod::Unprotected,
-            None.into(),
-            true,
-            None,
-        )
-        .await
-        .unwrap();
+        let wallet = create_test_wallet().await;
 
         let first_key_name = "first".to_string();
         let first_key_attrs = KeyAttrs{
