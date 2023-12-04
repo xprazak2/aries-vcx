@@ -1,10 +1,20 @@
+use std::collections::HashMap;
+
 use async_trait::async_trait;
+use derive_builder::Builder;
+use serde_json::map::Entry;
 
 use crate::errors::error::VcxCoreResult;
+
+#[cfg(feature = "vdrtools_wallet")]
+use indy_api_types::domain::wallet::Record as IndyRecord;
 
 use self::key_alg::KeyAlg;
 
 pub mod key_alg;
+    // TODO
+#[cfg(feature = "vdrtools_wallet")]
+pub mod indy_wallet;
 
 #[derive(Clone, Default)]
 pub enum RngMethod {
@@ -31,7 +41,7 @@ impl From<SigType> for &str {
     }
 }
 
-#[derive(Clone, Hash, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Clone, Debug, Hash, PartialEq, Eq, PartialOrd, Ord)]
 pub enum EntryTag {
     /// An entry tag to be stored encrypted
     Encrypted(String, String),
@@ -39,13 +49,35 @@ pub enum EntryTag {
     Plaintext(String, String),
 }
 
-
-#[derive(Default, Clone)]
+#[derive(Debug, Default, Clone, Builder)]
+#[builder(pattern = "owned")]
 pub struct Record {
     pub category: String,
     pub name: String,
     pub value: String,
-    pub tags: Option<Vec<EntryTag>>,
+    #[builder(default = "vec![]")]
+    pub tags: Vec<EntryTag>,
+}
+
+#[cfg(feature = "vdrtools_wallet")]
+impl From<IndyRecord> for Record {
+    fn from(ir: IndyRecord) -> Self {
+        let tags = ir.tags.into_iter().map(|(key, value)| EntryTag::Plaintext(key, value)).collect();
+        Self { name: ir.id, category: ir.type_, value: ir.value, tags }
+    }
+}
+
+impl From<Record> for IndyRecord {
+    fn from(record: Record) -> Self {
+        let tags = record.tags.into_iter().fold(HashMap::new(), |mut memo, item| {
+            match item {
+                EntryTag::Encrypted(key, val) => memo.insert(key, val),
+                EntryTag::Plaintext(key, val) => memo.insert(format!("~{}", key), val)
+            };
+            memo
+        });
+        Self { id: record.name, type_: record.category, value: record.value, tags }
+    }
 }
 
 pub struct Did {}
@@ -90,6 +122,7 @@ pub trait RecordWallet {
 
     async fn search_record(
         &self,
-        filter: SearchFilter,
+        category: &str,
+        query_json: &str,
     ) -> VcxCoreResult<Vec<Record>>;
 }
