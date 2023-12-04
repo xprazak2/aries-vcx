@@ -2,6 +2,17 @@ use async_trait::async_trait;
 
 use crate::errors::error::VcxCoreResult;
 
+use self::key_alg::KeyAlg;
+
+pub mod key_alg;
+
+#[derive(Clone, Default)]
+pub enum RngMethod {
+    #[default]
+    RandomDet,
+    Bls,
+}
+
 pub enum SigType {
     EdDSA,
     ES256,
@@ -20,30 +31,47 @@ impl From<SigType> for &str {
     }
 }
 
+#[derive(Clone, Hash, PartialEq, Eq, PartialOrd, Ord)]
+pub enum EntryTag {
+    /// An entry tag to be stored encrypted
+    Encrypted(String, String),
+    /// An entry tag to be stored in plaintext (for ordered comparison)
+    Plaintext(String, String),
+}
+
+
+#[derive(Default, Clone)]
+pub struct Record {
+    pub category: String,
+    pub name: String,
+    pub value: String,
+    pub tags: Option<Vec<EntryTag>>,
+}
+
+pub struct Did {}
+
+pub struct WalletKey {}
+
+pub struct SearchFilter {}
+
 #[async_trait]
-pub trait Wallet: RecordWallet + DidWallet {}
+pub trait BaseWallet2: RecordWallet + DidWallet {}
 
 #[async_trait]
 pub trait DidWallet {
-    type DidAttrs;
-    type CreatedDid;
-    type DidKey;
-    type KeyAttrs;
-    type FindDidKeyAttrs;
+    async fn create_key(&self, name: &str, alg: KeyAlg, seed: &str, rng_method: RngMethod) -> VcxCoreResult<WalletKey>;
 
-    async fn create_key(&self, key_attrs: Self::KeyAttrs) -> VcxCoreResult<()>;
+    async fn create_did(&self, name: &str, category: &str, tags: Vec<&str>) -> VcxCoreResult<Did>;
 
-    async fn create_did(&self, attrs: Self::DidAttrs) -> VcxCoreResult<Self::CreatedDid>;
+    async fn current_did_key(&self, name: &str) -> VcxCoreResult<WalletKey>;
 
-    async fn did_key(&self, attrs: Self::FindDidKeyAttrs) -> VcxCoreResult<Self::DidKey>;
+    async fn replace_did_key(&self, did: &str, key_name: &str) -> VcxCoreResult<WalletKey>;
 
-    async fn replace_did_key(&self, did: &str, new_key_name: &str) -> VcxCoreResult<Self::DidKey>;
-
-    async fn sign(&self, verkey: &str, msg: &[u8], sig_type: SigType) -> VcxCoreResult<Vec<u8>>;
+    async fn sign(&self, key: &str, msg: &[u8], sig_type: SigType) -> VcxCoreResult<Vec<u8>>;
 
     async fn verify(
         &self,
-        verkey: &str,
+        key: &str,
         msg: &[u8],
         signature: &[u8],
         sig_type: SigType,
@@ -52,21 +80,16 @@ pub trait DidWallet {
 
 #[async_trait]
 pub trait RecordWallet {
-    type Record;
-    type RecordId;
-    type FoundRecord;
-    type SearchFilter;
+    async fn add_record(&self, record: Record) -> VcxCoreResult<()>;
 
-    async fn add_record(&self, record: Self::Record) -> VcxCoreResult<()>;
+    async fn get_record(&self, name: &str, category: &str) -> VcxCoreResult<Record>;
 
-    async fn get_record(&self, id: &Self::RecordId) -> VcxCoreResult<Self::FoundRecord>;
+    async fn update_record(&self, record: Record) -> VcxCoreResult<()>;
 
-    async fn update_record(&self, update: Self::Record) -> VcxCoreResult<()>;
-
-    async fn delete_record(&self, id: &Self::RecordId) -> VcxCoreResult<()>;
+    async fn delete_record(&self, name: &str, category: &str) -> VcxCoreResult<()>;
 
     async fn search_record(
         &self,
-        filter: Self::SearchFilter,
-    ) -> VcxCoreResult<Vec<Self::FoundRecord>>;
+        filter: SearchFilter,
+    ) -> VcxCoreResult<Vec<Record>>;
 }
