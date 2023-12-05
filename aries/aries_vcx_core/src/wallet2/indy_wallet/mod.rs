@@ -5,7 +5,7 @@ use vdrtools::Locator;
 use std::collections::HashMap;
 use indy_api_types::domain::wallet::Record as IndyRecord;
 
-use crate::{wallet::indy::IndySdkWallet, errors::error::{VcxCoreResult, AriesVcxCoreError}};
+use crate::{wallet::indy::IndySdkWallet, errors::error::{VcxCoreResult, AriesVcxCoreError, AriesVcxCoreErrorKind}};
 
 use super::{RecordWallet, Record, SearchFilter, EntryTag};
 
@@ -22,7 +22,7 @@ impl RecordWallet for IndySdkWallet {
             None
         } else {
             let mut tags_map = HashMap::new();
-            for (item) in record.tags.into_iter() {
+            for item in record.tags.into_iter() {
                 match item {
                     EntryTag::Encrypted(key, value) => tags_map.insert(key, value),
                     EntryTag::Plaintext(key, value) => tags_map.insert(format!("~{}", key), value),
@@ -80,14 +80,23 @@ impl RecordWallet for IndySdkWallet {
     async fn search_record(
         &self,
         category: &str,
-        query_json: &str,
+        search_filter: Option<SearchFilter>,
     ) -> VcxCoreResult<Vec<Record>> {
+        let json_filter = search_filter.map(|filter| {
+            match filter {
+                SearchFilter::JsonFilter(inner) => Ok(inner),
+                _ => Err(AriesVcxCoreError::from_msg(AriesVcxCoreErrorKind::WalletUnexpected, "unsupported search filter"))
+            }
+        }).transpose()?;
+
+        let query_json = json_filter.unwrap_or("".into());
+
         let search_handle = Locator::instance()
             .non_secret_controller
             .open_search(
                 self.wallet_handle,
                 category.into(),
-                    query_json.into(),
+                query_json,
                 SEARCH_OPTIONS.into(),
             )
             .await?;
@@ -121,7 +130,7 @@ impl RecordWallet for IndySdkWallet {
 mod tests {
     use serde_json::json;
 
-    use crate::{wallet::indy::{WalletConfigBuilder, wallet::create_and_open_wallet}, errors::error::{AriesVcxCoreError, AriesVcxCoreErrorKind}, wallet2::RecordBuilder};
+    use crate::{wallet::indy::{WalletConfigBuilder, wallet::create_and_open_wallet}, errors::error::AriesVcxCoreErrorKind, wallet2::RecordBuilder};
 
     use super::*;
 
@@ -168,8 +177,8 @@ mod tests {
         let record1 = RecordBuilder::default().name(name.into()).category(category.into()).value(value.into()).build().unwrap();
         let record2 = RecordBuilder::default().name("baz".into()).category(category.into()).value("box".into()).build().unwrap();
 
-        let res = wallet.add_record(record1).await.unwrap();
-        let res = wallet.add_record(record2).await.unwrap();
+        wallet.add_record(record1).await.unwrap();
+        wallet.add_record(record2).await.unwrap();
 
         let res = wallet.get_record(name, category).await.unwrap();
 
@@ -186,13 +195,13 @@ mod tests {
 
         let record = RecordBuilder::default().name(name.into()).category(category.into()).value(value.into()).build().unwrap();
 
-        let res = wallet.add_record(record).await.unwrap();
+        wallet.add_record(record).await.unwrap();
 
         let res = wallet.get_record(name, category).await.unwrap();
 
         assert_eq!(value, res.value);
 
-        let res = wallet.delete_record(name, category).await.unwrap();
+        wallet.delete_record(name, category).await.unwrap();
 
         let err = wallet.get_record(name, category).await.unwrap_err();
         assert_eq!(AriesVcxCoreErrorKind::WalletRecordNotFound, err.kind());
@@ -210,15 +219,15 @@ mod tests {
         let value = "xxx";
 
         let record1 = RecordBuilder::default().name(name1.into()).category(category1.into()).value(value.into()).build().unwrap();
-        let res = wallet.add_record(record1).await.unwrap();
+        wallet.add_record(record1).await.unwrap();
 
         let record2 = RecordBuilder::default().name(name2.into()).category(category1.into()).value(value.into()).build().unwrap();
-        let res = wallet.add_record(record2).await.unwrap();
+        wallet.add_record(record2).await.unwrap();
 
         let record3 = RecordBuilder::default().name(name3.into()).category(category2.into()).value(value.into()).build().unwrap();
-        let res = wallet.add_record(record3).await.unwrap();
+        wallet.add_record(record3).await.unwrap();
 
-        let res = wallet.search_record(category1, "{}").await.unwrap();
+        let res = wallet.search_record(category1, None).await.unwrap();
 
         assert_eq!(2, res.len());
     }
@@ -238,12 +247,12 @@ mod tests {
             .category(category.into())
             .tags(tags.clone())
             .value(value1.into()).build().unwrap();
-        let res = wallet.add_record(record.clone()).await.unwrap();
+        wallet.add_record(record.clone()).await.unwrap();
 
         record.value = value2.into();
         record.tags = vec![];
 
-        let res = wallet.update_record(record.clone()).await.unwrap();
+        wallet.update_record(record.clone()).await.unwrap();
 
         let res = wallet.get_record(name, category).await.unwrap();
         assert_eq!(record.value, res.value);
