@@ -1,9 +1,15 @@
-use aries_askar::kms::KeyAlg;
+use aries_askar::crypto::alg::chacha20::{Chacha20Key, C20P};
+use aries_askar::crypto::alg::Chacha20Types;
+use aries_askar::kms::{KeyAlg, LocalKey};
 use async_trait::async_trait;
+use serde::{Deserialize, Serialize};
 
 use crate::errors::error::{AriesVcxCoreError, AriesVcxCoreErrorKind};
-use crate::wallet2::{DidWallet, SigType};
+use crate::wallet::structs_io::UnpackMessageOutput;
+use crate::wallet2::{DidWallet, Key, SigType, UnpackedMessage};
 use crate::{errors::error::VcxCoreResult, wallet2::DidData};
+
+use aries_askar::crypto::repr::KeyGen;
 
 use super::{AskarWallet, RngMethod};
 
@@ -119,6 +125,79 @@ impl DidWallet for AskarWallet {
 
         Ok(false)
     }
+
+    async fn pack_message(
+        &self,
+        sender_vk: Option<Key>,
+        recipient_keys: Vec<Key>,
+        msg: &[u8],
+    ) -> VcxCoreResult<Vec<u8>> {
+        if recipient_keys.is_empty() {
+            return Err(AriesVcxCoreError::from_msg(
+                AriesVcxCoreErrorKind::InvalidInput,
+                "recipient keys should not be empty",
+            ));
+        }
+
+        let enc_key = LocalKey::generate(KeyAlg::Chacha20(Chacha20Types::C20P), true)?;
+
+        // let enc_key = Chacha20Key::<C20P>::random().map_err(|err| {
+        //     AriesVcxCoreError::from_msg(AriesVcxCoreErrorKind::WalletUnexpected, err)
+        // })?;
+
+        let data = if let Some(sender_verkey) = sender_vk {
+            self.prepare_authcrypt(enc_key, recipient_keys, &sender_verkey)
+                .await?
+        };
+
+        Ok(vec![])
+    }
+
+    async fn unpack_message(&self, msg: &[u8]) -> VcxCoreResult<UnpackedMessage> {
+        Ok(UnpackedMessage {
+            message: "".into(),
+            recipient_verkey: "".into(),
+            sender_verkey: None,
+        })
+    }
+}
+
+pub struct Jwe {
+    pub protected: String,
+    pub iv: String,
+    pub ciphertext: String,
+    pub tag: String,
+}
+
+pub enum JweAlg {
+    Authcrypt,
+    Anoncrypt,
+}
+
+pub struct ProtectedData {
+    enc: String,
+    typ: String,
+    alg: JweAlg,
+    recipients: Vec<Recipient>,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone, Eq, PartialEq)]
+pub struct Recipient {
+    pub encrypted_key: String,
+    pub header: Header,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone, Eq, PartialEq)]
+pub struct Header {
+    pub kid: String,
+
+    #[serde(default)]
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub iv: Option<String>,
+
+    #[serde(default)]
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub sender: Option<String>,
 }
 
 #[cfg(test)]

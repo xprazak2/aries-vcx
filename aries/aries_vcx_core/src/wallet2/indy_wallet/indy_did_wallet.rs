@@ -2,9 +2,9 @@ use async_trait::async_trait;
 use vdrtools::{DidMethod, DidValue, KeyInfo, Locator, MyDidInfo};
 
 use crate::{
-    errors::error::{AriesVcxCoreError, VcxCoreResult},
-    wallet::indy::IndySdkWallet,
-    wallet2::{DidData, DidWallet, SigType},
+    errors::error::{AriesVcxCoreError, AriesVcxCoreErrorKind, VcxCoreResult},
+    wallet::{indy::IndySdkWallet, structs_io::UnpackMessageOutput},
+    wallet2::{DidData, DidWallet, Key, SigType, UnpackedMessage},
 };
 
 #[async_trait]
@@ -78,6 +78,46 @@ impl DidWallet for IndySdkWallet {
             .crypto_verify(key, msg, signature)
             .await
             .map_err(From::from)
+    }
+
+    async fn pack_message(
+        &self,
+        sender_vk: Option<Key>,
+        receiver_keys: Vec<Key>,
+        msg: &[u8],
+    ) -> VcxCoreResult<Vec<u8>> {
+        // todo handle unsupported key types
+
+        let receiver_keys_str = receiver_keys
+            .into_iter()
+            .map(|key| key.pubkey_bs58)
+            .collect();
+
+        let sender_key = sender_vk.map(|key| key.pubkey_bs58);
+
+        Ok(Locator::instance()
+            .crypto_controller
+            .pack_msg(
+                msg.into(),
+                receiver_keys_str,
+                sender_key,
+                self.wallet_handle,
+            )
+            .await?)
+    }
+
+    async fn unpack_message(&self, msg: &[u8]) -> VcxCoreResult<UnpackedMessage> {
+        let unpacked_bytes = Locator::instance()
+            .crypto_controller
+            .unpack_msg(serde_json::from_slice(msg)?, self.wallet_handle)
+            .await?;
+
+        let res: UnpackMessageOutput =
+            serde_json::from_slice(&unpacked_bytes[..]).map_err(|err| {
+                AriesVcxCoreError::from_msg(AriesVcxCoreErrorKind::ParsingError, err.to_string())
+            })?;
+
+        Ok(res.into())
     }
 }
 

@@ -5,16 +5,28 @@ use async_trait::async_trait;
 use derive_builder::Builder;
 use serde::{Deserialize, Serialize};
 
-use crate::errors::error::{AriesVcxCoreError, AriesVcxCoreErrorKind, VcxCoreResult};
+use crate::{
+    errors::error::{AriesVcxCoreError, AriesVcxCoreErrorKind, VcxCoreResult},
+    wallet::structs_io::UnpackMessageOutput,
+};
 
 #[cfg(feature = "vdrtools_wallet")]
 use indy_api_types::domain::wallet::Record as IndyRecord;
+
+use self::key_alg::KeyAlg;
 
 #[cfg(feature = "vdrtools_wallet")]
 pub mod indy_wallet;
 
 #[cfg(feature = "askar_wallet")]
 pub mod askar_wallet;
+
+pub mod key_alg;
+
+pub struct Key {
+    pub key_alg: KeyAlg,
+    pub pubkey_bs58: String,
+}
 
 #[derive(Clone, Default)]
 pub enum RngMethod {
@@ -160,6 +172,23 @@ pub struct DidData {
     verkey: String,
 }
 
+#[derive(Clone)]
+pub struct UnpackedMessage {
+    pub message: String,
+    pub recipient_verkey: String,
+    pub sender_verkey: Option<String>,
+}
+
+impl From<UnpackMessageOutput> for UnpackedMessage {
+    fn from(value: UnpackMessageOutput) -> Self {
+        Self {
+            message: value.message,
+            recipient_verkey: value.recipient_verkey,
+            sender_verkey: value.sender_verkey,
+        }
+    }
+}
+
 pub enum SearchFilter {
     TagFilter(TagFilter),
     JsonFilter(String),
@@ -189,6 +218,15 @@ pub trait DidWallet {
         signature: &[u8],
         sig_type: SigType,
     ) -> VcxCoreResult<bool>;
+
+    async fn pack_message(
+        &self,
+        sender_vk: Option<Key>,
+        receiver_keys: Vec<Key>,
+        msg: &[u8],
+    ) -> VcxCoreResult<Vec<u8>>;
+
+    async fn unpack_message(&self, msg: &[u8]) -> VcxCoreResult<UnpackedMessage>;
 }
 
 #[async_trait]
