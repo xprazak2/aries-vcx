@@ -22,6 +22,13 @@ pub struct Key {
 #[cfg(feature = "askar_wallet")]
 pub mod askar_wallet;
 
+pub mod crypto_box;
+pub mod utils;
+
+pub struct Key {
+    pub pubkey_bs58: String,
+}
+
 #[derive(Clone, Default)]
 pub enum RngMethod {
     #[default]
@@ -241,6 +248,23 @@ impl From<Record> for Entry {
 pub struct DidData {
     pub did: String,
     pub verkey: String,
+}
+
+#[derive(Clone)]
+pub struct UnpackedMessage {
+    pub message: String,
+    pub recipient_verkey: String,
+    pub sender_verkey: Option<String>,
+}
+
+impl From<UnpackMessageOutput> for UnpackedMessage {
+    fn from(value: UnpackMessageOutput) -> Self {
+        Self {
+            message: value.message,
+            recipient_verkey: value.recipient_verkey,
+            sender_verkey: value.sender_verkey,
+        }
+    }
 }
 
 pub enum SearchFilter {

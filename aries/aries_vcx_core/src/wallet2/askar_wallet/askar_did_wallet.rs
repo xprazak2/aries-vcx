@@ -1,5 +1,5 @@
 use aries_askar::{
-    crypto::alg::{Chacha20Types, EcCurves},
+    crypto::alg::Chacha20Types,
     kms::{KeyAlg, LocalKey},
 };
 use async_trait::async_trait;
@@ -7,45 +7,8 @@ use async_trait::async_trait;
 use super::{packing::Packing, AskarWallet, RngMethod};
 use crate::{
     errors::error::{AriesVcxCoreError, AriesVcxCoreErrorKind, VcxCoreResult},
-    wallet2::{DidData, DidWallet, Key, UnpackedMessage},
+    wallet2::{DidData, DidWallet, Key, SigType, UnpackedMessage},
 };
-
-pub enum SigType {
-    EdDSA,
-    ES256,
-    ES256K,
-    ES384,
-}
-
-impl From<SigType> for &str {
-    fn from(value: SigType) -> Self {
-        match value {
-            SigType::EdDSA => "eddsa",
-            SigType::ES256 => "es256",
-            SigType::ES256K => "es256k",
-            SigType::ES384 => "es384",
-        }
-    }
-}
-
-impl TryFrom<KeyAlg> for SigType {
-    type Error = AriesVcxCoreError;
-
-    fn try_from(value: KeyAlg) -> Result<Self, Self::Error> {
-        match value {
-            KeyAlg::Ed25519 => Ok(SigType::EdDSA),
-            KeyAlg::EcCurve(item) => match item {
-                EcCurves::Secp256r1 => Ok(SigType::ES256),
-                EcCurves::Secp256k1 => Ok(SigType::ES256K),
-                EcCurves::Secp384r1 => Ok(SigType::ES384),
-            },
-            _ => Err(AriesVcxCoreError::from_msg(
-                AriesVcxCoreErrorKind::InvalidInput,
-                "this key does not support signing",
-            )),
-        }
-    }
-}
 
 #[async_trait]
 impl DidWallet for AskarWallet {
@@ -332,6 +295,7 @@ mod test {
         // Kid is base58 pubkey, we need to use it as a name in askar to be able to retrieve the
         // key. Somewhat awkward. Also does not align with `create_and_store_my_did` which
         // generates keys with names using only first 16 bytes of (pub)key
+
         let kid = bytes_to_bs58(&local_key_to_public_key_bytes(&recipient_key).unwrap());
         session
             .insert_key(&kid, &recipient_key, None, None, None)

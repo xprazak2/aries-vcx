@@ -111,12 +111,13 @@ impl DidWallet for IndySdkWallet {
 
 #[cfg(test)]
 mod tests {
+
     use rand::{distributions::Alphanumeric, Rng};
     use test_utils::devsetup::create_indy_test_wallet_handle;
 
     use crate::{
         wallet::indy::IndySdkWallet,
-        wallet2::{DidWallet, Key},
+        wallet2::{indy_wallet::test_helper::create_test_wallet, DidWallet, Key, SigType},
     };
 
     #[tokio::test]
