@@ -8,10 +8,15 @@ use aries_askar::crypto::alg::chacha20::{Chacha20Key, Chacha20Type, C20P};
 
 use crate::errors::error::{AriesVcxCoreError, AriesVcxCoreErrorKind, VcxCoreResult};
 
-use super::{DidData, Key};
+use super::{
+    crypto_box::{CryptoBox, SodiumCryptoBox},
+    utils::{bs58_to_bytes, bytes_to_string, encode_urlsafe},
+    DidData, Key,
+};
 
 pub mod askar_did_wallet;
 pub mod askar_record_wallet;
+pub mod packing;
 
 #[derive(Clone, Default)]
 pub enum RngMethod {
@@ -150,45 +155,6 @@ impl AskarWallet {
             .await?;
 
         Ok(res)
-    }
-
-    async fn prepare_authcrypt(
-        &self,
-        enc_key: LocalKey,
-        recipient_keys: Vec<Key>,
-        sender_verkey_name: &str,
-    ) -> VcxCoreResult<()> {
-        let mut session = self.backend.session(self.profile.clone()).await?;
-
-        let my_key = self
-            .fetch_local_key(&mut session, sender_verkey_name)
-            .await?;
-
-        for recipient_key in recipient_keys {
-            // sign enc_key with recipient key
-            let recipient_pubkey =
-                bs58::decode(recipient_key.pubkey_bs58)
-                    .into_vec()
-                    .map_err(|err| {
-                        AriesVcxCoreError::from_msg(AriesVcxCoreErrorKind::WalletUnexpected, err)
-                    })?;
-            let their_key =
-                LocalKey::from_public_bytes(recipient_key.key_alg.into(), &recipient_pubkey)?;
-
-            // check keys are the same type
-            let shared_key = my_key.to_key_exchange(my_key.algorithm(), &their_key)?;
-            let nonce = shared_key.aead_random_nonce()?;
-
-            let key_bytes = enc_key.to_secret_bytes()?;
-
-            let encrypted =
-                shared_key.aead_encrypt(&key_bytes.into_vec(), nonce.as_ref(), vec![].as_ref())?;
-
-            let my_public_bytes = my_key.to_public_bytes()?;
-            let enc_sender = their_key.sign_message(&my_public_bytes, Some("eddsa"))?;
-        }
-
-        Ok(())
     }
 }
 

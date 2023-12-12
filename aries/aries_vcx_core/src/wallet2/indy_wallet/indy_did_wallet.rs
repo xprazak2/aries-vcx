@@ -82,27 +82,20 @@ impl DidWallet for IndySdkWallet {
 
     async fn pack_message(
         &self,
-        sender_vk: Option<Key>,
+        sender_vk: Option<String>,
         receiver_keys: Vec<Key>,
         msg: &[u8],
     ) -> VcxCoreResult<Vec<u8>> {
-        // todo handle unsupported key types
+        // todo handle unsupported receiver key types
 
         let receiver_keys_str = receiver_keys
             .into_iter()
             .map(|key| key.pubkey_bs58)
             .collect();
 
-        let sender_key = sender_vk.map(|key| key.pubkey_bs58);
-
         Ok(Locator::instance()
             .crypto_controller
-            .pack_msg(
-                msg.into(),
-                receiver_keys_str,
-                sender_key,
-                self.wallet_handle,
-            )
+            .pack_msg(msg.into(), receiver_keys_str, sender_vk, self.wallet_handle)
             .await?)
     }
 
@@ -123,7 +116,9 @@ impl DidWallet for IndySdkWallet {
 
 #[cfg(test)]
 mod tests {
-    use crate::wallet2::{indy_wallet::test_helper::create_test_wallet, DidWallet, SigType};
+    use crate::wallet2::{
+        indy_wallet::test_helper::create_test_wallet, key_alg::KeyAlg, DidWallet, Key, SigType,
+    };
     use rand::{distributions::Alphanumeric, Rng};
 
     #[tokio::test]
@@ -155,11 +150,11 @@ mod tests {
     async fn test_indy_should_rotate_keys() {
         let wallet = create_test_wallet().await;
 
-        let seed: String = rand::thread_rng()
+        let seed = rand::thread_rng()
             .sample_iter(Alphanumeric)
             .take(32)
             .map(char::from)
-            .collect();
+            .collect::<String>();
 
         let did_data = DidWallet::create_and_store_my_did(&wallet, &seed, None)
             .await
@@ -182,5 +177,37 @@ mod tests {
 
         let new_key = wallet.did_key(&did_data.did).await.unwrap();
         assert_eq!(res, new_key);
+    }
+
+    #[tokio::test]
+    async fn test_indy_should_pack() {
+        let wallet = create_test_wallet().await;
+
+        let seed = std::iter::repeat("f").take(32).collect::<String>();
+
+        let sender_data = DidWallet::create_and_store_my_did(&wallet, &seed, None)
+            .await
+            .unwrap();
+
+        let seed = std::iter::repeat("g").take(32).collect::<String>();
+
+        let receiver_data = DidWallet::create_and_store_my_did(&wallet, &seed, None)
+            .await
+            .unwrap();
+
+        println!("receiver data: {:?}", receiver_data);
+
+        let receiver_key = Key {
+            key_alg: KeyAlg::Ed25519,
+            pubkey_bs58: receiver_data.verkey,
+        };
+        let res = wallet
+            .pack_message(
+                Some(sender_data.verkey),
+                vec![receiver_key],
+                "msg".as_bytes(),
+            )
+            .await
+            .unwrap();
     }
 }

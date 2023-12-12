@@ -21,7 +21,9 @@ pub mod indy_wallet;
 #[cfg(feature = "askar_wallet")]
 pub mod askar_wallet;
 
+pub mod crypto_box;
 pub mod key_alg;
+pub mod utils;
 
 pub struct Key {
     pub key_alg: KeyAlg,
@@ -221,7 +223,7 @@ pub trait DidWallet {
 
     async fn pack_message(
         &self,
-        sender_vk: Option<Key>,
+        sender_vk: Option<String>,
         receiver_keys: Vec<Key>,
         msg: &[u8],
     ) -> VcxCoreResult<Vec<u8>>;

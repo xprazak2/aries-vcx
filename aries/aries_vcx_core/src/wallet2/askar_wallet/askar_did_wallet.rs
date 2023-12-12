@@ -6,11 +6,13 @@ use serde::{Deserialize, Serialize};
 
 use crate::errors::error::{AriesVcxCoreError, AriesVcxCoreErrorKind};
 use crate::wallet::structs_io::UnpackMessageOutput;
+use crate::wallet2::utils::bytes_to_string;
 use crate::wallet2::{DidWallet, Key, SigType, UnpackedMessage};
 use crate::{errors::error::VcxCoreResult, wallet2::DidData};
 
 use aries_askar::crypto::repr::KeyGen;
 
+use super::packing::Packing;
 use super::{AskarWallet, RngMethod};
 
 #[async_trait]
@@ -128,7 +130,7 @@ impl DidWallet for AskarWallet {
 
     async fn pack_message(
         &self,
-        sender_vk: Option<Key>,
+        sender_vk: Option<String>,
         recipient_keys: Vec<Key>,
         msg: &[u8],
     ) -> VcxCoreResult<Vec<u8>> {
@@ -140,17 +142,28 @@ impl DidWallet for AskarWallet {
         }
 
         let enc_key = LocalKey::generate(KeyAlg::Chacha20(Chacha20Types::C20P), true)?;
+        let packing = Packing::new();
 
-        // let enc_key = Chacha20Key::<C20P>::random().map_err(|err| {
-        //     AriesVcxCoreError::from_msg(AriesVcxCoreErrorKind::WalletUnexpected, err)
-        // })?;
+        let base64_data = if let Some(sender_verkey_name) = sender_vk {
+            let mut session = self.backend.session(self.profile.clone()).await?;
 
-        let data = if let Some(sender_verkey) = sender_vk {
-            self.prepare_authcrypt(enc_key, recipient_keys, &sender_verkey)
-                .await?
+            let my_key = self
+                .fetch_local_key(&mut session, &sender_verkey_name)
+                .await?;
+
+            packing.pack_authcrypt(&enc_key, recipient_keys, my_key)?
+        } else {
+            packing.pack_anoncrypt(&enc_key, recipient_keys)?
         };
 
-        Ok(vec![])
+        let nonce = enc_key.aead_random_nonce()?;
+        let enc = enc_key.aead_encrypt(msg, &nonce, base64_data.as_bytes())?;
+
+        let ciphertext = bytes_to_string(enc.ciphertext().to_vec())?;
+        let nonce = bytes_to_string(enc.nonce().to_vec())?;
+        let tag = bytes_to_string(enc.tag().to_vec())?;
+
+        Ok(packing.pack_all(&base64_data, &ciphertext, &nonce, &tag)?)
     }
 
     async fn unpack_message(&self, msg: &[u8]) -> VcxCoreResult<UnpackedMessage> {
@@ -160,44 +173,6 @@ impl DidWallet for AskarWallet {
             sender_verkey: None,
         })
     }
-}
-
-pub struct Jwe {
-    pub protected: String,
-    pub iv: String,
-    pub ciphertext: String,
-    pub tag: String,
-}
-
-pub enum JweAlg {
-    Authcrypt,
-    Anoncrypt,
-}
-
-pub struct ProtectedData {
-    enc: String,
-    typ: String,
-    alg: JweAlg,
-    recipients: Vec<Recipient>,
-}
-
-#[derive(Serialize, Deserialize, Debug, Clone, Eq, PartialEq)]
-pub struct Recipient {
-    pub encrypted_key: String,
-    pub header: Header,
-}
-
-#[derive(Serialize, Deserialize, Debug, Clone, Eq, PartialEq)]
-pub struct Header {
-    pub kid: String,
-
-    #[serde(default)]
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub iv: Option<String>,
-
-    #[serde(default)]
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub sender: Option<String>,
 }
 
 #[cfg(test)]
