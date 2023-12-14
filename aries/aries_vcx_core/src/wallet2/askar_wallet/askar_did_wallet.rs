@@ -167,11 +167,13 @@ impl DidWallet for AskarWallet {
     }
 
     async fn unpack_message(&self, msg: &[u8]) -> VcxCoreResult<UnpackedMessage> {
-        Ok(UnpackedMessage {
-            message: "".into(),
-            recipient_verkey: "".into(),
-            sender_verkey: None,
-        })
+        let msg_jwe = serde_json::from_slice(msg)?;
+
+        let packing = Packing::new();
+
+        let mut session = self.backend.session(self.profile.clone()).await?;
+
+        Ok(packing.unpack(msg_jwe, &mut session).await?)
     }
 }
 

@@ -16,6 +16,7 @@ use super::{
 
 pub mod askar_did_wallet;
 pub mod askar_record_wallet;
+pub mod askar_utils;
 pub mod packing;
 
 #[derive(Clone, Default)]
