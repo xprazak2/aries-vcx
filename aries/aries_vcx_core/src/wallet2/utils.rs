@@ -32,6 +32,10 @@ pub fn bs58_to_bytes(key: &str) -> VcxCoreResult<Vec<u8>> {
         .map_err(|err| AriesVcxCoreError::from_msg(AriesVcxCoreErrorKind::WalletUnexpected, err))?)
 }
 
+pub fn bytes_to_bs58(bytes: &[u8]) -> String {
+    bs58::encode(bytes).into_string()
+}
+
 pub fn from_json_str<T: for<'a> Deserialize<'a>>(json: &str) -> VcxCoreResult<T> {
     Ok(serde_json::from_str::<T>(json)
         .map_err(|err| AriesVcxCoreError::from_msg(AriesVcxCoreErrorKind::InvalidJson, err))?)

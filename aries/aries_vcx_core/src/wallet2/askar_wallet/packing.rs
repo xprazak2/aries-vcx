@@ -10,7 +10,10 @@ use crate::{
     errors::error::{AriesVcxCoreError, AriesVcxCoreErrorKind, VcxCoreResult},
     wallet2::{
         crypto_box::{CryptoBox, SodiumCryptoBox},
-        utils::{bs58_to_bytes, bytes_to_string, decode_urlsafe, encode_urlsafe, from_json_str},
+        utils::{
+            bs58_to_bytes, bytes_to_bs58, bytes_to_string, decode_urlsafe, encode_urlsafe,
+            from_json_str,
+        },
         Key, UnpackedMessage,
     },
 };
@@ -29,13 +32,13 @@ pub struct Jwe {
     pub tag: String,
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Debug)]
 pub enum JweAlg {
     Authcrypt,
     Anoncrypt,
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Debug)]
 pub struct ProtectedData {
     pub enc: String,
     pub typ: String,
@@ -114,7 +117,7 @@ impl Packing {
 
     pub async fn unpack(&self, jwe: Jwe, session: &mut Session) -> VcxCoreResult<UnpackedMessage> {
         let protected_data_vec = decode_urlsafe(&jwe.protected)?;
-        let protected_data_str = bytes_to_string(protected_data_vec.clone())?;
+        let protected_data_str = bytes_to_string(protected_data_vec)?;
         let protected_data = from_json_str(&protected_data_str)?;
 
         let (recipient, key_entry) = self.find_recipient_key(&protected_data, session).await?;
@@ -128,7 +131,7 @@ impl Packing {
 
         let to_decrypt = ToDecrypt::from((ciphertext.as_ref(), tag.as_ref()));
 
-        let msg = enc_key.aead_decrypt(to_decrypt, &nonce, &protected_data_vec)?;
+        let msg = enc_key.aead_decrypt(to_decrypt, &nonce, &jwe.protected.as_bytes())?;
 
         let unpacked = UnpackedMessage {
             message: bytes_to_string(msg.to_vec())?,
@@ -163,6 +166,7 @@ impl Packing {
     ) -> VcxCoreResult<(LocalKey, Option<String>)> {
         let encrypted_key = decode_urlsafe(&recipient.encrypted_key)?;
         let iv = decode_urlsafe(&recipient.header.iv)?;
+
         let sender_vk_enc = decode_urlsafe(&recipient.header.sender)?;
 
         let private_bytes = local_key_to_private_key_bytes(&local_key)?;
@@ -176,7 +180,7 @@ impl Packing {
             self.crypto_box
                 .box_decrypt(&private_bytes, &sender_vk_vec, &encrypted_key, &iv)?;
 
-        let sender_vk = bytes_to_string(sender_vk_vec)?;
+        let sender_vk = bytes_to_bs58(&sender_vk_vec);
 
         let enc_key = LocalKey::from_secret_bytes(KeyAlg::Chacha20(Chacha20Types::C20P), &cek_vec)?;
 
@@ -198,8 +202,7 @@ impl Packing {
                 .sealedbox_decrypt(&private_bytes, &public_bytes, &encrypted_key)?;
         let enc_key = LocalKey::from_secret_bytes(KeyAlg::Chacha20(Chacha20Types::C20P), &cek_vec)?;
 
-        Ok(((enc_key, None)))
-        // Ok(())
+        Ok((enc_key, None))
     }
 
     async fn find_recipient_key<'a>(
@@ -301,7 +304,7 @@ impl Packing {
                 .crypto_box
                 .sealedbox_encrypt(&recipient_pubkey, &my_public_bytes)?;
 
-            let kid = bytes_to_string(recipient_pubkey)?;
+            let kid = bytes_to_bs58(&recipient_pubkey);
             let sender = encode_urlsafe(&enc_sender);
             let iv = encode_urlsafe(&nonce);
 
@@ -342,7 +345,7 @@ impl Packing {
                 .crypto_box
                 .sealedbox_encrypt(&recipient_pubkey, &enc_key_secret)?;
 
-            let kid = bytes_to_string(recipient_pubkey)?;
+            let kid = bytes_to_bs58(&recipient_pubkey);
 
             encrypted_recipients.push(Recipient::new_anoncrypt(&encode_urlsafe(&enc_cek), &kid));
         }
@@ -361,12 +364,14 @@ impl Packing {
             alg: jwe_alg,
             recipients: encrypted_recipients,
         };
+
         let protected_encoded = serde_json::to_string(&protected_data).map_err(|err| {
             AriesVcxCoreError::from_msg(
                 AriesVcxCoreErrorKind::EncodeError,
                 format!("Failed to serialize protected field {}", err),
             )
         })?;
+
         Ok(encode_urlsafe(protected_encoded.as_bytes()))
     }
 }

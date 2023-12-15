@@ -13,8 +13,6 @@ use crate::{
 #[cfg(feature = "vdrtools_wallet")]
 use indy_api_types::domain::wallet::Record as IndyRecord;
 
-use self::key_alg::KeyAlg;
-
 #[cfg(feature = "vdrtools_wallet")]
 pub mod indy_wallet;
 
@@ -26,7 +24,6 @@ pub mod key_alg;
 pub mod utils;
 
 pub struct Key {
-    pub key_alg: KeyAlg,
     pub pubkey_bs58: String,
 }
 

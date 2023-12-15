@@ -86,8 +86,6 @@ impl DidWallet for IndySdkWallet {
         receiver_keys: Vec<Key>,
         msg: &[u8],
     ) -> VcxCoreResult<Vec<u8>> {
-        // todo handle unsupported receiver key types
-
         let receiver_keys_str = receiver_keys
             .into_iter()
             .map(|key| key.pubkey_bs58)
@@ -116,9 +114,7 @@ impl DidWallet for IndySdkWallet {
 
 #[cfg(test)]
 mod tests {
-    use crate::wallet2::{
-        indy_wallet::test_helper::create_test_wallet, key_alg::KeyAlg, DidWallet, Key, SigType,
-    };
+    use crate::wallet2::{indy_wallet::test_helper::create_test_wallet, DidWallet, Key, SigType};
     use rand::{distributions::Alphanumeric, Rng};
 
     #[tokio::test]
@@ -180,7 +176,7 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn test_indy_should_pack() {
+    async fn test_indy_should_pack_and_unpack() {
         let wallet = create_test_wallet().await;
 
         let seed = std::iter::repeat("f").take(32).collect::<String>();
@@ -195,19 +191,18 @@ mod tests {
             .await
             .unwrap();
 
-        println!("receiver data: {:?}", receiver_data);
-
         let receiver_key = Key {
-            key_alg: KeyAlg::Ed25519,
             pubkey_bs58: receiver_data.verkey,
         };
-        let res = wallet
-            .pack_message(
-                Some(sender_data.verkey),
-                vec![receiver_key],
-                "msg".as_bytes(),
-            )
+        let msg = "pack me";
+
+        let packed = wallet
+            .pack_message(Some(sender_data.verkey), vec![receiver_key], msg.as_bytes())
             .await
             .unwrap();
+
+        let unpacked = wallet.unpack_message(&packed).await.unwrap();
+
+        assert_eq!(msg, unpacked.message);
     }
 }

@@ -118,7 +118,7 @@ impl CryptoBox for SodiumCryptoBox {
         let sk = SecretKey(sk_bytes);
         let pk = PublicKey(pk_bytes);
 
-        Ok(sealedbox::open(msg, &pk, &sk).map_err(|err| {
+        Ok(sealedbox::open(msg, &pk, &sk).map_err(|_| {
             AriesVcxCoreError::from_msg(
                 AriesVcxCoreErrorKind::InvalidInput,
                 "failed to open sealed box",
@@ -129,12 +129,8 @@ impl CryptoBox for SodiumCryptoBox {
 
 #[cfg(test)]
 mod test {
-    use aries_askar::kms::KeyAlg::{Ed25519, X25519};
+    use aries_askar::kms::KeyAlg::X25519;
     use aries_askar::kms::LocalKey;
-    use sodiumoxide::crypto::{
-        box_::{PublicKey, SecretKey},
-        sealedbox,
-    };
 
     use crate::wallet2::{
         askar_wallet::askar_utils::{

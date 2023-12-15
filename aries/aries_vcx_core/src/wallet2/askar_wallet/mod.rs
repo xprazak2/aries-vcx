@@ -4,15 +4,11 @@ use aries_askar::{
     PassKey, Session, Store, StoreKeyMethod,
 };
 
-use aries_askar::crypto::alg::chacha20::{Chacha20Key, Chacha20Type, C20P};
+// use aries_askar::crypto::alg::chacha20::{Chacha20Key, Chacha20Type, C20P};
 
 use crate::errors::error::{AriesVcxCoreError, AriesVcxCoreErrorKind, VcxCoreResult};
 
-use super::{
-    crypto_box::{CryptoBox, SodiumCryptoBox},
-    utils::{bs58_to_bytes, bytes_to_string, encode_urlsafe},
-    DidData, Key,
-};
+use super::DidData;
 
 pub mod askar_did_wallet;
 pub mod askar_record_wallet;
