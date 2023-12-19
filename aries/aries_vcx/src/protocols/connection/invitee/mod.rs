@@ -1,6 +1,6 @@
 pub mod states;
 
-use aries_vcx_core::{ledger::base_ledger::IndyLedgerRead, wallet::base_wallet::BaseWallet};
+use aries_vcx_core::{ledger::base_ledger::IndyLedgerRead, wallet2::BaseWallet2};
 use chrono::Utc;
 use diddoc_legacy::aries::{diddoc::AriesDidDoc, service::AriesService};
 use messages::{
@@ -168,7 +168,7 @@ impl InviteeConnection<Requested> {
     ///     * decoding the signed response fails
     pub async fn handle_response(
         self,
-        wallet: &impl BaseWallet,
+        wallet: &impl BaseWallet2,
         response: Response,
     ) -> VcxResult<InviteeConnection<Completed>> {
         let is_match = matches_thread_id!(response, self.state.thread_id());

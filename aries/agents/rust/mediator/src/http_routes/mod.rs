@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use aries_vcx_core::wallet::base_wallet::BaseWallet;
+use aries_vcx_core::wallet2::BaseWallet2;
 use axum::{
     body::Bytes,
     extract::State,
@@ -19,7 +19,7 @@ use crate::{
 
 pub async fn oob_invite_qr(
     headers: HeaderMap,
-    State(agent): State<ArcAgent<impl BaseWallet + 'static, impl MediatorPersistence>>,
+    State(agent): State<ArcAgent<impl BaseWallet2 + 'static, impl MediatorPersistence>>,
 ) -> Response {
     let Json(oob_json) = oob_invite_json(State(agent)).await;
     let preferred_mimetype = headers
@@ -48,14 +48,14 @@ pub async fn oob_invite_qr(
 }
 
 pub async fn oob_invite_json(
-    State(agent): State<ArcAgent<impl BaseWallet + 'static, impl MediatorPersistence>>,
+    State(agent): State<ArcAgent<impl BaseWallet2 + 'static, impl MediatorPersistence>>,
 ) -> Json<Value> {
     let oob = agent.get_oob_invite().unwrap();
     Json(serde_json::to_value(oob).unwrap())
 }
 
 pub async fn handle_didcomm(
-    State(agent): State<ArcAgent<impl BaseWallet + 'static, impl MediatorPersistence>>,
+    State(agent): State<ArcAgent<impl BaseWallet2 + 'static, impl MediatorPersistence>>,
     didcomm_msg: Bytes,
 ) -> Result<Json<Value>, String> {
     didcomm_handlers::handle_aries(State(agent), didcomm_msg).await
@@ -66,7 +66,7 @@ pub async fn readme() -> Html<String> {
 }
 
 pub async fn build_router(
-    agent: Agent<impl BaseWallet + 'static, impl MediatorPersistence>,
+    agent: Agent<impl BaseWallet2 + 'static, impl MediatorPersistence>,
 ) -> Router {
     Router::default()
         .route("/", get(readme))

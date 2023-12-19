@@ -1,7 +1,7 @@
 mod conversions;
 mod thin_state;
 
-use aries_vcx_core::wallet::base_wallet::BaseWallet;
+use aries_vcx_core::wallet2::BaseWallet2;
 use diddoc_legacy::aries::diddoc::AriesDidDoc;
 use messages::AriesMessage;
 
@@ -172,7 +172,7 @@ impl GenericConnection {
 
     pub async fn encrypt_message(
         &self,
-        wallet: &impl BaseWallet,
+        wallet: &impl BaseWallet2,
         message: &AriesMessage,
     ) -> VcxResult<EncryptionEnvelope> {
         let sender_verkey = &self.pairwise_info().pw_vk;
@@ -191,7 +191,7 @@ impl GenericConnection {
 
     pub async fn send_message<T>(
         &self,
-        wallet: &impl BaseWallet,
+        wallet: &impl BaseWallet2,
         message: &AriesMessage,
         transport: &T,
     ) -> VcxResult<()>

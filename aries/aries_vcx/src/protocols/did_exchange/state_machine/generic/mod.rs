@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use aries_vcx_core::{ledger::base_ledger::IndyLedgerRead, wallet::base_wallet::BaseWallet};
+use aries_vcx_core::{ledger::base_ledger::IndyLedgerRead, wallet2::BaseWallet2};
 use did_doc_sov::DidDocumentSov;
 use did_parser::Did;
 use did_resolver_registry::ResolverRegistry;
@@ -122,7 +122,7 @@ impl GenericDidExchange {
     }
 
     pub async fn construct_request_pairwise(
-        wallet: &impl BaseWallet,
+        wallet: &impl BaseWallet2,
         invitation: Invitation,
         resolver_registry: Arc<ResolverRegistry>,
         service_endpoint: Url,
@@ -144,7 +144,7 @@ impl GenericDidExchange {
     }
 
     pub async fn handle_request(
-        wallet: &impl BaseWallet,
+        wallet: &impl BaseWallet2,
         resolver_registry: Arc<ResolverRegistry>,
         request: Request,
         service_endpoint: Url,

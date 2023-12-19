@@ -12,14 +12,14 @@ impl DidWallet for IndySdkWallet {
     async fn create_and_store_my_did(
         &self,
         seed: Option<&str>,
-        method_name: Option<&str>,
+        did_method_name: Option<&str>,
     ) -> VcxCoreResult<DidData> {
         let res = Locator::instance()
             .did_controller
             .create_and_store_my_did(
                 self.wallet_handle,
                 MyDidInfo {
-                    method_name: method_name.map(|m| DidMethod(m.into())),
+                    method_name: did_method_name.map(|m| DidMethod(m.into())),
                     seed: seed.map(Into::into),
                     ..MyDidInfo::default()
                 },

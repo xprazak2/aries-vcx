@@ -2,7 +2,7 @@ use aries_vcx_core::{
     anoncreds::base_anoncreds::BaseAnonCreds,
     errors::error::{AriesVcxCoreError, AriesVcxCoreErrorKind, VcxCoreResult},
     global::settings::DEFAULT_LINK_SECRET_ALIAS,
-    wallet::base_wallet::BaseWallet,
+    wallet2::BaseWallet2,
 };
 use async_trait::async_trait;
 
@@ -35,7 +35,7 @@ impl BaseAnonCreds for MockAnoncreds {
 
     async fn issuer_create_and_store_revoc_reg(
         &self,
-        __wallet: &impl BaseWallet,
+        __wallet: &impl BaseWallet2,
         _issuer_did: &str,
         _cred_def_id: &str,
         _tails_dir: &str,
@@ -51,7 +51,7 @@ impl BaseAnonCreds for MockAnoncreds {
 
     async fn issuer_create_and_store_credential_def(
         &self,
-        __wallet: &impl BaseWallet,
+        __wallet: &impl BaseWallet2,
         _issuer_did: &str,
         _schema_json: &str,
         _tag: &str,
@@ -67,7 +67,7 @@ impl BaseAnonCreds for MockAnoncreds {
 
     async fn issuer_create_credential_offer(
         &self,
-        __wallet: &impl BaseWallet,
+        __wallet: &impl BaseWallet2,
         _cred_def_id: &str,
     ) -> VcxCoreResult<String> {
         Ok(LIBINDY_CRED_OFFER.to_string())
@@ -75,7 +75,7 @@ impl BaseAnonCreds for MockAnoncreds {
 
     async fn issuer_create_credential(
         &self,
-        __wallet: &impl BaseWallet,
+        __wallet: &impl BaseWallet2,
         _cred_offer_json: &str,
         _cred_req_json: &str,
         _cred_values_json: &str,
@@ -87,7 +87,7 @@ impl BaseAnonCreds for MockAnoncreds {
 
     async fn prover_create_proof(
         &self,
-        __wallet: &impl BaseWallet,
+        __wallet: &impl BaseWallet2,
         _proof_req_json: &str,
         _requested_credentials_json: &str,
         _master_secret_id: &str,
@@ -100,7 +100,7 @@ impl BaseAnonCreds for MockAnoncreds {
 
     async fn prover_get_credential(
         &self,
-        __wallet: &impl BaseWallet,
+        __wallet: &impl BaseWallet2,
         _cred_id: &str,
     ) -> VcxCoreResult<String> {
         // not needed yet
@@ -112,7 +112,7 @@ impl BaseAnonCreds for MockAnoncreds {
 
     async fn prover_get_credentials(
         &self,
-        __wallet: &impl BaseWallet,
+        __wallet: &impl BaseWallet2,
         _filter_json: Option<&str>,
     ) -> VcxCoreResult<String> {
         // not needed yet
@@ -124,7 +124,7 @@ impl BaseAnonCreds for MockAnoncreds {
 
     async fn prover_get_credentials_for_proof_req(
         &self,
-        _wallet: &impl BaseWallet,
+        _wallet: &impl BaseWallet2,
         _proof_request_json: &str,
     ) -> VcxCoreResult<String> {
         Err(AriesVcxCoreError::from_msg(
@@ -136,7 +136,7 @@ impl BaseAnonCreds for MockAnoncreds {
     // todo: change _prover_did argument, see: https://github.com/hyperledger/aries-vcx/issues/950
     async fn prover_create_credential_req(
         &self,
-        _wallet: &impl BaseWallet,
+        _wallet: &impl BaseWallet2,
         _prover_did: &str,
         _cred_offer_json: &str,
         _cred_def_json: &str,
@@ -158,7 +158,7 @@ impl BaseAnonCreds for MockAnoncreds {
 
     async fn prover_store_credential(
         &self,
-        _wallet: &impl BaseWallet,
+        _wallet: &impl BaseWallet2,
         _cred_id: Option<&str>,
         _cred_req_metadata_json: &str,
         _cred_json: &str,
@@ -170,7 +170,7 @@ impl BaseAnonCreds for MockAnoncreds {
 
     async fn prover_delete_credential(
         &self,
-        _wallet: &impl BaseWallet,
+        _wallet: &impl BaseWallet2,
         _cred_id: &str,
     ) -> VcxCoreResult<()> {
         // not needed yet
@@ -182,7 +182,7 @@ impl BaseAnonCreds for MockAnoncreds {
 
     async fn prover_create_link_secret(
         &self,
-        _wallet: &impl BaseWallet,
+        _wallet: &impl BaseWallet2,
         _link_secret_id: &str,
     ) -> VcxCoreResult<String> {
         Ok(DEFAULT_LINK_SECRET_ALIAS.to_string())
@@ -204,7 +204,7 @@ impl BaseAnonCreds for MockAnoncreds {
 
     async fn revoke_credential_local(
         &self,
-        _wallet: &impl BaseWallet,
+        _wallet: &impl BaseWallet2,
         _tails_dir: &str,
         _rev_reg_id: &str,
         _cred_rev_id: &str,
@@ -214,7 +214,7 @@ impl BaseAnonCreds for MockAnoncreds {
 
     async fn get_rev_reg_delta(
         &self,
-        _wallet: &impl BaseWallet,
+        _wallet: &impl BaseWallet2,
         _rev_reg_id: &str,
     ) -> VcxCoreResult<Option<String>> {
         Ok(Some(REV_REG_DELTA_JSON.to_string()))
@@ -222,7 +222,7 @@ impl BaseAnonCreds for MockAnoncreds {
 
     async fn clear_rev_reg_delta(
         &self,
-        _wallet: &impl BaseWallet,
+        _wallet: &impl BaseWallet2,
         _rev_reg_id: &str,
     ) -> VcxCoreResult<()> {
         Ok(())

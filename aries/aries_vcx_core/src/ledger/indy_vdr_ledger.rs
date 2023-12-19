@@ -52,7 +52,7 @@ use crate::{
         base_ledger::{TaaConfigurator, TxnAuthrAgrmtOptions},
         common::verify_transaction_can_be_endorsed,
     },
-    wallet::base_wallet::BaseWallet,
+    wallet2::BaseWallet2,
 };
 
 pub type DefaultIndyLedgerRead = IndyVdrLedgerRead<IndyVdrSubmitter, InMemoryResponseCacher>;
@@ -171,19 +171,19 @@ where
     }
 
     async fn sign_request(
-        wallet: &impl BaseWallet,
+        wallet: &impl BaseWallet2,
         did: &str,
         request: &PreparedRequest,
     ) -> VcxCoreResult<Vec<u8>> {
         let to_sign = request.get_signature_input()?;
-        let signer_verkey = wallet.key_for_local_did(did).await?;
+        let signer_verkey = wallet.did_key(did).await?;
         let signature = wallet.sign(&signer_verkey, to_sign.as_bytes()).await?;
         Ok(signature)
     }
 
     async fn sign_and_submit_request(
         &self,
-        wallet: &impl BaseWallet,
+        wallet: &impl BaseWallet2,
         submitter_did: &str,
         request: PreparedRequest,
     ) -> VcxCoreResult<String> {
@@ -333,7 +333,7 @@ where
 {
     async fn publish_nym(
         &self,
-        wallet: &impl BaseWallet,
+        wallet: &impl BaseWallet2,
         submitter_did: &str,
         target_did: &str,
         verkey: Option<&str>,
@@ -358,7 +358,7 @@ where
 
     async fn set_endorser(
         &self,
-        wallet: &impl BaseWallet,
+        wallet: &impl BaseWallet2,
         submitter_did: &str,
         request_json: &str,
         endorser: &str,
@@ -372,7 +372,7 @@ where
 
     async fn endorse_transaction(
         &self,
-        wallet: &impl BaseWallet,
+        wallet: &impl BaseWallet2,
         endorser_did: &str,
         request_json: &str,
     ) -> VcxCoreResult<()> {
@@ -385,7 +385,7 @@ where
 
     async fn add_attr(
         &self,
-        wallet: &impl BaseWallet,
+        wallet: &impl BaseWallet2,
         target_did: &str,
         attrib_json: &str,
     ) -> VcxCoreResult<String> {
@@ -405,7 +405,7 @@ where
 
     async fn write_did(
         &self,
-        wallet: &impl BaseWallet,
+        wallet: &impl BaseWallet2,
         submitter_did: &str,
         target_did: &str,
         target_vk: &str,
@@ -573,7 +573,7 @@ where
 {
     async fn publish_schema(
         &self,
-        wallet: &impl BaseWallet,
+        wallet: &impl BaseWallet2,
         schema_json: &str,
         submitter_did: &str,
         _endorser_did: Option<String>,
@@ -610,7 +610,7 @@ where
 
     async fn publish_cred_def(
         &self,
-        wallet: &impl BaseWallet,
+        wallet: &impl BaseWallet2,
         cred_def_json: &str,
         submitter_did: &str,
     ) -> VcxCoreResult<()> {
@@ -628,7 +628,7 @@ where
 
     async fn publish_rev_reg_def(
         &self,
-        wallet: &impl BaseWallet,
+        wallet: &impl BaseWallet2,
         rev_reg_def: &str,
         submitter_did: &str,
     ) -> VcxCoreResult<()> {
@@ -646,7 +646,7 @@ where
 
     async fn publish_rev_reg_delta(
         &self,
-        wallet: &impl BaseWallet,
+        wallet: &impl BaseWallet2,
         rev_reg_id: &str,
         rev_reg_entry_json: &str,
         submitter_did: &str,

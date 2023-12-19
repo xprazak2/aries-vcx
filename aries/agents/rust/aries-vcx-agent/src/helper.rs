@@ -3,7 +3,7 @@ use aries_vcx::{
     messages::AriesMessage,
     utils::{encryption_envelope::EncryptionEnvelope, from_did_doc_sov_to_legacy},
 };
-use aries_vcx_core::wallet::base_wallet::BaseWallet;
+use aries_vcx_core::wallet2::BaseWallet2;
 use serde_json::json;
 use url::Url;
 
@@ -32,7 +32,7 @@ pub fn get_their_endpoint(did_document: &DidDocumentSov) -> AgentResult<Url> {
 pub async fn pairwise_encrypt(
     our_did_doc: &DidDocumentSov,
     their_did_doc: &DidDocumentSov,
-    wallet: &impl BaseWallet,
+    wallet: &impl BaseWallet2,
     message: &AriesMessage,
 ) -> AgentResult<EncryptionEnvelope> {
     let sender_verkey = our_did_doc

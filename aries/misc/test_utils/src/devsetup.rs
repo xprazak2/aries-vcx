@@ -32,11 +32,7 @@ use aries_vcx_core::{
         request_submitter::vdr_ledger::{IndyVdrLedgerPool, IndyVdrSubmitter},
         response_cacher::in_memory::{InMemoryResponseCacher, InMemoryResponseCacherConfig},
     },
-    wallet::{
-        base_wallet::BaseWallet,
-        indy::{IndySdkWallet, WalletConfigBuilder},
-        mock_wallet::MockWallet,
-    },
+    wallet::mock_wallet::MockWallet,
     wallet2::BaseWallet2,
     PoolConfig, ResponseParser,
 };
@@ -125,7 +121,7 @@ where
     LR: IndyLedgerRead + AnoncredsLedgerRead,
     LW: IndyLedgerWrite + AnoncredsLedgerWrite,
     A: BaseAnonCreds,
-    W: BaseWallet,
+    W: BaseWallet2,
 {
     pub institution_did: String,
     pub ledger_read: LR,
@@ -269,7 +265,7 @@ pub async fn dev_build_featured_indy_ledger(
 }
 
 #[cfg(feature = "vdrtools_wallet")]
-pub async fn dev_build_indy_wallet(key_seed: &str) -> (String, impl BaseWallet) {
+pub async fn dev_build_indy_wallet(key_seed: &str) -> (String, impl BaseWallet2) {
     use aries_vcx_core::wallet::indy::IndySdkWallet;
 
     let (public_did, wallet_handle) = dev_setup_wallet_indy(key_seed).await;
@@ -279,7 +275,7 @@ pub async fn dev_build_indy_wallet(key_seed: &str) -> (String, impl BaseWallet) 
 #[cfg(feature = "vdrtools_wallet")]
 pub async fn create_indy_test_wallet_handle() -> WalletHandle {
     use aries_vcx_core::{
-        wallet::indy::{wallet::create_and_open_wallet, IndySdkWallet},
+        wallet::indy::{wallet::create_and_open_wallet, IndySdkWallet, WalletConfigBuilder},
         wallet2::{BaseWallet2, DidWallet, RecordWallet},
     };
 
@@ -322,7 +318,7 @@ pub async fn dev_build_featured_anoncreds() -> impl BaseAnonCreds {
 
 #[allow(unreachable_code)]
 #[allow(unused_variables)]
-pub async fn dev_build_featured_wallet(key_seed: &str) -> (String, impl BaseWallet) {
+pub async fn dev_build_featured_wallet(key_seed: &str) -> (String, impl BaseWallet2) {
     #[cfg(feature = "vdrtools_wallet")]
     return {
         info!("SetupProfile >> using indy wallet");
@@ -337,7 +333,7 @@ pub async fn build_setup_profile() -> SetupProfile<
     impl IndyLedgerRead + AnoncredsLedgerRead,
     impl IndyLedgerWrite + AnoncredsLedgerWrite,
     impl BaseAnonCreds,
-    impl BaseWallet,
+    impl BaseWallet2,
 > {
     use aries_vcx_core::anoncreds::base_anoncreds::BaseAnonCreds;
 

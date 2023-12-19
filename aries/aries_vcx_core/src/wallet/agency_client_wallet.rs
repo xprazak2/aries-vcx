@@ -13,6 +13,10 @@ use crate::{
     errors::error::{AriesVcxCoreError, AriesVcxCoreErrorKind, VcxCoreResult},
     utils::async_fn_iterator::AsyncFnIterator,
     wallet::base_wallet::BaseWallet,
+    wallet2::{
+        BaseWallet2, DidData, DidWallet, Key, Record, RecordUpdate, RecordWallet, SearchFilter,
+        UnpackedMessage,
+    },
 };
 
 #[derive(Debug)]
@@ -176,6 +180,102 @@ impl BaseWallet for AgencyClientWallet {
     }
 }
 
+impl BaseWallet2 for AgencyClientWallet {}
+
+#[allow(unused_variables)]
+#[async_trait]
+impl RecordWallet for AgencyClientWallet {
+    async fn add_record(&self, record: Record) -> VcxCoreResult<()> {
+        Err(unimplemented_agency_client_wallet_method("add_record"))
+    }
+
+    async fn get_record(&self, name: &str, category: &str) -> VcxCoreResult<Record> {
+        Err(unimplemented_agency_client_wallet_method("get_record"))
+    }
+
+    async fn update_record(&self, record: RecordUpdate) -> VcxCoreResult<()> {
+        Err(unimplemented_agency_client_wallet_method("update_record"))
+    }
+
+    async fn delete_record(&self, name: &str, category: &str) -> VcxCoreResult<()> {
+        Err(unimplemented_agency_client_wallet_method("delete_record"))
+    }
+
+    async fn search_record(
+        &self,
+        category: &str,
+        search_filter: Option<SearchFilter>,
+    ) -> VcxCoreResult<Vec<Record>> {
+        Err(unimplemented_agency_client_wallet_method("search_record"))
+    }
+}
+
+#[async_trait]
+#[allow(unused_variables)]
+impl DidWallet for AgencyClientWallet {
+    async fn create_and_store_my_did(
+        &self,
+        seed: Option<&str>,
+        method_name: Option<&str>,
+    ) -> VcxCoreResult<DidData> {
+        Err(unimplemented_agency_client_wallet_method(
+            "create_nad_store_my_did",
+        ))
+    }
+
+    async fn did_key(&self, name: &str) -> VcxCoreResult<String> {
+        Err(unimplemented_agency_client_wallet_method("did_key"))
+    }
+
+    async fn replace_did_key_start(&self, did: &str, seed: Option<&str>) -> VcxCoreResult<String> {
+        Err(unimplemented_agency_client_wallet_method(
+            "replace_did_key_start",
+        ))
+    }
+
+    async fn replace_did_key_apply(&self, did: &str) -> VcxCoreResult<()> {
+        Err(unimplemented_agency_client_wallet_method(
+            "replace_did_key_apply",
+        ))
+    }
+
+    async fn sign(&self, key: &str, msg: &[u8]) -> VcxCoreResult<Vec<u8>> {
+        Err(unimplemented_agency_client_wallet_method("sign"))
+    }
+
+    async fn verify(&self, key: &str, msg: &[u8], signature: &[u8]) -> VcxCoreResult<bool> {
+        Err(unimplemented_agency_client_wallet_method("verify"))
+    }
+
+    async fn pack_message(
+        &self,
+        sender_vk: Option<String>,
+        receiver_keys: Vec<Key>,
+        msg: &[u8],
+    ) -> VcxCoreResult<Vec<u8>> {
+        let receiver_list: Vec<String> = receiver_keys
+            .into_iter()
+            .map(|key| key.pubkey_bs58)
+            .collect();
+
+        let list_json = serde_json::to_string(&receiver_list)?;
+
+        let res = self
+            .inner
+            .pack_message(sender_vk.as_deref(), &list_json, msg)
+            .await?;
+
+        Ok(res)
+    }
+
+    async fn unpack_message(&self, msg: &[u8]) -> VcxCoreResult<UnpackedMessage> {
+        let unpack_json_bytes = self.inner.unpack_message(msg).await?;
+        serde_json::from_slice(&unpack_json_bytes[..]).map_err(|err| {
+            AriesVcxCoreError::from_msg(AriesVcxCoreErrorKind::ParsingError, err.to_string())
+        })
+    }
+}
+
 pub trait ToBaseWallet {
     fn to_base_wallet(&self) -> AgencyClientWallet;
 }
@@ -198,10 +298,10 @@ fn unimplemented_agency_client_wallet_method(method_name: &str) -> AriesVcxCoreE
 
 #[derive(Debug)]
 pub(crate) struct BaseWalletAgencyClientWallet {
-    inner: Arc<dyn BaseWallet>,
+    inner: Arc<dyn BaseWallet2>,
 }
 
-/// Implementation of [BaseAgencyClientWallet] which wraps over an [BaseWallet] implementation
+/// Implementation of [BaseAgencyClientWallet] which wraps over an [BaseWallet2] implementation
 /// to allow conversion
 #[async_trait]
 impl BaseAgencyClientWallet for BaseWalletAgencyClientWallet {
@@ -211,8 +311,20 @@ impl BaseAgencyClientWallet for BaseWalletAgencyClientWallet {
         receiver_keys: &str,
         msg: &[u8],
     ) -> AgencyClientResult<Vec<u8>> {
+        let receiver_list = serde_json::from_str::<Vec<String>>(receiver_keys).map_err(|e| {
+            AgencyClientError::from_msg(
+                AgencyClientErrorKind::UnknownError,
+                format!("A VCXError occured while calling pack_message: {e:?}"),
+            )
+        })?;
+
+        let keys = receiver_list
+            .into_iter()
+            .map(|item| Key { pubkey_bs58: item })
+            .collect();
+
         self.inner
-            .pack_message(sender_vk, receiver_keys, msg)
+            .pack_message(sender_vk.map(Into::into), keys, msg)
             .await
             .map_err(|e| {
                 AgencyClientError::from_msg(
@@ -244,7 +356,7 @@ pub trait ToBaseAgencyClientWallet {
 
 impl<T> ToBaseAgencyClientWallet for Arc<T>
 where
-    T: BaseWallet + 'static,
+    T: BaseWallet2 + 'static,
 {
     fn to_base_agency_client_wallet(&self) -> Arc<dyn BaseAgencyClientWallet> {
         let x = self.clone();

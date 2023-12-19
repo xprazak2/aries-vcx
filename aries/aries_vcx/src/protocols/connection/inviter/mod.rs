@@ -1,7 +1,7 @@
 pub mod states;
 
 use ::uuid::Uuid;
-use aries_vcx_core::wallet::base_wallet::BaseWallet;
+use aries_vcx_core::wallet2::BaseWallet2;
 use chrono::Utc;
 use diddoc_legacy::aries::diddoc::AriesDidDoc;
 use messages::{
@@ -115,7 +115,7 @@ impl InviterConnection<Invited> {
     // but was placed here to retro-fit the previous API.
     async fn build_response_content(
         &self,
-        wallet: &impl BaseWallet,
+        wallet: &impl BaseWallet2,
         thread_id: String,
         new_pairwise_info: &PairwiseInfo,
         new_service_endpoint: Url,
@@ -162,7 +162,7 @@ impl InviterConnection<Invited> {
     ///     * generating new [`PairwiseInfo`] fails
     pub async fn handle_request(
         self,
-        wallet: &impl BaseWallet,
+        wallet: &impl BaseWallet2,
         request: Request,
         new_service_endpoint: Url,
         new_routing_keys: Vec<String>,

@@ -2,7 +2,7 @@ use std::fmt::Display;
 
 use aries_vcx_core::{
     anoncreds::base_anoncreds::BaseAnonCreds, ledger::base_ledger::AnoncredsLedgerRead,
-    wallet::base_wallet::BaseWallet,
+    wallet2::BaseWallet2,
 };
 use chrono::Utc;
 use messages::{
@@ -419,7 +419,7 @@ impl IssuerSM {
 
     pub async fn build_credential(
         self,
-        wallet: &impl BaseWallet,
+        wallet: &impl BaseWallet2,
         anoncreds: &impl BaseAnonCreds,
     ) -> VcxResult<Self> {
         let state = match self.state {
@@ -567,7 +567,7 @@ impl IssuerSM {
 
 #[allow(clippy::too_many_arguments)]
 async fn create_credential(
-    wallet: &impl BaseWallet,
+    wallet: &impl BaseWallet2,
     anoncreds: &impl BaseAnonCreds,
     request: &RequestCredentialV1,
     rev_reg_id: &Option<String>,

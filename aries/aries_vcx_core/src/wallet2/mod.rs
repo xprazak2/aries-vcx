@@ -61,10 +61,8 @@ impl From<Record> for IndyRecord {
             .tags
             .into_iter()
             .fold(HashMap::new(), |mut memo, item| {
-                match item {
-                    EntryTag::Encrypted(key, val) => memo.insert(key, val),
-                    EntryTag::Plaintext(key, val) => memo.insert(format!("~{}", key), val),
-                };
+                let (key, value) = item.into();
+                memo.insert(key, value);
                 memo
             });
         Self {
@@ -76,7 +74,7 @@ impl From<Record> for IndyRecord {
     }
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct UnpackedMessage {
     pub message: String,
     pub recipient_verkey: String,
@@ -96,16 +94,15 @@ impl From<UnpackMessageOutput> for UnpackedMessage {
 
 #[derive(Debug, Deserialize, Serialize)]
 pub struct DidData {
-    did: String,
-    verkey: String,
+    pub did: String,
+    pub verkey: String,
 }
 
 pub enum SearchFilter {
     JsonFilter(String),
 }
 
-#[async_trait]
-pub trait BaseWallet2: RecordWallet + DidWallet {}
+pub trait BaseWallet2: RecordWallet + DidWallet + Send + Sync + std::fmt::Debug {}
 
 #[async_trait]
 pub trait DidWallet {

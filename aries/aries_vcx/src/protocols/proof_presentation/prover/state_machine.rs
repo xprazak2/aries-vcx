@@ -2,7 +2,7 @@ use std::{collections::HashMap, fmt};
 
 use aries_vcx_core::{
     anoncreds::base_anoncreds::BaseAnonCreds, ledger::base_ledger::AnoncredsLedgerRead,
-    wallet::base_wallet::BaseWallet,
+    wallet2::BaseWallet2,
 };
 use chrono::Utc;
 use messages::{
@@ -235,7 +235,7 @@ impl ProverSM {
 
     pub async fn generate_presentation(
         self,
-        wallet: &impl BaseWallet,
+        wallet: &impl BaseWallet2,
         ledger: &impl AnoncredsLedgerRead,
         anoncreds: &impl BaseAnonCreds,
         credentials: SelectedCredentials,

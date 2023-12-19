@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use aries_vcx_core::{ledger::base_ledger::IndyLedgerRead, wallet::base_wallet::BaseWallet};
+use aries_vcx_core::{ledger::base_ledger::IndyLedgerRead, wallet2::BaseWallet2};
 use chrono::Utc;
 use did_parser::Did;
 use did_peer::resolver::PeerDidResolver;
@@ -37,7 +37,7 @@ mod helpers;
 
 impl DidExchangeRequester<RequestSent> {
     pub async fn construct_request_pairwise(
-        wallet: &impl BaseWallet,
+        wallet: &impl BaseWallet2,
         invitation: Invitation,
         resolver_registry: Arc<ResolverRegistry>,
         service_endpoint: Url,

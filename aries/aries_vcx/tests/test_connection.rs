@@ -10,7 +10,7 @@ use aries_vcx_core::{
     ledger::base_ledger::{
         AnoncredsLedgerRead, AnoncredsLedgerWrite, IndyLedgerRead, IndyLedgerWrite,
     },
-    wallet::base_wallet::BaseWallet,
+    wallet2::BaseWallet2,
 };
 use chrono::Utc;
 use diddoc_legacy::aries::service::AriesService;
@@ -59,7 +59,7 @@ async fn decrypt_message(
         impl IndyLedgerRead + AnoncredsLedgerRead,
         impl IndyLedgerWrite + AnoncredsLedgerWrite,
         impl BaseAnonCreds,
-        impl BaseWallet,
+        impl BaseWallet2,
     >,
     received: Vec<u8>,
     consumer_to_institution: &GenericConnection,
@@ -78,13 +78,13 @@ async fn send_and_receive_message(
         impl IndyLedgerRead + AnoncredsLedgerRead,
         impl IndyLedgerWrite + AnoncredsLedgerWrite,
         impl BaseAnonCreds,
-        impl BaseWallet,
+        impl BaseWallet2,
     >,
     insitution: &TestAgent<
         impl IndyLedgerRead + AnoncredsLedgerRead,
         impl IndyLedgerWrite + AnoncredsLedgerWrite,
         impl BaseAnonCreds,
-        impl BaseWallet,
+        impl BaseWallet2,
     >,
     institution_to_consumer: &GenericConnection,
     consumer_to_institution: &GenericConnection,
@@ -103,7 +103,7 @@ async fn create_service(
         impl IndyLedgerRead + AnoncredsLedgerRead,
         impl IndyLedgerWrite + AnoncredsLedgerWrite,
         impl BaseAnonCreds,
-        impl BaseWallet,
+        impl BaseWallet2,
     >,
 ) {
     let pairwise_info = PairwiseInfo::create(&faber.wallet).await.unwrap();
