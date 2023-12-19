@@ -1,10 +1,11 @@
+use aries_vcx_core::wallet2::BaseWallet2;
 use messages::msg_fields::protocols::{notification::ack::Ack, routing::Forward};
 
 use super::{utils::prelude::*, ArcAgent};
 use crate::mediation::forward::handle_forward;
 
 pub async fn handle_routing_forward(
-    agent: ArcAgent<impl BaseWallet + 'static, impl MediatorPersistence>,
+    agent: ArcAgent<impl BaseWallet2 + 'static, impl MediatorPersistence>,
     forward: Forward,
 ) -> Result<Ack, String> {
     info!("{:?}", forward);

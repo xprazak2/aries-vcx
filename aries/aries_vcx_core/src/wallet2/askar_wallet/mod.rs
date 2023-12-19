@@ -3,10 +3,11 @@ use aries_askar::{
     kms::{KeyAlg, KeyEntry, LocalKey},
     PassKey, Session, Store, StoreKeyMethod,
 };
+use async_trait::async_trait;
 
 use crate::errors::error::{AriesVcxCoreError, AriesVcxCoreErrorKind, VcxCoreResult};
 
-use super::DidData;
+use super::{BaseWallet2, DidData};
 
 pub mod askar_did_wallet;
 pub mod askar_record_wallet;
@@ -34,6 +35,8 @@ pub struct AskarWallet {
     pub backend: Store,
     profile: Option<String>,
 }
+
+impl BaseWallet2 for AskarWallet {}
 
 impl AskarWallet {
     pub async fn create(

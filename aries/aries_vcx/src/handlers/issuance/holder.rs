@@ -1,6 +1,6 @@
 use aries_vcx_core::{
     anoncreds::base_anoncreds::BaseAnonCreds, ledger::base_ledger::AnoncredsLedgerRead,
-    wallet::base_wallet::BaseWallet,
+    wallet2::BaseWallet2,
 };
 use chrono::Utc;
 use messages::{
@@ -96,7 +96,7 @@ impl Holder {
 
     pub async fn prepare_credential_request(
         &mut self,
-        wallet: &impl BaseWallet,
+        wallet: &impl BaseWallet2,
         ledger: &impl AnoncredsLedgerRead,
         anoncreds: &impl BaseAnonCreds,
         my_pw_did: String,
@@ -142,7 +142,7 @@ impl Holder {
 
     pub async fn process_credential(
         &mut self,
-        wallet: &impl BaseWallet,
+        wallet: &impl BaseWallet2,
         ledger: &impl AnoncredsLedgerRead,
         anoncreds: &impl BaseAnonCreds,
         credential: IssueCredentialV1,
@@ -209,7 +209,7 @@ impl Holder {
 
     pub async fn is_revoked(
         &self,
-        wallet: &impl BaseWallet,
+        wallet: &impl BaseWallet2,
         ledger: &impl AnoncredsLedgerRead,
         anoncreds: &impl BaseAnonCreds,
     ) -> VcxResult<bool> {
@@ -218,7 +218,7 @@ impl Holder {
 
     pub async fn delete_credential(
         &self,
-        wallet: &impl BaseWallet,
+        wallet: &impl BaseWallet2,
         anoncreds: &impl BaseAnonCreds,
     ) -> VcxResult<()> {
         self.holder_sm.delete_credential(wallet, anoncreds).await
@@ -230,7 +230,7 @@ impl Holder {
 
     pub async fn get_cred_rev_id(
         &self,
-        wallet: &impl BaseWallet,
+        wallet: &impl BaseWallet2,
         anoncreds: &impl BaseAnonCreds,
     ) -> VcxResult<String> {
         get_cred_rev_id(wallet, anoncreds, &self.get_cred_id()?).await
@@ -240,7 +240,7 @@ impl Holder {
         &self,
         ledger: &impl AnoncredsLedgerRead,
         anoncreds: &impl BaseAnonCreds,
-        wallet: &impl BaseWallet,
+        wallet: &impl BaseWallet2,
         connection: &MediatedConnection,
         notification: Revoke,
     ) -> VcxResult<()> {
@@ -268,7 +268,7 @@ impl Holder {
 
     pub async fn process_aries_msg(
         &mut self,
-        wallet: &impl BaseWallet,
+        wallet: &impl BaseWallet2,
         ledger: &impl AnoncredsLedgerRead,
         anoncreds: &impl BaseAnonCreds,
         message: AriesMessage,

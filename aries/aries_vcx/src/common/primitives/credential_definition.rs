@@ -3,7 +3,7 @@ use aries_vcx_core::{
     errors::error::AriesVcxCoreErrorKind,
     global::settings::DEFAULT_SERIALIZE_VERSION,
     ledger::base_ledger::{AnoncredsLedgerRead, AnoncredsLedgerWrite},
-    wallet::base_wallet::BaseWallet,
+    wallet2::BaseWallet2,
 };
 
 use crate::{
@@ -95,7 +95,7 @@ async fn _try_get_cred_def_from_ledger(
 }
 impl CredentialDef {
     pub async fn create(
-        wallet: &impl BaseWallet,
+        wallet: &impl BaseWallet2,
         ledger_read: &impl AnoncredsLedgerRead,
         anoncreds: &impl BaseAnonCreds,
         source_id: String,
@@ -151,7 +151,7 @@ impl CredentialDef {
 
     pub async fn publish_cred_def(
         self,
-        wallet: &impl BaseWallet,
+        wallet: &impl BaseWallet2,
         ledger_read: &impl AnoncredsLedgerRead,
         ledger_write: &impl AnoncredsLedgerWrite,
     ) -> VcxResult<Self> {
@@ -235,7 +235,7 @@ impl CredentialDef {
 }
 
 pub async fn generate_cred_def(
-    wallet: &impl BaseWallet,
+    wallet: &impl BaseWallet2,
     anoncreds: &impl BaseAnonCreds,
     issuer_did: &str,
     schema_json: &str,

@@ -27,7 +27,8 @@ use aries_vcx_core::{
         base_ledger::{AnoncredsLedgerRead, AnoncredsLedgerWrite},
         indy::pool::test_utils::get_temp_file_path,
     },
-    wallet::{base_wallet::BaseWallet, indy::wallet::get_verkey_from_wallet},
+    wallet::indy::wallet::get_verkey_from_wallet,
+    wallet2::{BaseWallet2, DidWallet},
 };
 use diddoc_legacy::aries::service::AriesService;
 use serde_json::json;
@@ -46,7 +47,7 @@ pub mod utils;
 
 // TODO: Deduplicate with create_and_store_revocable_credential_def
 async fn create_and_store_nonrevocable_credential_def(
-    wallet: &impl BaseWallet,
+    wallet: &impl BaseWallet2,
     anoncreds: &impl BaseAnonCreds,
     ledger_read: &impl AnoncredsLedgerRead,
     ledger_write: &impl AnoncredsLedgerWrite,
@@ -80,7 +81,7 @@ async fn create_and_store_nonrevocable_credential_def(
 
 // TODO: Deduplicate with create_and_store_nonrevocable_credential_def
 async fn create_and_store_revocable_credential_def(
-    wallet: &impl BaseWallet,
+    wallet: &impl BaseWallet2,
     anoncreds: &impl BaseAnonCreds,
     ledger_read: &impl AnoncredsLedgerRead,
     ledger_write: &impl AnoncredsLedgerWrite,
@@ -124,7 +125,7 @@ async fn test_pool_rotate_verkey() -> Result<(), Box<dyn Error>> {
     .await?;
     rotate_verkey(&setup.wallet, &setup.ledger_write, &did).await?;
     tokio::time::sleep(Duration::from_millis(1000)).await;
-    let local_verkey = setup.wallet.key_for_local_did(&did).await?;
+    let local_verkey = setup.wallet.did_key(&did).await?;
 
     let ledger_verkey = get_verkey_from_ledger(&setup.ledger_read, &did).await?;
     assert_ne!(verkey, ledger_verkey);
@@ -173,8 +174,7 @@ async fn test_pool_write_new_endorser_did() -> Result<(), Box<dyn Error>> {
     let setup = SetupPoolDirectory::init().await;
     let faber = create_test_agent_trustee(setup.genesis_file_path.clone()).await;
     let acme = create_test_agent(setup.genesis_file_path.clone()).await;
-    let acme_vk =
-        get_verkey_from_wallet(acme.wallet.get_wallet_handle(), &acme.institution_did).await?;
+    let acme_vk = acme.wallet.did_key(&acme.institution_did).await?;
 
     let attrib_json = json!({ "attrib_name": "foo"}).to_string();
     assert!(add_attr(

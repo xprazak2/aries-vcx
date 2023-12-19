@@ -2,7 +2,7 @@ use std::fmt;
 
 use aries_vcx_core::{
     anoncreds::base_anoncreds::BaseAnonCreds, ledger::base_ledger::AnoncredsLedgerRead,
-    wallet::base_wallet::BaseWallet,
+    wallet2::BaseWallet2,
 };
 use chrono::Utc;
 use messages::{
@@ -206,7 +206,7 @@ impl HolderSM {
 
     pub async fn prepare_credential_request<'a>(
         self,
-        wallet: &impl BaseWallet,
+        wallet: &impl BaseWallet2,
         ledger: &'a impl AnoncredsLedgerRead,
         anoncreds: &'a impl BaseAnonCreds,
         my_pw_did: String,
@@ -267,7 +267,7 @@ impl HolderSM {
 
     pub async fn receive_credential<'a>(
         self,
-        wallet: &'a impl BaseWallet,
+        wallet: &'a impl BaseWallet2,
         ledger: &'a impl AnoncredsLedgerRead,
         anoncreds: &'a impl BaseAnonCreds,
         credential: IssueCredentialV1,
@@ -439,7 +439,7 @@ impl HolderSM {
 
     pub async fn is_revoked(
         &self,
-        wallet: &impl BaseWallet,
+        wallet: &impl BaseWallet2,
         ledger: &impl AnoncredsLedgerRead,
         anoncreds: &impl BaseAnonCreds,
     ) -> VcxResult<bool> {
@@ -458,7 +458,7 @@ impl HolderSM {
 
     pub async fn delete_credential(
         &self,
-        wallet: &impl BaseWallet,
+        wallet: &impl BaseWallet2,
         anoncreds: &impl BaseAnonCreds,
     ) -> VcxResult<()> {
         trace!("Holder::delete_credential");
@@ -542,7 +542,7 @@ fn _parse_rev_reg_id_from_credential(credential: &str) -> VcxResult<Option<Strin
 }
 
 async fn _store_credential(
-    wallet: &impl BaseWallet,
+    wallet: &impl BaseWallet2,
     ledger: &impl AnoncredsLedgerRead,
     anoncreds: &impl BaseAnonCreds,
     credential: &IssueCredentialV1,
@@ -580,7 +580,7 @@ async fn _store_credential(
 }
 
 pub async fn create_anoncreds_credential_request(
-    wallet: &impl BaseWallet,
+    wallet: &impl BaseWallet2,
     ledger: &impl AnoncredsLedgerRead,
     anoncreds: &impl BaseAnonCreds,
     cred_def_id: &str,
@@ -605,7 +605,7 @@ pub async fn create_anoncreds_credential_request(
 }
 
 async fn build_credential_request_msg(
-    wallet: &impl BaseWallet,
+    wallet: &impl BaseWallet2,
     ledger: &impl AnoncredsLedgerRead,
     anoncreds: &impl BaseAnonCreds,
     thread_id: String,

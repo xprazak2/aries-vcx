@@ -1,6 +1,6 @@
 use std::{clone::Clone, collections::HashMap};
 
-use aries_vcx_core::wallet::base_wallet::BaseWallet;
+use aries_vcx_core::wallet2::BaseWallet2;
 use chrono::Utc;
 use diddoc_legacy::aries::diddoc::AriesDidDoc;
 use messages::{
@@ -241,7 +241,7 @@ impl SmMediatedConnectionInviter {
 
     pub async fn handle_connection_request<'a>(
         self,
-        wallet: &'a impl BaseWallet,
+        wallet: &'a impl BaseWallet2,
         request: Request,
         new_pairwise_info: &'a PairwiseInfo,
         new_routing_keys: Vec<String>,
@@ -372,7 +372,7 @@ impl SmMediatedConnectionInviter {
 
     async fn build_response(
         &self,
-        wallet: &impl BaseWallet,
+        wallet: &impl BaseWallet2,
         thread_id: String,
         new_pairwise_info: &PairwiseInfo,
         new_routing_keys: Vec<String>,

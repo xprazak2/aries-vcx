@@ -8,10 +8,10 @@ use aries_vcx::{
 use aries_vcx_core::{
     errors::error::AriesVcxCoreError,
     wallet::{
-        base_wallet::BaseWallet,
         indy::{wallet::create_and_open_wallet, IndySdkWallet, WalletConfig},
         structs_io::UnpackMessageOutput,
     },
+    wallet2::{BaseWallet2, UnpackedMessage},
     WalletHandle,
 };
 use diddoc_legacy::aries::{diddoc::AriesDidDoc, service::AriesService};
@@ -34,7 +34,7 @@ pub mod client;
 pub mod utils;
 
 #[derive(Clone)]
-pub struct Agent<T: BaseWallet, P: MediatorPersistence> {
+pub struct Agent<T: BaseWallet2, P: MediatorPersistence> {
     wallet: Arc<T>,
     persistence: Arc<P>,
     service: Option<AriesService>,
@@ -42,7 +42,7 @@ pub struct Agent<T: BaseWallet, P: MediatorPersistence> {
 
 pub type ArcAgent<T, P> = Arc<Agent<T, P>>;
 
-pub struct AgentBuilder<T: BaseWallet> {
+pub struct AgentBuilder<T: BaseWallet2> {
     _type_wallet: PhantomData<T>,
 }
 /// Constructors
@@ -77,8 +77,8 @@ impl AgentBuilder<IndySdkWallet> {
 }
 
 // Utils
-impl<T: BaseWallet + 'static, P: MediatorPersistence> Agent<T, P> {
-    pub fn get_wallet_ref(&self) -> Arc<impl BaseWallet> {
+impl<T: BaseWallet2 + 'static, P: MediatorPersistence> Agent<T, P> {
+    pub fn get_wallet_ref(&self) -> Arc<impl BaseWallet2> {
         self.wallet.clone()
     }
     pub fn get_persistence_ref(&self) -> Arc<impl MediatorPersistence> {
@@ -92,12 +92,12 @@ impl<T: BaseWallet + 'static, P: MediatorPersistence> Agent<T, P> {
         routing_keys: Vec<String>,
         service_endpoint: url::Url,
     ) -> Result<(), AriesVcxCoreError> {
-        let (_, vk) = self.wallet.create_and_store_my_did(None, None).await?;
+        let did_data = self.wallet.create_and_store_my_did("", None).await?;
         let service = AriesService {
             id: "#inline".to_owned(),
             type_: "did-communication".to_owned(),
             priority: 0,
-            recipient_keys: vec![vk],
+            recipient_keys: vec![did_data.verkey],
             routing_keys,
             service_endpoint,
         };
@@ -122,7 +122,7 @@ impl<T: BaseWallet + 'static, P: MediatorPersistence> Agent<T, P> {
             Err("No service to create invite for".to_owned())
         }
     }
-    pub async fn unpack_didcomm(&self, didcomm_msg: &[u8]) -> Result<UnpackMessageOutput, String> {
+    pub async fn unpack_didcomm(&self, didcomm_msg: &[u8]) -> Result<UnpackedMessage, String> {
         let unpacked = self
             .wallet
             .unpack_message(didcomm_msg)
@@ -170,9 +170,9 @@ impl<T: BaseWallet + 'static, P: MediatorPersistence> Agent<T, P> {
             .thread
             .map(|t| t.thid)
             .unwrap_or(request.id);
-        let (did, vk) = self
+        let did_data = self
             .wallet
-            .create_and_store_my_did(None, None)
+            .create_and_store_my_did("", None)
             .await
             .map_err(|e| e.to_string())?;
         let old_vk = self
@@ -188,8 +188,8 @@ impl<T: BaseWallet + 'static, P: MediatorPersistence> Agent<T, P> {
             self.wallet.as_ref(),
             thread_id,
             old_vk.clone(),
-            did,
-            vk.clone(),
+            did_data.did,
+            did_data.verkey.clone(),
             self.service.as_ref().unwrap().service_endpoint.clone(),
             self.service.as_ref().unwrap().routing_keys.clone(),
         )
@@ -209,7 +209,8 @@ impl<T: BaseWallet + 'static, P: MediatorPersistence> Agent<T, P> {
         let auth_pubkey = their_keys
             .first()
             .ok_or("No recipient key for client :/ ?".to_owned())?;
-        self.create_account(auth_pubkey, &vk, &their_diddoc).await?;
+        self.create_account(auth_pubkey, &did_data.verkey, &their_diddoc)
+            .await?;
         Ok(packed_response_envelope)
     }
 

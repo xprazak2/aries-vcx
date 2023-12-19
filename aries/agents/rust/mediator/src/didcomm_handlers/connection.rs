@@ -1,8 +1,9 @@
+use aries_vcx_core::wallet2::BaseWallet2;
 use messages::msg_fields::protocols::connection::Connection;
 
 use super::{unhandled_aries_message, utils::prelude::*, ArcAgent};
 
-pub async fn handle_aries_connection<T: BaseWallet + 'static, P: MediatorPersistence>(
+pub async fn handle_aries_connection<T: BaseWallet2 + 'static, P: MediatorPersistence>(
     agent: ArcAgent<T, P>,
     connection: Connection,
 ) -> Result<EncryptionEnvelope, String> {

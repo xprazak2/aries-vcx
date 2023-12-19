@@ -1,3 +1,6 @@
+use std::collections::HashMap;
+
+use aries_askar::entry::EntryTag;
 use base64::{
     alphabet,
     engine::{general_purpose, DecodePaddingMode, GeneralPurpose, GeneralPurposeConfig},

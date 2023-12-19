@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use aries_vcx_core::wallet::base_wallet::BaseWallet;
+use aries_vcx_core::wallet2::BaseWallet2;
 use chrono::Utc;
 use did_doc_sov::DidDocumentSov;
 use did_resolver_registry::ResolverRegistry;
@@ -30,7 +30,7 @@ use crate::{
 
 impl DidExchangeResponder<ResponseSent> {
     pub async fn receive_request(
-        wallet: &impl BaseWallet,
+        wallet: &impl BaseWallet2,
         resolver_registry: Arc<ResolverRegistry>,
         request: Request,
         service_endpoint: Url,

@@ -4,7 +4,7 @@ use vdrtools::{DidMethod, DidValue, KeyInfo, Locator, MyDidInfo};
 use crate::{
     errors::error::{AriesVcxCoreError, AriesVcxCoreErrorKind, VcxCoreResult},
     wallet::{indy::IndySdkWallet, structs_io::UnpackMessageOutput},
-    wallet2::{DidData, DidWallet, Key, SigType, UnpackedMessage},
+    wallet2::{DidData, DidWallet, Key, UnpackedMessage},
 };
 
 #[async_trait]
@@ -12,15 +12,17 @@ impl DidWallet for IndySdkWallet {
     async fn create_and_store_my_did(
         &self,
         seed: &str,
-        method_name: Option<&str>,
+        did_method_name: Option<&str>,
     ) -> VcxCoreResult<DidData> {
+        let opt_seed = if seed == "" { None } else { Some(seed.into()) };
+
         let res = Locator::instance()
             .did_controller
             .create_and_store_my_did(
                 self.wallet_handle,
                 MyDidInfo {
-                    method_name: method_name.map(|m| DidMethod(m.into())),
-                    seed: Some(seed.into()),
+                    method_name: did_method_name.map(|m| DidMethod(m.into())),
+                    seed: opt_seed,
                     ..MyDidInfo::default()
                 },
             )
@@ -43,7 +45,7 @@ impl DidWallet for IndySdkWallet {
 
     async fn replace_did_key(&self, did: &str, seed: &str) -> VcxCoreResult<String> {
         let mut key_info = KeyInfo::default();
-        key_info.seed = Some(seed.into());
+        key_info.seed = if seed != "" { Some(seed.into()) } else { None };
 
         let key = Locator::instance()
             .did_controller
@@ -58,7 +60,7 @@ impl DidWallet for IndySdkWallet {
         Ok(key)
     }
 
-    async fn sign(&self, key: &str, msg: &[u8], _sig_type: SigType) -> VcxCoreResult<Vec<u8>> {
+    async fn sign(&self, key: &str, msg: &[u8]) -> VcxCoreResult<Vec<u8>> {
         Locator::instance()
             .crypto_controller
             .crypto_sign(self.wallet_handle, key, msg)
@@ -66,13 +68,7 @@ impl DidWallet for IndySdkWallet {
             .map_err(From::from)
     }
 
-    async fn verify(
-        &self,
-        key: &str,
-        msg: &[u8],
-        signature: &[u8],
-        _sig_type: SigType,
-    ) -> VcxCoreResult<bool> {
+    async fn verify(&self, key: &str, msg: &[u8], signature: &[u8]) -> VcxCoreResult<bool> {
         Locator::instance()
             .crypto_controller
             .crypto_verify(key, msg, signature)
@@ -114,7 +110,7 @@ impl DidWallet for IndySdkWallet {
 
 #[cfg(test)]
 mod tests {
-    use crate::wallet2::{indy_wallet::test_helper::create_test_wallet, DidWallet, Key, SigType};
+    use crate::wallet2::{indy_wallet::test_helper::create_test_wallet, DidWallet, Key};
     use rand::{distributions::Alphanumeric, Rng};
 
     #[tokio::test]
@@ -132,11 +128,11 @@ mod tests {
             .unwrap();
 
         let msg = "sign this".as_bytes();
-        let sig = DidWallet::sign(&wallet, &did_data.verkey, msg, SigType::EdDSA)
+        let sig = DidWallet::sign(&wallet, &did_data.verkey, msg)
             .await
             .unwrap();
 
-        let res = DidWallet::verify(&wallet, &did_data.verkey, msg, &sig, SigType::EdDSA)
+        let res = DidWallet::verify(&wallet, &did_data.verkey, msg, &sig)
             .await
             .unwrap();
         assert!(res);

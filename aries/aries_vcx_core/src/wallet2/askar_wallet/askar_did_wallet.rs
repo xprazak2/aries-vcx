@@ -1,20 +1,57 @@
-use aries_askar::crypto::alg::Chacha20Types;
+use aries_askar::crypto::alg::{Chacha20Types, EcCurves};
 use aries_askar::kms::{KeyAlg, LocalKey};
 use async_trait::async_trait;
 
 use crate::errors::error::{AriesVcxCoreError, AriesVcxCoreErrorKind};
-use crate::wallet2::{DidWallet, Key, SigType, UnpackedMessage};
+use crate::wallet2::{DidWallet, Key, UnpackedMessage};
 use crate::{errors::error::VcxCoreResult, wallet2::DidData};
 
 use super::packing::Packing;
 use super::{AskarWallet, RngMethod};
+
+pub enum SigType {
+    EdDSA,
+    ES256,
+    ES256K,
+    ES384,
+}
+
+impl From<SigType> for &str {
+    fn from(value: SigType) -> Self {
+        match value {
+            SigType::EdDSA => "eddsa",
+            SigType::ES256 => "es256",
+            SigType::ES256K => "es256k",
+            SigType::ES384 => "es384",
+        }
+    }
+}
+
+impl TryFrom<KeyAlg> for SigType {
+    type Error = AriesVcxCoreError;
+
+    fn try_from(value: KeyAlg) -> Result<Self, Self::Error> {
+        match value {
+            KeyAlg::Ed25519 => Ok(SigType::EdDSA),
+            KeyAlg::EcCurve(item) => match item {
+                EcCurves::Secp256r1 => Ok(SigType::ES256),
+                EcCurves::Secp256k1 => Ok(SigType::ES256K),
+                EcCurves::Secp384r1 => Ok(SigType::ES384),
+            },
+            _ => Err(AriesVcxCoreError::from_msg(
+                AriesVcxCoreErrorKind::InvalidInput,
+                "this key does not support signing",
+            )),
+        }
+    }
+}
 
 #[async_trait]
 impl DidWallet for AskarWallet {
     async fn create_and_store_my_did(
         &self,
         seed: &str,
-        _method_name: Option<&str>,
+        _did_method_name: Option<&str>,
     ) -> VcxCoreResult<DidData> {
         let mut tx = self.backend.transaction(self.profile.clone()).await?;
 
@@ -88,13 +125,14 @@ impl DidWallet for AskarWallet {
         ))
     }
 
-    async fn sign(&self, key_name: &str, msg: &[u8], sig_type: SigType) -> VcxCoreResult<Vec<u8>> {
+    async fn sign(&self, key_name: &str, msg: &[u8]) -> VcxCoreResult<Vec<u8>> {
         let mut session = self.backend.session(self.profile.clone()).await?;
         let res = session.fetch_key(key_name, false).await?;
 
         if let Some(key) = res {
             let local_key = key.load_local_key()?;
-            let res = local_key.sign_message(msg, Some(sig_type.into()))?;
+            let key_alg: SigType = local_key.algorithm().try_into()?;
+            let res = local_key.sign_message(msg, Some(key_alg.into()))?;
             return Ok(res);
         }
 
@@ -104,18 +142,13 @@ impl DidWallet for AskarWallet {
         ))
     }
 
-    async fn verify(
-        &self,
-        key_name: &str,
-        msg: &[u8],
-        signature: &[u8],
-        sig_type: SigType,
-    ) -> VcxCoreResult<bool> {
+    async fn verify(&self, key_name: &str, msg: &[u8], signature: &[u8]) -> VcxCoreResult<bool> {
         let mut session = self.backend.session(self.profile.clone()).await?;
 
         if let Some(key) = session.fetch_key(key_name, false).await? {
             let local_key = key.load_local_key()?;
-            let res = local_key.verify_signature(msg, signature, Some(sig_type.into()))?;
+            let key_alg: SigType = local_key.algorithm().try_into()?;
+            let res = local_key.verify_signature(msg, signature, Some(key_alg.into()))?;
             return Ok(res);
         }
 
@@ -188,26 +221,18 @@ mod test {
 
         let msg = "sign this message";
         let sig = wallet
-            .sign(&first_data.verkey, msg.as_bytes(), SigType::EdDSA)
+            .sign(&first_data.verkey, msg.as_bytes())
             .await
             .unwrap();
 
         assert!(wallet
-            .verify(&first_data.verkey, msg.as_bytes(), &sig, SigType::EdDSA)
+            .verify(&first_data.verkey, msg.as_bytes(), &sig)
             .await
             .unwrap());
         assert!(!wallet
-            .verify(&second_data.verkey, msg.as_bytes(), &sig, SigType::EdDSA)
+            .verify(&second_data.verkey, msg.as_bytes(), &sig)
             .await
             .unwrap());
-
-        let err = wallet
-            .verify(&first_data.verkey, msg.as_bytes(), &sig, SigType::ES384)
-            .await
-            .unwrap_err();
-
-        assert_eq!(AriesVcxCoreErrorKind::WalletUnexpected, err.kind());
-        assert!(err.to_string().contains("Unsupported signature type"));
     }
 
     #[tokio::test]

@@ -1,12 +1,11 @@
-use aries_askar::entry::{Entry, EntryTag as AskarEntryTag};
+use aries_askar::entry::{Entry, EntryOperation, EntryTag as AskarEntryTag};
 use async_trait::async_trait;
 
+use super::AskarWallet;
 use crate::{
     errors::error::{AriesVcxCoreError, AriesVcxCoreErrorKind, VcxCoreResult},
-    wallet2::{Record, RecordWallet, SearchFilter},
+    wallet2::{EntryTag, Record, RecordUpdate, RecordWallet, SearchFilter},
 };
-
-use super::AskarWallet;
 
 #[async_trait]
 impl RecordWallet for AskarWallet {
@@ -43,16 +42,22 @@ impl RecordWallet for AskarWallet {
         Ok(res)
     }
 
-    async fn update_record(&self, record: Record) -> VcxCoreResult<()> {
+    async fn update_record(&self, record: RecordUpdate) -> VcxCoreResult<()> {
         let mut session = self.backend.session(self.profile.clone()).await?;
-        let entry: Entry = record.into();
+
+        let tags: Option<Vec<AskarEntryTag>> = record
+            .tags
+            .map(|ary| ary.into_iter().map(From::from).collect());
+
+        let value = record.value.map(|item| item.as_bytes().to_vec());
 
         Ok(session
-            .replace(
-                &entry.category,
-                &entry.name,
-                &entry.value,
-                Some(&entry.tags),
+            .update(
+                EntryOperation::Replace,
+                &record.category,
+                &record.name,
+                value.as_deref(),
+                tags.as_deref(),
                 None,
             )
             .await?)
@@ -95,11 +100,11 @@ impl RecordWallet for AskarWallet {
 
 #[cfg(test)]
 mod test {
-    use super::*;
     use aries_askar::StoreKeyMethod;
     use uuid::Uuid;
 
-    use crate::wallet2::{askar_wallet::AskarWallet, RecordBuilder};
+    use super::*;
+    use crate::wallet2::{askar_wallet::AskarWallet, RecordBuilder, RecordUpdateBuilder};
 
     async fn create_test_wallet() -> AskarWallet {
         AskarWallet::create(
@@ -207,27 +212,30 @@ mod test {
 
         let updated_value = "updated-test-value".to_string();
 
-        let record = RecordBuilder::default()
+        let record_update = RecordUpdateBuilder::default()
             .name(name.clone())
             .category(category.clone())
-            .value(updated_value.clone().into())
+            .value(Some(updated_value.clone().into()))
             .build()
             .unwrap();
 
-        wallet.update_record(record.clone()).await.unwrap();
+        wallet.update_record(record_update.clone()).await.unwrap();
 
         let found = wallet.get_record(&name, &category).await.unwrap();
         assert_eq!(updated_value, found.value);
 
         let other_category = "other-test-category".to_string();
-        let record = RecordBuilder::default()
+        let record_update = RecordUpdateBuilder::default()
             .name(name.clone())
             .category(other_category.clone())
-            .value(updated_value.clone().into())
+            .value(Some(updated_value.clone().into()))
             .build()
             .unwrap();
 
-        let err = wallet.update_record(record.clone()).await.unwrap_err();
+        let err = wallet
+            .update_record(record_update.clone())
+            .await
+            .unwrap_err();
 
         assert_eq!(AriesVcxCoreErrorKind::WalletRecordNotFound, err.kind());
     }

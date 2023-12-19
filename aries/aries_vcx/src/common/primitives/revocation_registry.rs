@@ -1,6 +1,6 @@
 use aries_vcx_core::{
     anoncreds::base_anoncreds::BaseAnonCreds, errors::error::AriesVcxCoreErrorKind,
-    ledger::base_ledger::AnoncredsLedgerWrite, wallet::base_wallet::BaseWallet,
+    ledger::base_ledger::AnoncredsLedgerWrite, wallet2::BaseWallet2,
 };
 
 use super::credential_definition::PublicEntityStateType;
@@ -22,7 +22,7 @@ pub struct RevocationRegistry {
 
 impl RevocationRegistry {
     pub async fn create(
-        wallet: &impl BaseWallet,
+        wallet: &impl BaseWallet2,
         anoncreds: &impl BaseAnonCreds,
         issuer_did: &str,
         cred_def_id: &str,
@@ -98,7 +98,7 @@ impl RevocationRegistry {
 
     pub async fn publish_rev_reg_def(
         &mut self,
-        wallet: &impl BaseWallet,
+        wallet: &impl BaseWallet2,
         ledger: &impl AnoncredsLedgerWrite,
         issuer_did: &str,
         tails_url: &str,
@@ -126,7 +126,7 @@ impl RevocationRegistry {
 
     pub async fn publish_rev_reg_delta(
         &mut self,
-        wallet: &impl BaseWallet,
+        wallet: &impl BaseWallet2,
         ledger_write: &impl AnoncredsLedgerWrite,
         issuer_did: &str,
     ) -> VcxResult<()> {
@@ -150,7 +150,7 @@ impl RevocationRegistry {
 
     pub async fn publish_revocation_primitives(
         &mut self,
-        wallet: &impl BaseWallet,
+        wallet: &impl BaseWallet2,
         ledger_write: &impl AnoncredsLedgerWrite,
         tails_url: &str,
     ) -> VcxResult<()> {
@@ -165,7 +165,7 @@ impl RevocationRegistry {
 
     async fn publish_built_rev_reg_delta(
         &mut self,
-        wallet: &impl BaseWallet,
+        wallet: &impl BaseWallet2,
         ledger_write: &impl AnoncredsLedgerWrite,
     ) -> VcxResult<()> {
         let issuer_did = &self.issuer_did.clone();
@@ -180,7 +180,7 @@ impl RevocationRegistry {
 
     async fn publish_built_rev_reg_def(
         &mut self,
-        wallet: &impl BaseWallet,
+        wallet: &impl BaseWallet2,
         ledger_write: &impl AnoncredsLedgerWrite,
         tails_url: &str,
     ) -> VcxResult<()> {
@@ -214,7 +214,7 @@ impl RevocationRegistry {
 
     pub async fn revoke_credential_local(
         &self,
-        wallet: &impl BaseWallet,
+        wallet: &impl BaseWallet2,
         anoncreds: &impl BaseAnonCreds,
         cred_rev_id: &str,
     ) -> VcxResult<()> {
@@ -226,7 +226,7 @@ impl RevocationRegistry {
 
     pub async fn publish_local_revocations(
         &self,
-        wallet: &impl BaseWallet,
+        wallet: &impl BaseWallet2,
         anoncreds: &impl BaseAnonCreds,
         ledger_write: &impl AnoncredsLedgerWrite,
         submitter_did: &str,
@@ -298,7 +298,7 @@ pub struct RevocationRegistryDefinition {
     pub ver: String,
 }
 pub async fn generate_rev_reg(
-    wallet: &impl BaseWallet,
+    wallet: &impl BaseWallet2,
     anoncreds: &impl BaseAnonCreds,
     issuer_did: &str,
     cred_def_id: &str,

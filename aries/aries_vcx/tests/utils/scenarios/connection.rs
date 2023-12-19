@@ -12,7 +12,7 @@ use aries_vcx_core::{
     ledger::base_ledger::{
         AnoncredsLedgerRead, AnoncredsLedgerWrite, IndyLedgerRead, IndyLedgerWrite,
     },
-    wallet::base_wallet::BaseWallet,
+    wallet2::BaseWallet2,
 };
 use async_trait::async_trait;
 use messages::{
@@ -35,13 +35,13 @@ async fn establish_connection_from_invite(
         impl IndyLedgerRead + AnoncredsLedgerRead,
         impl IndyLedgerWrite + AnoncredsLedgerWrite,
         impl BaseAnonCreds,
-        impl BaseWallet,
+        impl BaseWallet2,
     >,
     faber: &mut TestAgent<
         impl IndyLedgerRead + AnoncredsLedgerRead,
         impl IndyLedgerWrite + AnoncredsLedgerWrite,
         impl BaseAnonCreds,
-        impl BaseWallet,
+        impl BaseWallet2,
     >,
     invitation: AnyInvitation,
     inviter_pairwise_info: PairwiseInfo,
@@ -94,13 +94,13 @@ pub async fn create_connections_via_oob_invite(
         impl IndyLedgerRead + AnoncredsLedgerRead,
         impl IndyLedgerWrite + AnoncredsLedgerWrite,
         impl BaseAnonCreds,
-        impl BaseWallet,
+        impl BaseWallet2,
     >,
     faber: &mut TestAgent<
         impl IndyLedgerRead + AnoncredsLedgerRead,
         impl IndyLedgerWrite + AnoncredsLedgerWrite,
         impl BaseAnonCreds,
-        impl BaseWallet,
+        impl BaseWallet2,
     >,
 ) -> (GenericConnection, GenericConnection) {
     let oob_sender = OutOfBandSender::create()
@@ -129,13 +129,13 @@ pub async fn create_connections_via_public_invite(
         impl IndyLedgerRead + AnoncredsLedgerRead,
         impl IndyLedgerWrite + AnoncredsLedgerWrite,
         impl BaseAnonCreds,
-        impl BaseWallet,
+        impl BaseWallet2,
     >,
     faber: &mut TestAgent<
         impl IndyLedgerRead + AnoncredsLedgerRead,
         impl IndyLedgerWrite + AnoncredsLedgerWrite,
         impl BaseAnonCreds,
-        impl BaseWallet,
+        impl BaseWallet2,
     >,
 ) -> (GenericConnection, GenericConnection) {
     let content = InvitationContent::builder_public()
@@ -166,13 +166,13 @@ pub async fn create_connections_via_pairwise_invite(
         impl IndyLedgerRead + AnoncredsLedgerRead,
         impl IndyLedgerWrite + AnoncredsLedgerWrite,
         impl BaseAnonCreds,
-        impl BaseWallet,
+        impl BaseWallet2,
     >,
     faber: &mut TestAgent<
         impl IndyLedgerRead + AnoncredsLedgerRead,
         impl IndyLedgerWrite + AnoncredsLedgerWrite,
         impl BaseAnonCreds,
-        impl BaseWallet,
+        impl BaseWallet2,
     >,
 ) -> (GenericConnection, GenericConnection) {
     let inviter_pairwise_info = PairwiseInfo::create(&faber.wallet).await.unwrap();

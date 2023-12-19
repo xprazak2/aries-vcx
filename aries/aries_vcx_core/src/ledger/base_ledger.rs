@@ -4,7 +4,7 @@ use async_trait::async_trait;
 use indy_vdr::ledger::constants::UpdateRole;
 use serde::Serialize;
 
-use crate::{errors::error::VcxCoreResult, wallet::base_wallet::BaseWallet};
+use crate::{errors::error::VcxCoreResult, wallet2::BaseWallet2};
 
 #[async_trait]
 pub trait IndyLedgerRead: Debug + Send + Sync {
@@ -22,7 +22,7 @@ pub trait IndyLedgerRead: Debug + Send + Sync {
 pub trait IndyLedgerWrite: Debug + Send + Sync {
     async fn publish_nym(
         &self,
-        wallet: &impl BaseWallet,
+        wallet: &impl BaseWallet2,
         submitter_did: &str,
         target_did: &str,
         verkey: Option<&str>,
@@ -31,26 +31,26 @@ pub trait IndyLedgerWrite: Debug + Send + Sync {
     ) -> VcxCoreResult<String>;
     async fn set_endorser(
         &self,
-        wallet: &impl BaseWallet,
+        wallet: &impl BaseWallet2,
         submitter_did: &str,
         request: &str,
         endorser: &str,
     ) -> VcxCoreResult<String>;
     async fn endorse_transaction(
         &self,
-        wallet: &impl BaseWallet,
+        wallet: &impl BaseWallet2,
         endorser_did: &str,
         request_json: &str,
     ) -> VcxCoreResult<()>;
     async fn add_attr(
         &self,
-        wallet: &impl BaseWallet,
+        wallet: &impl BaseWallet2,
         target_did: &str,
         attrib_json: &str,
     ) -> VcxCoreResult<String>;
     async fn write_did(
         &self,
-        wallet: &impl BaseWallet,
+        wallet: &impl BaseWallet2,
         submitter_did: &str,
         target_did: &str,
         target_vk: &str,
@@ -89,26 +89,26 @@ pub trait AnoncredsLedgerRead: Debug + Send + Sync {
 pub trait AnoncredsLedgerWrite: Debug + Send + Sync {
     async fn publish_schema(
         &self,
-        wallet: &impl BaseWallet,
+        wallet: &impl BaseWallet2,
         schema_json: &str,
         submitter_did: &str,
         endorser_did: Option<String>,
     ) -> VcxCoreResult<()>;
     async fn publish_cred_def(
         &self,
-        wallet: &impl BaseWallet,
+        wallet: &impl BaseWallet2,
         cred_def_json: &str,
         submitter_did: &str,
     ) -> VcxCoreResult<()>;
     async fn publish_rev_reg_def(
         &self,
-        wallet: &impl BaseWallet,
+        wallet: &impl BaseWallet2,
         rev_reg_def: &str,
         submitter_did: &str,
     ) -> VcxCoreResult<()>;
     async fn publish_rev_reg_delta(
         &self,
-        wallet: &impl BaseWallet,
+        wallet: &impl BaseWallet2,
         rev_reg_id: &str,
         rev_reg_entry_json: &str,
         submitter_did: &str,

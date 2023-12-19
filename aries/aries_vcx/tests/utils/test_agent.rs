@@ -8,7 +8,8 @@ use aries_vcx_core::{
     ledger::base_ledger::{
         AnoncredsLedgerRead, AnoncredsLedgerWrite, IndyLedgerRead, IndyLedgerWrite,
     },
-    wallet::{base_wallet::BaseWallet, indy::wallet::get_verkey_from_wallet},
+    wallet::indy::wallet::get_verkey_from_wallet,
+    wallet2::{BaseWallet2, DidWallet},
 };
 use test_utils::{
     constants::TRUSTEE_SEED,
@@ -23,7 +24,7 @@ where
     LR: IndyLedgerRead + AnoncredsLedgerRead,
     LW: IndyLedgerWrite + AnoncredsLedgerWrite,
     A: BaseAnonCreds,
-    W: BaseWallet,
+    W: BaseWallet2,
 {
     pub ledger_read: LR,
     pub ledger_write: LW,
@@ -40,7 +41,7 @@ async fn create_test_agent_from_seed(
     impl IndyLedgerRead + AnoncredsLedgerRead,
     impl IndyLedgerWrite + AnoncredsLedgerWrite,
     impl BaseAnonCreds,
-    impl BaseWallet,
+    impl BaseWallet2,
 > {
     let (institution_did, wallet) = dev_build_featured_wallet(seed).await;
     let (ledger_read, ledger_write) =
@@ -68,7 +69,7 @@ pub async fn create_test_agent_trustee(
     impl IndyLedgerRead + AnoncredsLedgerRead,
     impl IndyLedgerWrite + AnoncredsLedgerWrite,
     impl BaseAnonCreds,
-    impl BaseWallet,
+    impl BaseWallet2,
 > {
     create_test_agent_from_seed(TRUSTEE_SEED, genesis_file_path).await
 }
@@ -79,7 +80,7 @@ pub async fn create_test_agent(
     impl IndyLedgerRead + AnoncredsLedgerRead,
     impl IndyLedgerWrite + AnoncredsLedgerWrite,
     impl BaseAnonCreds,
-    impl BaseWallet,
+    impl BaseWallet2,
 > {
     create_test_agent_from_seed(&generate_random_seed(), genesis_file_path).await
 }
@@ -94,17 +95,16 @@ pub async fn create_test_agent_endorser<LW, W>(
         impl IndyLedgerRead + AnoncredsLedgerRead,
         impl IndyLedgerWrite + AnoncredsLedgerWrite,
         impl BaseAnonCreds,
-        impl BaseWallet,
+        impl BaseWallet2,
     >,
     Box<dyn std::error::Error>,
 >
 where
     LW: IndyLedgerWrite + AnoncredsLedgerWrite,
-    W: BaseWallet,
+    W: BaseWallet2,
 {
     let acme = create_test_agent(genesis_file_path.to_string()).await;
-    let acme_vk =
-        get_verkey_from_wallet(acme.wallet.get_wallet_handle(), &acme.institution_did).await?;
+    let acme_vk = acme.wallet.did_key(&acme.institution_did).await?;
 
     write_endorser_did(
         &trustee_wallet,

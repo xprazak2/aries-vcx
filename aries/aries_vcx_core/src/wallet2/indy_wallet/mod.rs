@@ -1,4 +1,8 @@
-use crate::wallet::indy::IndySdkWallet;
+use async_trait::async_trait;
+use indy_api_types::WalletHandle;
+use vdrtools::Locator;
+
+use crate::{errors::error::VcxCoreResult, wallet::indy::IndySdkWallet};
 
 use super::BaseWallet2;
 

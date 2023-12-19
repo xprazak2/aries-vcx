@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use aries_vcx_core::wallet::base_wallet::BaseWallet;
+use aries_vcx_core::wallet2::BaseWallet2;
 use base64::engine::general_purpose::URL_SAFE_NO_PAD;
 use did_doc::schema::{
     types::uri::Uri,
@@ -28,7 +28,7 @@ use crate::{
 };
 
 pub async fn generate_keypair(
-    wallet: &impl BaseWallet,
+    wallet: &impl BaseWallet2,
     key_type: KeyType,
 ) -> Result<Key, AriesVcxError> {
     let pairwise_info = PairwiseInfo::create(wallet).await?;
@@ -53,7 +53,7 @@ pub fn construct_service(
 }
 
 pub async fn create_our_did_document(
-    wallet: &impl BaseWallet,
+    wallet: &impl BaseWallet2,
     service_endpoint: Url,
     routing_keys: Vec<String>,
 ) -> Result<(DidDocumentSov, Key), AriesVcxError> {
@@ -128,7 +128,7 @@ pub fn ddo_sov_to_attach(ddo: DidDocumentSov) -> Result<Attachment, AriesVcxErro
 pub async fn jws_sign_attach(
     mut attach: Attachment,
     verkey: Key,
-    wallet: &impl BaseWallet,
+    wallet: &impl BaseWallet2,
 ) -> Result<Attachment, AriesVcxError> {
     if let AttachmentType::Base64(attach_base64) = &attach.data.content {
         let did_key: DidKey = verkey.clone().try_into()?;

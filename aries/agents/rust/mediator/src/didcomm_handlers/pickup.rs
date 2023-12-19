@@ -1,9 +1,10 @@
+use aries_vcx_core::wallet2::BaseWallet2;
 use messages::msg_fields::protocols::pickup::Pickup;
 
 use super::utils::prelude::*;
 
 pub async fn handle_pickup_protocol(
-    agent: &ArcAgent<impl BaseWallet + 'static, impl MediatorPersistence>,
+    agent: &ArcAgent<impl BaseWallet2 + 'static, impl MediatorPersistence>,
     pickup_message: Pickup,
     auth_pubkey: &str,
 ) -> Result<Pickup, String> {

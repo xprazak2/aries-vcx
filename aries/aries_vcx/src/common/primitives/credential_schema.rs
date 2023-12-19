@@ -4,7 +4,7 @@ use aries_vcx_core::{
     anoncreds::base_anoncreds::BaseAnonCreds,
     global::settings::DEFAULT_SERIALIZE_VERSION,
     ledger::base_ledger::{AnoncredsLedgerRead, AnoncredsLedgerWrite},
-    wallet::base_wallet::BaseWallet,
+    wallet2::BaseWallet2,
 };
 
 use super::credential_definition::PublicEntityStateType;
@@ -82,7 +82,7 @@ impl Schema {
 
     pub async fn publish(
         self,
-        wallet: &impl BaseWallet,
+        wallet: &impl BaseWallet2,
         ledger: &impl AnoncredsLedgerWrite,
     ) -> VcxResult<Self> {
         trace!("Schema::publish >>>");

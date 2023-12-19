@@ -1,6 +1,6 @@
 use std::{clone::Clone, collections::HashMap};
 
-use aries_vcx_core::wallet::base_wallet::BaseWallet;
+use aries_vcx_core::wallet2::BaseWallet2;
 use chrono::Utc;
 use diddoc_legacy::aries::diddoc::AriesDidDoc;
 use messages::{
@@ -372,7 +372,7 @@ impl SmMediatedConnectionInvitee {
 
     pub async fn handle_connection_response(
         self,
-        wallet: &impl BaseWallet,
+        wallet: &impl BaseWallet2,
         response: Response,
         send_message: SendClosureConnection<'_>,
     ) -> VcxResult<Self> {
@@ -505,7 +505,7 @@ impl SmMediatedConnectionInvitee {
 
 //     pub mod invitee {
 
-//         use aries_vcx_core::wallet::base_wallet::BaseWallet;
+//         use aries_vcx_core::wallet2::BaseWallet2;
 //         use messages::diddoc::aries::diddoc::test_utils::{_did_doc_inlined_recipient_keys,
 // _service_endpoint};         use messages::protocols::connection::response::{Response,
 // SignedResponse};
@@ -560,7 +560,7 @@ impl SmMediatedConnectionInvitee {
 //             }
 //         }
 
-//         async fn _response(wallet: &Arc<dyn BaseWallet>, key: &str, thread_id: &str) ->
+//         async fn _response(wallet: &Arc<dyn BaseWallet2>, key: &str, thread_id: &str) ->
 // SignedResponse {             sign_connection_response(
 //                 wallet,
 //                 key,
@@ -573,7 +573,7 @@ impl SmMediatedConnectionInvitee {
 //             .unwrap()
 //         }
 
-//         async fn _response_1(wallet: &Arc<dyn BaseWallet>, key: &str) -> SignedResponse {
+//         async fn _response_1(wallet: &Arc<dyn BaseWallet2>, key: &str) -> SignedResponse {
 //             sign_connection_response(
 //                 wallet,
 //                 key,

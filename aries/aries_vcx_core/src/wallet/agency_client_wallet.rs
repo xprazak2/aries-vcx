@@ -13,6 +13,10 @@ use crate::{
     errors::error::{AriesVcxCoreError, AriesVcxCoreErrorKind, VcxCoreResult},
     utils::async_fn_iterator::AsyncFnIterator,
     wallet::base_wallet::BaseWallet,
+    wallet2::{
+        BaseWallet2, DidData, DidWallet, Key, Record, RecordUpdate, RecordWallet, SearchFilter,
+        UnpackedMessage,
+    },
 };
 
 #[derive(Debug)]
@@ -173,6 +177,79 @@ impl BaseWallet for AgencyClientWallet {
     #[cfg(feature = "vdrtools_wallet")]
     fn get_wallet_handle(&self) -> WalletHandle {
         unimplemented!("AgencyClientWallet::get_wallet_handle - this was not expected to be called")
+    }
+}
+
+impl BaseWallet2 for AgencyClientWallet {}
+
+#[allow(unused_variables)]
+#[async_trait]
+impl RecordWallet for AgencyClientWallet {
+    async fn add_record(&self, record: Record) -> VcxCoreResult<()> {
+        Err(unimplemented_agency_client_wallet_method("add_record"))
+    }
+
+    async fn get_record(&self, name: &str, category: &str) -> VcxCoreResult<Record> {
+        Err(unimplemented_agency_client_wallet_method("get_record"))
+    }
+
+    async fn update_record(&self, record: RecordUpdate) -> VcxCoreResult<()> {
+        Err(unimplemented_agency_client_wallet_method("update_record"))
+    }
+
+    async fn delete_record(&self, name: &str, category: &str) -> VcxCoreResult<()> {
+        Err(unimplemented_agency_client_wallet_method("delete_record"))
+    }
+
+    async fn search_record(
+        &self,
+        category: &str,
+        search_filter: Option<SearchFilter>,
+    ) -> VcxCoreResult<Vec<Record>> {
+        Err(unimplemented_agency_client_wallet_method("search_record"))
+    }
+}
+
+#[async_trait]
+#[allow(unused_variables)]
+impl DidWallet for AgencyClientWallet {
+    async fn create_and_store_my_did(
+        &self,
+        seed: &str,
+        method_name: Option<&str>,
+    ) -> VcxCoreResult<DidData> {
+        Err(unimplemented_agency_client_wallet_method(
+            "create_nad_store_my_did",
+        ))
+    }
+
+    async fn did_key(&self, name: &str) -> VcxCoreResult<String> {
+        Err(unimplemented_agency_client_wallet_method("did_key"))
+    }
+
+    async fn replace_did_key(&self, did: &str, seed: &str) -> VcxCoreResult<String> {
+        Err(unimplemented_agency_client_wallet_method("replace_did_key"))
+    }
+
+    async fn sign(&self, key: &str, msg: &[u8]) -> VcxCoreResult<Vec<u8>> {
+        Err(unimplemented_agency_client_wallet_method("sign"))
+    }
+
+    async fn verify(&self, key: &str, msg: &[u8], signature: &[u8]) -> VcxCoreResult<bool> {
+        Err(unimplemented_agency_client_wallet_method("verify"))
+    }
+
+    async fn pack_message(
+        &self,
+        sender_vk: Option<String>,
+        receiver_keys: Vec<Key>,
+        msg: &[u8],
+    ) -> VcxCoreResult<Vec<u8>> {
+        Err(unimplemented_agency_client_wallet_method("pack_message"))
+    }
+
+    async fn unpack_message(&self, msg: &[u8]) -> VcxCoreResult<UnpackedMessage> {
+        Err(unimplemented_agency_client_wallet_method("unpack_message"))
     }
 }
 

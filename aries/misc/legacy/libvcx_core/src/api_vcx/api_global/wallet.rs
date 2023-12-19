@@ -21,6 +21,7 @@ use aries_vcx::{
     global::settings::DEFAULT_LINK_SECRET_ALIAS,
     protocols::mediated_connection::pairwise_info::PairwiseInfo,
 };
+use aries_vcx_core::wallet2::{RecordUpdateBuilder, RecordWallet};
 
 use crate::{
     api_vcx::api_global::profile::{
@@ -179,7 +180,13 @@ pub async fn wallet_update_wallet_record_value(
     value: &str,
 ) -> LibvcxResult<()> {
     let wallet = get_main_wallet()?;
-    map_ariesvcx_core_result(wallet.update_wallet_record_value(xtype, id, value).await)
+    let record = RecordUpdateBuilder::default()
+        .name(id.into())
+        .category(xtype.into())
+        .value(Some(value.into()))
+        .build()?;
+
+    map_ariesvcx_core_result(wallet.update_record(record).await)
 }
 
 pub async fn wallet_update_wallet_record_tags(

@@ -5,7 +5,7 @@ use aries_vcx_core::{
         base_ledger::{IndyLedgerRead, IndyLedgerWrite},
         indy_vdr_ledger::{LedgerRole, UpdateRole},
     },
-    wallet::base_wallet::BaseWallet,
+    wallet2::BaseWallet2,
 };
 use diddoc_legacy::aries::service::AriesService;
 use messages::msg_fields::protocols::out_of_band::invitation::OobService;
@@ -78,19 +78,26 @@ pub async fn resolve_service(
 }
 
 pub async fn add_new_did(
-    wallet: &impl BaseWallet,
+    wallet: &impl BaseWallet2,
     indy_ledger_write: &impl IndyLedgerWrite,
     submitter_did: &str,
     role: Option<&str>,
 ) -> VcxResult<(String, String)> {
-    let (did, verkey) = wallet.create_and_store_my_did(None, None).await?;
+    let did_data = wallet.create_and_store_my_did("", None).await?;
 
     let res = indy_ledger_write
-        .publish_nym(wallet, submitter_did, &did, Some(&verkey), None, role)
+        .publish_nym(
+            wallet,
+            submitter_did,
+            &did_data.did,
+            Some(&did_data.verkey),
+            None,
+            role,
+        )
         .await?;
     check_response(&res)?;
 
-    Ok((did, verkey))
+    Ok((did_data.did, did_data.verkey))
 }
 
 pub async fn get_service(ledger: &impl IndyLedgerRead, did: &String) -> VcxResult<AriesService> {
@@ -143,7 +150,7 @@ pub async fn parse_legacy_endpoint_attrib(
 }
 
 pub async fn write_endorser_did(
-    wallet: &impl BaseWallet,
+    wallet: &impl BaseWallet2,
     indy_ledger_write: &impl IndyLedgerWrite,
     submitter_did: &str,
     target_did: &str,
@@ -165,7 +172,7 @@ pub async fn write_endorser_did(
 }
 
 pub async fn write_endpoint_legacy(
-    wallet: &impl BaseWallet,
+    wallet: &impl BaseWallet2,
     indy_ledger_write: &impl IndyLedgerWrite,
     did: &str,
     service: &AriesService,
@@ -179,7 +186,7 @@ pub async fn write_endpoint_legacy(
 }
 
 pub async fn write_endpoint(
-    wallet: &impl BaseWallet,
+    wallet: &impl BaseWallet2,
     indy_ledger_write: &impl IndyLedgerWrite,
     did: &str,
     service: &EndpointDidSov,
@@ -193,7 +200,7 @@ pub async fn write_endpoint(
 }
 
 pub async fn add_attr(
-    wallet: &impl BaseWallet,
+    wallet: &impl BaseWallet2,
     indy_ledger_write: &impl IndyLedgerWrite,
     did: &str,
     attr: &str,
@@ -217,7 +224,7 @@ pub async fn get_attr(
 }
 
 pub async fn clear_attr(
-    wallet: &impl BaseWallet,
+    wallet: &impl BaseWallet2,
     indy_ledger_write: &impl IndyLedgerWrite,
     did: &str,
     attr_name: &str,

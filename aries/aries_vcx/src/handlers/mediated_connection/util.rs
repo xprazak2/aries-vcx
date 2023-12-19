@@ -1,4 +1,4 @@
-use aries_vcx_core::wallet::base_wallet::BaseWallet;
+use aries_vcx_core::wallet2::BaseWallet2;
 use diddoc_legacy::aries::diddoc::AriesDidDoc;
 use messages::AriesMessage;
 use shared::http_client::post_message;
@@ -9,7 +9,7 @@ use crate::{
 };
 
 pub async fn send_message(
-    wallet: &impl BaseWallet,
+    wallet: &impl BaseWallet2,
     sender_verkey: String,
     did_doc: AriesDidDoc,
     message: AriesMessage,

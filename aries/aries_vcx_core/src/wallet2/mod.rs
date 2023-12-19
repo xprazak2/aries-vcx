@@ -1,17 +1,16 @@
-use std::collections::HashMap;
+use std::{collections::HashMap, ops::Deref};
 
 use aries_askar::entry::{Entry, EntryKind, EntryTag as AskarEntryTag, TagFilter};
 use async_trait::async_trait;
 use derive_builder::Builder;
+#[cfg(feature = "vdrtools_wallet")]
+use indy_api_types::domain::wallet::Record as IndyRecord;
 use serde::{Deserialize, Serialize};
 
 use crate::{
     errors::error::{AriesVcxCoreError, AriesVcxCoreErrorKind, VcxCoreResult},
     wallet::structs_io::UnpackMessageOutput,
 };
-
-#[cfg(feature = "vdrtools_wallet")]
-use indy_api_types::domain::wallet::Record as IndyRecord;
 
 #[cfg(feature = "vdrtools_wallet")]
 pub mod indy_wallet;
@@ -41,28 +40,63 @@ impl From<RngMethod> for Option<&str> {
         }
     }
 }
-pub enum SigType {
-    EdDSA,
-    ES256,
-    ES256K,
-    ES384,
-}
 
-impl From<SigType> for &str {
-    fn from(value: SigType) -> Self {
-        match value {
-            SigType::EdDSA => "eddsa",
-            SigType::ES256 => "es256",
-            SigType::ES256K => "es256k",
-            SigType::ES384 => "es384",
-        }
-    }
-}
-
-#[derive(Clone, Debug, Hash, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
 pub enum EntryTag {
     Encrypted(String, String),
     Plaintext(String, String),
+}
+
+pub struct EntryTags {
+    inner: Vec<EntryTag>,
+}
+
+impl EntryTags {
+    pub fn new() -> Self {
+        Self { inner: vec![] }
+    }
+
+    pub fn add(&mut self, tag: EntryTag) {
+        self.inner.push(tag)
+    }
+}
+
+impl From<Vec<EntryTag>> for EntryTags {
+    fn from(value: Vec<EntryTag>) -> Self {
+        value.into_iter().fold(Self::new(), |mut memo, item| {
+            memo.add(item);
+            memo
+        })
+    }
+}
+
+impl From<EntryTags> for Vec<EntryTag> {
+    fn from(value: EntryTags) -> Self {
+        value.inner
+    }
+}
+
+impl From<EntryTags> for HashMap<String, String> {
+    fn from(value: EntryTags) -> Self {
+        let tags: Vec<EntryTag> = value.into();
+        tags.into_iter().fold(Self::new(), |mut memo, item| {
+            let (key, value) = item.into();
+            memo.insert(key, value);
+            memo
+        })
+    }
+}
+
+impl From<HashMap<String, String>> for EntryTags {
+    fn from(value: HashMap<String, String>) -> Self {
+        Self {
+            inner: value
+                .into_iter()
+                .map(|(key, value)| (key, value))
+                .map(From::from)
+                .collect(),
+        }
+    }
 }
 
 #[cfg(feature = "askar_wallet")]
@@ -94,6 +128,14 @@ pub struct Record {
     pub tags: Vec<EntryTag>,
 }
 
+#[derive(Debug, Default, Clone, Builder)]
+pub struct RecordUpdate {
+    pub category: String,
+    pub name: String,
+    pub value: Option<String>,
+    pub tags: Option<Vec<EntryTag>>,
+}
+
 #[cfg(feature = "vdrtools_wallet")]
 impl From<IndyRecord> for Record {
     fn from(ir: IndyRecord) -> Self {
@@ -111,6 +153,25 @@ impl From<IndyRecord> for Record {
     }
 }
 
+impl From<(String, String)> for EntryTag {
+    fn from(value: (String, String)) -> Self {
+        if value.0.starts_with("~") {
+            EntryTag::Plaintext(value.0, value.1)
+        } else {
+            EntryTag::Encrypted(value.0, value.1)
+        }
+    }
+}
+
+impl From<EntryTag> for (String, String) {
+    fn from(value: EntryTag) -> Self {
+        match value {
+            EntryTag::Encrypted(key, val) => (key, val),
+            EntryTag::Plaintext(key, val) => (key, val),
+        }
+    }
+}
+
 #[cfg(feature = "vdrtools_wallet")]
 impl From<Record> for IndyRecord {
     fn from(record: Record) -> Self {
@@ -118,10 +179,8 @@ impl From<Record> for IndyRecord {
             .tags
             .into_iter()
             .fold(HashMap::new(), |mut memo, item| {
-                match item {
-                    EntryTag::Encrypted(key, val) => memo.insert(key, val),
-                    EntryTag::Plaintext(key, val) => memo.insert(format!("~{}", key), val),
-                };
+                let (key, value) = item.into();
+                memo.insert(key, value);
                 memo
             });
         Self {
@@ -166,11 +225,11 @@ impl From<Record> for Entry {
 
 #[derive(Debug, Deserialize, Serialize)]
 pub struct DidData {
-    did: String,
-    verkey: String,
+    pub did: String,
+    pub verkey: String,
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct UnpackedMessage {
     pub message: String,
     pub recipient_verkey: String,
@@ -192,8 +251,7 @@ pub enum SearchFilter {
     JsonFilter(String),
 }
 
-#[async_trait]
-pub trait BaseWallet2: RecordWallet + DidWallet {}
+pub trait BaseWallet2: RecordWallet + DidWallet + Send + Sync + std::fmt::Debug {}
 
 #[async_trait]
 pub trait DidWallet {
@@ -207,15 +265,9 @@ pub trait DidWallet {
 
     async fn replace_did_key(&self, did: &str, seed: &str) -> VcxCoreResult<String>;
 
-    async fn sign(&self, key: &str, msg: &[u8], sig_type: SigType) -> VcxCoreResult<Vec<u8>>;
+    async fn sign(&self, key: &str, msg: &[u8]) -> VcxCoreResult<Vec<u8>>;
 
-    async fn verify(
-        &self,
-        key: &str,
-        msg: &[u8],
-        signature: &[u8],
-        sig_type: SigType,
-    ) -> VcxCoreResult<bool>;
+    async fn verify(&self, key: &str, msg: &[u8], signature: &[u8]) -> VcxCoreResult<bool>;
 
     async fn pack_message(
         &self,
@@ -233,7 +285,7 @@ pub trait RecordWallet {
 
     async fn get_record(&self, name: &str, category: &str) -> VcxCoreResult<Record>;
 
-    async fn update_record(&self, record: Record) -> VcxCoreResult<()>;
+    async fn update_record(&self, record: RecordUpdate) -> VcxCoreResult<()>;
 
     async fn delete_record(&self, name: &str, category: &str) -> VcxCoreResult<()>;
 

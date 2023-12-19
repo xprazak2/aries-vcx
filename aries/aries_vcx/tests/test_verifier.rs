@@ -10,7 +10,7 @@ use aries_vcx::{
 use aries_vcx_core::{
     anoncreds::base_anoncreds::BaseAnonCreds,
     ledger::base_ledger::{AnoncredsLedgerRead, AnoncredsLedgerWrite},
-    wallet::base_wallet::BaseWallet,
+    wallet2::BaseWallet2,
 };
 use serde_json::json;
 use test_utils::{constants::DEFAULT_SCHEMA_ATTRS, devsetup::build_setup_profile};
@@ -23,8 +23,8 @@ pub mod utils;
 
 // FUTURE - issuer and holder seperation only needed whilst modular deps not fully implemented
 async fn create_indy_proof(
-    wallet_issuer: &impl BaseWallet,
-    wallet_holder: &impl BaseWallet,
+    wallet_issuer: &impl BaseWallet2,
+    wallet_holder: &impl BaseWallet2,
     anoncreds_issuer: &impl BaseAnonCreds,
     anoncreds_holder: &impl BaseAnonCreds,
     ledger_read: &impl AnoncredsLedgerRead,
@@ -107,8 +107,8 @@ async fn create_indy_proof(
 
 #[allow(clippy::too_many_arguments)]
 async fn create_proof_with_predicate(
-    wallet_issuer: &impl BaseWallet,
-    wallet_holder: &impl BaseWallet,
+    wallet_issuer: &impl BaseWallet2,
+    wallet_holder: &impl BaseWallet2,
     anoncreds_issuer: &impl BaseAnonCreds,
     anoncreds_holder: &impl BaseAnonCreds,
     ledger_read: &impl AnoncredsLedgerRead,
@@ -206,8 +206,8 @@ async fn create_proof_with_predicate(
 
 #[allow(clippy::too_many_arguments)]
 async fn create_and_store_nonrevocable_credential(
-    wallet_issuer: &impl BaseWallet,
-    wallet_holder: &impl BaseWallet,
+    wallet_issuer: &impl BaseWallet2,
+    wallet_holder: &impl BaseWallet2,
     anoncreds_issuer: &impl BaseAnonCreds,
     anoncreds_holder: &impl BaseAnonCreds,
     ledger_read: &impl AnoncredsLedgerRead,
