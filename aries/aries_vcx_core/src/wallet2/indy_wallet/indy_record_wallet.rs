@@ -10,7 +10,7 @@ use super::{SEARCH_OPTIONS, WALLET_OPTIONS};
 use crate::{
     errors::error::{AriesVcxCoreError, VcxCoreResult},
     wallet::indy::IndySdkWallet,
-    wallet2::{EntryTag, Record, RecordWallet, SearchFilter},
+    wallet2::{EntryTag, EntryTags, Record, RecordUpdate, RecordWallet, SearchFilter},
 };
 
 #[async_trait]
@@ -57,28 +57,27 @@ impl RecordWallet for IndySdkWallet {
         Ok(indy_record.into())
     }
 
-    async fn update_record(&self, record: Record) -> VcxCoreResult<()> {
-        let indy_record: IndyRecord = record.into();
+    async fn update_record(&self, record: RecordUpdate) -> VcxCoreResult<()> {
+        if let Some(tags) = record.tags {
+            let tg: EntryTags = tags.into();
 
-        Locator::instance()
-            .non_secret_controller
-            .update_record_tags(
-                self.wallet_handle,
-                indy_record.type_.clone(),
-                indy_record.id.clone(),
-                indy_record.tags,
-            )
-            .await?;
+            Locator::instance()
+                .non_secret_controller
+                .update_record_tags(
+                    self.wallet_handle,
+                    record.category.clone(),
+                    record.name.clone(),
+                    tg.into(),
+                )
+                .await?;
+        }
 
-        Locator::instance()
-            .non_secret_controller
-            .update_record_value(
-                self.wallet_handle,
-                indy_record.type_,
-                indy_record.id,
-                indy_record.value,
-            )
-            .await?;
+        if let Some(value) = record.value {
+            Locator::instance()
+                .non_secret_controller
+                .update_record_value(self.wallet_handle, record.category, record.name, value)
+                .await?;
+        }
 
         Ok(())
     }
@@ -145,7 +144,7 @@ mod tests {
     use crate::{
         errors::error::AriesVcxCoreErrorKind,
         wallet::indy::IndySdkWallet,
-        wallet2::{EntryTag, RecordBuilder, RecordWallet},
+        wallet2::{EntryTag, RecordBuilder, RecordUpdateBuilder, RecordWallet},
     };
 
     #[tokio::test]
@@ -251,24 +250,30 @@ mod tests {
         let category = "my";
         let value1 = "xxx";
         let value2 = "yyy";
-        let tags = vec![EntryTag::Plaintext("a".into(), "b".into())];
+        let tags1 = vec![EntryTag::Plaintext("a".into(), "b".into())];
+        let tags2 = vec![];
 
-        let mut record = RecordBuilder::default()
+        let record = RecordBuilder::default()
             .name(name.into())
             .category(category.into())
-            .tags(tags.clone())
+            .tags(tags1.clone())
             .value(value1.into())
             .build()
             .unwrap();
         wallet.add_record(record.clone()).await.unwrap();
 
-        record.value = value2.into();
-        record.tags = vec![];
+        let record_update = RecordUpdateBuilder::default()
+            .name(record.name)
+            .value(Some(value2.into()))
+            .category(record.category)
+            .tags(Some(tags2.clone()))
+            .build()
+            .unwrap();
 
-        wallet.update_record(record.clone()).await.unwrap();
+        wallet.update_record(record_update.clone()).await.unwrap();
 
         let res = wallet.get_record(name, category).await.unwrap();
-        assert_eq!(record.value, res.value);
-        assert_eq!(record.tags, res.tags);
+        assert_eq!(value2, res.value);
+        assert_eq!(tags2, res.tags);
     }
 }

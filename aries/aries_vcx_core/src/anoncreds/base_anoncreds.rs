@@ -1,6 +1,6 @@
 use async_trait::async_trait;
 
-use crate::{errors::error::VcxCoreResult, wallet::base_wallet::BaseWallet};
+use crate::{errors::error::VcxCoreResult, wallet2::BaseWallet2};
 
 /// Trait defining standard 'anoncreds' related functionality. The APIs, including
 /// input and output types are based off the indy Anoncreds API:
@@ -19,7 +19,7 @@ pub trait BaseAnonCreds: std::fmt::Debug + Send + Sync {
 
     async fn issuer_create_and_store_revoc_reg(
         &self,
-        wallet: &impl BaseWallet,
+        wallet: &impl BaseWallet2,
         issuer_did: &str,
         cred_def_id: &str,
         tails_dir: &str,
@@ -29,7 +29,7 @@ pub trait BaseAnonCreds: std::fmt::Debug + Send + Sync {
 
     async fn issuer_create_and_store_credential_def(
         &self,
-        wallet: &impl BaseWallet,
+        wallet: &impl BaseWallet2,
         issuer_did: &str,
         schema_json: &str,
         tag: &str,
@@ -39,13 +39,13 @@ pub trait BaseAnonCreds: std::fmt::Debug + Send + Sync {
 
     async fn issuer_create_credential_offer(
         &self,
-        wallet: &impl BaseWallet,
+        wallet: &impl BaseWallet2,
         cred_def_id: &str,
     ) -> VcxCoreResult<String>;
 
     async fn issuer_create_credential(
         &self,
-        wallet: &impl BaseWallet,
+        wallet: &impl BaseWallet2,
         cred_offer_json: &str,
         cred_req_json: &str,
         cred_values_json: &str,
@@ -56,7 +56,7 @@ pub trait BaseAnonCreds: std::fmt::Debug + Send + Sync {
     #[allow(clippy::too_many_arguments)]
     async fn prover_create_proof(
         &self,
-        wallet: &impl BaseWallet,
+        wallet: &impl BaseWallet2,
         proof_req_json: &str,
         requested_credentials_json: &str,
         master_secret_id: &str,
@@ -67,25 +67,25 @@ pub trait BaseAnonCreds: std::fmt::Debug + Send + Sync {
 
     async fn prover_get_credential(
         &self,
-        wallet: &impl BaseWallet,
+        wallet: &impl BaseWallet2,
         cred_id: &str,
     ) -> VcxCoreResult<String>;
 
     async fn prover_get_credentials(
         &self,
-        wallet: &impl BaseWallet,
+        wallet: &impl BaseWallet2,
         filter_json: Option<&str>,
     ) -> VcxCoreResult<String>;
 
     async fn prover_get_credentials_for_proof_req(
         &self,
-        wallet: &impl BaseWallet,
+        wallet: &impl BaseWallet2,
         proof_request_json: &str,
     ) -> VcxCoreResult<String>;
 
     async fn prover_create_credential_req(
         &self,
-        wallet: &impl BaseWallet,
+        wallet: &impl BaseWallet2,
         prover_did: &str,
         cred_offer_json: &str,
         cred_def_json: &str,
@@ -103,7 +103,7 @@ pub trait BaseAnonCreds: std::fmt::Debug + Send + Sync {
 
     async fn prover_store_credential(
         &self,
-        wallet: &impl BaseWallet,
+        wallet: &impl BaseWallet2,
         cred_id: Option<&str>,
         cred_req_metadata_json: &str,
         cred_json: &str,
@@ -113,13 +113,13 @@ pub trait BaseAnonCreds: std::fmt::Debug + Send + Sync {
 
     async fn prover_delete_credential(
         &self,
-        wallet: &impl BaseWallet,
+        wallet: &impl BaseWallet2,
         cred_id: &str,
     ) -> VcxCoreResult<()>;
 
     async fn prover_create_link_secret(
         &self,
-        wallet: &impl BaseWallet,
+        wallet: &impl BaseWallet2,
         link_secret_id: &str,
     ) -> VcxCoreResult<String>;
 
@@ -135,7 +135,7 @@ pub trait BaseAnonCreds: std::fmt::Debug + Send + Sync {
     // PURE Anoncreds)
     async fn revoke_credential_local(
         &self,
-        wallet: &impl BaseWallet,
+        wallet: &impl BaseWallet2,
         tails_dir: &str,
         rev_reg_id: &str,
         cred_rev_id: &str,
@@ -143,13 +143,13 @@ pub trait BaseAnonCreds: std::fmt::Debug + Send + Sync {
 
     async fn get_rev_reg_delta(
         &self,
-        wallet: &impl BaseWallet,
+        wallet: &impl BaseWallet2,
         rev_reg_id: &str,
     ) -> VcxCoreResult<Option<String>>;
 
     async fn clear_rev_reg_delta(
         &self,
-        wallet: &impl BaseWallet,
+        wallet: &impl BaseWallet2,
         rev_reg_id: &str,
     ) -> VcxCoreResult<()>;
 

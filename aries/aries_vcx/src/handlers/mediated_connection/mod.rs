@@ -3,7 +3,7 @@ use std::{collections::HashMap, fmt};
 use agency_client::{
     agency_client::AgencyClient, api::downloaded_message::DownloadedMessage, MessageStatusCode,
 };
-use aries_vcx_core::wallet::base_wallet::BaseWallet;
+use aries_vcx_core::wallet2::BaseWallet2;
 use chrono::Utc;
 use diddoc_legacy::aries::diddoc::AriesDidDoc;
 use futures::{future::BoxFuture, StreamExt};
@@ -104,7 +104,7 @@ pub enum MediatedConnectionActor {
 impl MediatedConnection {
     pub async fn create(
         source_id: &str,
-        wallet: &impl BaseWallet,
+        wallet: &impl BaseWallet2,
         agency_client: &AgencyClient,
         autohop_enabled: bool,
     ) -> VcxResult<Self> {
@@ -123,7 +123,7 @@ impl MediatedConnection {
 
     pub async fn create_with_invite(
         source_id: &str,
-        wallet: &impl BaseWallet,
+        wallet: &impl BaseWallet2,
         agency_client: &AgencyClient,
         invitation: AnyInvitation,
         did_doc: AriesDidDoc,
@@ -150,7 +150,7 @@ impl MediatedConnection {
     }
 
     pub async fn create_with_request(
-        wallet: &impl BaseWallet,
+        wallet: &impl BaseWallet2,
         request: Request,
         pairwise_info: PairwiseInfo,
         agency_client: &AgencyClient,
@@ -327,7 +327,7 @@ impl MediatedConnection {
 
     pub async fn process_request(
         &mut self,
-        wallet: &impl BaseWallet,
+        wallet: &impl BaseWallet2,
         agency_client: &AgencyClient,
         request: Request,
     ) -> VcxResult<()> {
@@ -372,7 +372,7 @@ impl MediatedConnection {
         Ok(())
     }
 
-    pub async fn send_response(&mut self, wallet: &impl BaseWallet) -> VcxResult<()> {
+    pub async fn send_response(&mut self, wallet: &impl BaseWallet2) -> VcxResult<()> {
         trace!("MediatedConnection::send_response >>>");
         let connection_sm = match self.connection_sm.clone() {
             SmMediatedConnection::Inviter(sm_inviter) => {
@@ -424,7 +424,7 @@ impl MediatedConnection {
     // TODO:::: check usage of this method in regards to profile usage
     pub fn update_state_with_message<'a>(
         &'a mut self,
-        wallet: &'a impl BaseWallet,
+        wallet: &'a impl BaseWallet2,
         agency_client: AgencyClient,
         message: Option<AriesMessage>,
     ) -> BoxFuture<'a, VcxResult<()>> {
@@ -447,7 +447,7 @@ impl MediatedConnection {
 
     pub async fn find_and_handle_message(
         &mut self,
-        wallet: &impl BaseWallet,
+        wallet: &impl BaseWallet2,
         agency_client: &AgencyClient,
     ) -> VcxResult<()> {
         if !self.is_in_final_state() {
@@ -486,7 +486,7 @@ impl MediatedConnection {
     pub async fn handle_message(
         &mut self,
         message: AriesMessage,
-        wallet: &impl BaseWallet,
+        wallet: &impl BaseWallet2,
     ) -> VcxResult<()> {
         let did_doc = self.their_did_doc().ok_or(AriesVcxError::from_msg(
             AriesVcxErrorKind::NotReady,
@@ -539,7 +539,7 @@ impl MediatedConnection {
 
     pub async fn find_message_and_update_state(
         &mut self,
-        wallet: &impl BaseWallet,
+        wallet: &impl BaseWallet2,
         agency_client: &AgencyClient,
     ) -> VcxResult<()> {
         if self.is_in_null_state() {
@@ -601,7 +601,7 @@ impl MediatedConnection {
 
     async fn step_inviter(
         &self,
-        wallet: &impl BaseWallet,
+        wallet: &impl BaseWallet2,
         message: Option<AriesMessage>,
         agency_client: &AgencyClient,
     ) -> VcxResult<(Self, bool)> {
@@ -674,7 +674,7 @@ impl MediatedConnection {
 
     async fn step_invitee(
         &self,
-        wallet: &impl BaseWallet,
+        wallet: &impl BaseWallet2,
         message: Option<AriesMessage>,
     ) -> VcxResult<(Self, bool)> {
         match self.connection_sm.clone() {
@@ -732,7 +732,7 @@ impl MediatedConnection {
 
     pub async fn connect<'a, 'b>(
         &'a mut self,
-        wallet: &'b impl BaseWallet,
+        wallet: &'b impl BaseWallet2,
         agency_client: &AgencyClient,
         send_message: Option<SendClosureConnection<'b>>,
     ) -> VcxResult<()>
@@ -895,7 +895,7 @@ impl MediatedConnection {
 
     pub async fn send_message_closure<'a>(
         &self,
-        wallet: &'a impl BaseWallet,
+        wallet: &'a impl BaseWallet2,
     ) -> VcxResult<SendClosure<'a>> {
         trace!("send_message_closure >>>");
         let did_doc = self.their_did_doc().ok_or(AriesVcxError::from_msg(
@@ -910,7 +910,7 @@ impl MediatedConnection {
 
     fn send_message_closure_connection<'a>(
         &self,
-        wallet: &'a impl BaseWallet,
+        wallet: &'a impl BaseWallet2,
     ) -> SendClosureConnection<'a> {
         trace!("send_message_closure_connection >>>");
         Box::new(
@@ -946,7 +946,7 @@ impl MediatedConnection {
 
     pub async fn send_generic_message(
         &self,
-        wallet: &impl BaseWallet,
+        wallet: &impl BaseWallet2,
         message: &str,
     ) -> VcxResult<String> {
         trace!(
@@ -960,7 +960,7 @@ impl MediatedConnection {
 
     pub async fn send_a2a_message(
         &self,
-        wallet: &impl BaseWallet,
+        wallet: &impl BaseWallet2,
         message: &AriesMessage,
     ) -> VcxResult<String> {
         trace!(
@@ -973,7 +973,7 @@ impl MediatedConnection {
 
     pub async fn send_ping(
         &mut self,
-        wallet: &impl BaseWallet,
+        wallet: &impl BaseWallet2,
         comment: Option<String>,
     ) -> VcxResult<TrustPingSender> {
         let mut trust_ping = TrustPingSender::build(true, comment);
@@ -985,7 +985,7 @@ impl MediatedConnection {
 
     pub async fn send_handshake_reuse(
         &self,
-        wallet: &impl BaseWallet,
+        wallet: &impl BaseWallet2,
         oob_msg: &str,
     ) -> VcxResult<()> {
         trace!("MediatedConnection::send_handshake_reuse >>>");

@@ -1,11 +1,11 @@
 use std::sync::Arc;
 
-use aries_vcx::aries_vcx_core::wallet::{base_wallet::BaseWallet, structs_io::UnpackMessageOutput};
+use aries_vcx::aries_vcx_core::wallet2::{DidWallet, UnpackedMessage};
 
 use super::profile::ProfileHolder;
 use crate::{errors::error::VcxUniFFIResult, runtime::block_on};
 
-pub type UnpackMessage = UnpackMessageOutput;
+pub type UnpackMessage = UnpackedMessage;
 
 pub fn unpack_message(
     profile_holder: Arc<ProfileHolder>,

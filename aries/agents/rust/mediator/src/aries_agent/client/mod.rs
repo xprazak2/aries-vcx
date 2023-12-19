@@ -13,7 +13,7 @@ use aries_vcx::{
     },
     utils::encryption_envelope::EncryptionEnvelope,
 };
-use aries_vcx_core::wallet::base_wallet::BaseWallet;
+use aries_vcx_core::wallet2::BaseWallet2;
 use messages::{
     msg_fields::protocols::{
         connection::{response::Response, Connection},
@@ -31,7 +31,7 @@ use super::Agent;
 use crate::utils::prelude::*;
 
 // client role utilities
-impl<T: BaseWallet + 'static, P: MediatorPersistence> Agent<T, P> {
+impl<T: BaseWallet2 + 'static, P: MediatorPersistence> Agent<T, P> {
     /// Starting from a new connection object, tries to create connection request object for the
     /// specified OOB invite endpoint
     pub async fn gen_connection_request(
@@ -39,7 +39,7 @@ impl<T: BaseWallet + 'static, P: MediatorPersistence> Agent<T, P> {
         oob_invite: OOBInvitation,
     ) -> Result<(InviteeConnection<ClientRequestSent>, EncryptionEnvelope), String> {
         // Generate keys
-        let (pw_did, pw_vk) = self
+        let did_data = self
             .wallet
             .create_and_store_my_did(None, None)
             .await
@@ -48,7 +48,10 @@ impl<T: BaseWallet + 'static, P: MediatorPersistence> Agent<T, P> {
         let mock_ledger = MockLedger {}; // not good. to be dealt later
         let client_conn = InviteeConnection::<ClientInit>::new_invitee(
             "foo".into(),
-            PairwiseInfo { pw_did, pw_vk },
+            PairwiseInfo {
+                pw_did: did_data.did,
+                pw_vk: did_data.verkey,
+            },
         )
         .accept_invitation(&mock_ledger, AnyInvitation::Oob(oob_invite.clone()))
         .await

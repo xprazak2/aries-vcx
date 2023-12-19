@@ -1,6 +1,6 @@
 use std::collections::VecDeque;
 
-use aries_vcx_core::wallet::base_wallet::BaseWallet;
+use aries_vcx_core::wallet2::BaseWallet2;
 use mediator::{
     aries_agent::{client::transports::AriesReqwest, ArcAgent},
     persistence::MediatorPersistence,
@@ -9,7 +9,7 @@ use messages::msg_fields::protocols::out_of_band::invitation::Invitation as OOBI
 use serde_json::{json, Value};
 
 pub async fn handle_register(
-    agent: ArcAgent<impl BaseWallet + 'static, impl MediatorPersistence>,
+    agent: ArcAgent<impl BaseWallet2 + 'static, impl MediatorPersistence>,
     oob_invite: OOBInvitation,
 ) -> Result<Value, String> {
     let mut aries_transport = AriesReqwest {

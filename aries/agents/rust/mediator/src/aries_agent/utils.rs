@@ -1,7 +1,7 @@
 use aries_vcx::{
     common::signing::sign_connection_response, errors::error::VcxResult, transport::Transport,
 };
-use aries_vcx_core::wallet::base_wallet::BaseWallet;
+use aries_vcx_core::wallet2::BaseWallet2;
 use axum::async_trait;
 use diddoc_legacy::aries::diddoc::AriesDidDoc;
 use messages::{
@@ -16,7 +16,7 @@ use uuid::Uuid;
 use crate::utils::structs::VerKey;
 
 pub async fn build_response_content(
-    wallet: &impl BaseWallet,
+    wallet: &impl BaseWallet2,
     thread_id: String,
     old_recipient_vk: VerKey,
     new_recipient_did: String,

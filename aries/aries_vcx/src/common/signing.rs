@@ -1,4 +1,4 @@
-use aries_vcx_core::wallet::base_wallet::BaseWallet;
+use aries_vcx_core::wallet2::BaseWallet2;
 use base64::{self, engine::general_purpose, Engine};
 use messages::msg_fields::protocols::connection::{
     response::{ConnectionSignature, ResponseContent},
@@ -19,7 +19,7 @@ fn base64url_decode(encoded: &str) -> VcxResult<Vec<u8>> {
 }
 
 async fn get_signature_data(
-    wallet: &impl BaseWallet,
+    wallet: &impl BaseWallet2,
     data: String,
     key: &str,
 ) -> VcxResult<(Vec<u8>, Vec<u8>)> {
@@ -33,7 +33,7 @@ async fn get_signature_data(
 }
 
 pub async fn sign_connection_response(
-    wallet: &impl BaseWallet,
+    wallet: &impl BaseWallet2,
     key: &str,
     con_data: &ConnectionData,
 ) -> VcxResult<ConnectionSignature> {
@@ -49,7 +49,7 @@ pub async fn sign_connection_response(
 }
 
 pub async fn decode_signed_connection_response(
-    wallet: &impl BaseWallet,
+    wallet: &impl BaseWallet2,
     response: ResponseContent,
     their_vk: &str,
 ) -> VcxResult<ConnectionData> {

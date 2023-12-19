@@ -19,7 +19,7 @@ use aries_vcx_core::{
         base_ledger::{AnoncredsLedgerRead, AnoncredsLedgerWrite},
         indy::pool::test_utils::get_temp_dir_path,
     },
-    wallet::base_wallet::BaseWallet,
+    wallet2::BaseWallet2,
 };
 use test_utils::{
     constants::TEST_TAILS_URL,
@@ -27,7 +27,7 @@ use test_utils::{
 };
 
 pub async fn create_and_write_test_schema(
-    wallet: &impl BaseWallet,
+    wallet: &impl BaseWallet2,
     anoncreds: &impl BaseAnonCreds,
     ledger_write: &impl AnoncredsLedgerWrite,
     submitter_did: &str,
@@ -49,7 +49,7 @@ pub async fn create_and_write_test_schema(
 }
 
 pub async fn create_and_write_test_cred_def(
-    wallet: &impl BaseWallet,
+    wallet: &impl BaseWallet2,
     anoncreds: &impl BaseAnonCreds,
     ledger_read: &impl AnoncredsLedgerRead,
     ledger_write: &impl AnoncredsLedgerWrite,
@@ -78,7 +78,7 @@ pub async fn create_and_write_test_cred_def(
 }
 
 pub async fn create_and_publish_test_rev_reg(
-    wallet: &impl BaseWallet,
+    wallet: &impl BaseWallet2,
     anoncreds: &impl BaseAnonCreds,
     ledger_write: &impl AnoncredsLedgerWrite,
     issuer_did: &str,
@@ -104,8 +104,8 @@ pub async fn create_and_publish_test_rev_reg(
 }
 
 pub async fn create_and_write_credential(
-    wallet_issuer: &impl BaseWallet,
-    wallet_holder: &impl BaseWallet,
+    wallet_issuer: &impl BaseWallet2,
+    wallet_holder: &impl BaseWallet2,
     anoncreds_issuer: &impl BaseAnonCreds,
     anoncreds_holder: &impl BaseAnonCreds,
     institution_did: &str,

@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use aries_vcx_core::wallet::base_wallet::BaseWallet;
+use aries_vcx_core::wallet2::BaseWallet2;
 use client_tui::handle_register;
 use cursive::{
     direction::Orientation,
@@ -17,7 +17,7 @@ use log::info;
 use mediator::{aries_agent::Agent, persistence::MediatorPersistence};
 use messages::msg_fields::protocols::out_of_band::invitation::Invitation as OOBInvitation;
 
-pub async fn init_tui<T: BaseWallet + 'static, P: MediatorPersistence>(agent: Agent<T, P>) {
+pub async fn init_tui<T: BaseWallet2 + 'static, P: MediatorPersistence>(agent: Agent<T, P>) {
     let mut cursive = Cursive::new();
     cursive.add_global_callback(Key::Esc, |s| s.quit());
     cursive.set_user_data(Arc::new(agent));
@@ -29,7 +29,7 @@ pub async fn init_tui<T: BaseWallet + 'static, P: MediatorPersistence>(agent: Ag
     cursive.run()
 }
 
-pub fn endpoints_ui<T: BaseWallet + 'static, P: MediatorPersistence>() -> Panel<LinearLayout> {
+pub fn endpoints_ui<T: BaseWallet2 + 'static, P: MediatorPersistence>() -> Panel<LinearLayout> {
     let mut endpoint_selector = SelectView::new();
     // Set available endpoints
     endpoint_selector.add_item_str("/client/register");
@@ -52,7 +52,7 @@ pub fn endpoints_ui<T: BaseWallet + 'static, P: MediatorPersistence>() -> Panel<
     make_standard(endpoint_selector, Orientation::Vertical).title("Select endpoint")
 }
 
-pub fn client_register_ui<T: BaseWallet + 'static, P: MediatorPersistence>() -> Panel<LinearLayout>
+pub fn client_register_ui<T: BaseWallet2 + 'static, P: MediatorPersistence>() -> Panel<LinearLayout>
 {
     let input = TextArea::new().with_name("oob_text_area");
     let input = ResizedView::new(
@@ -82,7 +82,7 @@ pub fn client_register_ui<T: BaseWallet + 'static, P: MediatorPersistence>() -> 
     make_standard(ui, Orientation::Horizontal).title("Register client using Out Of Band Invitation")
 }
 
-pub fn client_register_connect_cb<T: BaseWallet + 'static, P: MediatorPersistence>(
+pub fn client_register_connect_cb<T: BaseWallet2 + 'static, P: MediatorPersistence>(
     s: &mut Cursive,
 ) {
     let oob_text_area = s.find_name::<TextArea>("oob_text_area").unwrap();
@@ -120,7 +120,7 @@ fn make_standard(view: impl View, orientation: Orientation) -> Panel<LinearLayou
 //     contact_selector_ui(s)
 // }
 
-pub fn contact_selector_ui<T: BaseWallet + 'static, P: MediatorPersistence>(
+pub fn contact_selector_ui<T: BaseWallet2 + 'static, P: MediatorPersistence>(
     s: &mut Cursive,
 ) -> Panel<LinearLayout> {
     let mut contact_selector = SelectView::new();

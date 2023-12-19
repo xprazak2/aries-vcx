@@ -19,7 +19,7 @@ use aries_vcx_core::{
     ledger::base_ledger::{
         AnoncredsLedgerRead, AnoncredsLedgerWrite, IndyLedgerRead, IndyLedgerWrite,
     },
-    wallet::base_wallet::BaseWallet,
+    wallet2::BaseWallet2,
 };
 use messages::msg_fields::protocols::{
     cred_issuance::v1::{
@@ -38,7 +38,7 @@ use crate::utils::{
 };
 
 pub async fn create_address_schema_creddef_revreg(
-    wallet: &impl BaseWallet,
+    wallet: &impl BaseWallet2,
     ledger_read: &(impl IndyLedgerRead + AnoncredsLedgerRead),
     ledger_write: &(impl IndyLedgerWrite + AnoncredsLedgerWrite),
     anoncreds: &impl BaseAnonCreds,
@@ -93,7 +93,7 @@ pub async fn accept_credential_proposal(
         impl IndyLedgerRead + AnoncredsLedgerRead,
         impl IndyLedgerWrite + AnoncredsLedgerWrite,
         impl BaseAnonCreds,
-        impl BaseWallet,
+        impl BaseWallet2,
     >,
     issuer: &mut Issuer,
     cred_proposal: ProposeCredentialV1,
@@ -123,7 +123,7 @@ pub async fn accept_offer(
         impl IndyLedgerRead + AnoncredsLedgerRead,
         impl IndyLedgerWrite + AnoncredsLedgerWrite,
         impl BaseAnonCreds,
-        impl BaseWallet,
+        impl BaseWallet2,
     >,
     cred_offer: OfferCredentialV1,
     holder: &mut Holder,
@@ -158,7 +158,7 @@ pub async fn decline_offer(
         impl IndyLedgerRead + AnoncredsLedgerRead,
         impl IndyLedgerWrite + AnoncredsLedgerWrite,
         impl BaseAnonCreds,
-        impl BaseWallet,
+        impl BaseWallet2,
     >,
     cred_offer: OfferCredentialV1,
     holder: &mut Holder,
@@ -184,13 +184,13 @@ pub async fn send_credential(
         impl IndyLedgerRead + AnoncredsLedgerRead,
         impl IndyLedgerWrite + AnoncredsLedgerWrite,
         impl BaseAnonCreds,
-        impl BaseWallet,
+        impl BaseWallet2,
     >,
     faber: &mut TestAgent<
         impl IndyLedgerRead + AnoncredsLedgerRead,
         impl IndyLedgerWrite + AnoncredsLedgerWrite,
         impl BaseAnonCreds,
-        impl BaseWallet,
+        impl BaseWallet2,
     >,
     issuer_credential: &mut Issuer,
     holder_credential: &mut Holder,
@@ -257,13 +257,13 @@ pub async fn issue_address_credential(
         impl IndyLedgerRead + AnoncredsLedgerRead,
         impl IndyLedgerWrite + AnoncredsLedgerWrite,
         impl BaseAnonCreds,
-        impl BaseWallet,
+        impl BaseWallet2,
     >,
     institution: &mut TestAgent<
         impl IndyLedgerRead + AnoncredsLedgerRead,
         impl IndyLedgerWrite + AnoncredsLedgerWrite,
         impl BaseAnonCreds,
-        impl BaseWallet,
+        impl BaseWallet2,
     >,
 ) -> (Schema, CredentialDef, RevocationRegistry, Issuer) {
     let (schema, cred_def, rev_reg) = create_address_schema_creddef_revreg(
@@ -291,13 +291,13 @@ pub async fn exchange_credential(
         impl IndyLedgerRead + AnoncredsLedgerRead,
         impl IndyLedgerWrite + AnoncredsLedgerWrite,
         impl BaseAnonCreds,
-        impl BaseWallet,
+        impl BaseWallet2,
     >,
     institution: &mut TestAgent<
         impl IndyLedgerRead + AnoncredsLedgerRead,
         impl IndyLedgerWrite + AnoncredsLedgerWrite,
         impl BaseAnonCreds,
-        impl BaseWallet,
+        impl BaseWallet2,
     >,
     credential_data: String,
     cred_def: &CredentialDef,
@@ -330,13 +330,13 @@ pub async fn exchange_credential_with_proposal(
         impl IndyLedgerRead + AnoncredsLedgerRead,
         impl IndyLedgerWrite + AnoncredsLedgerWrite,
         impl BaseAnonCreds,
-        impl BaseWallet,
+        impl BaseWallet2,
     >,
     institution: &mut TestAgent<
         impl IndyLedgerRead + AnoncredsLedgerRead,
         impl IndyLedgerWrite + AnoncredsLedgerWrite,
         impl BaseAnonCreds,
-        impl BaseWallet,
+        impl BaseWallet2,
     >,
     schema_id: &str,
     cred_def_id: &str,
@@ -373,7 +373,7 @@ async fn create_credential_offer(
         impl IndyLedgerRead + AnoncredsLedgerRead,
         impl IndyLedgerWrite + AnoncredsLedgerWrite,
         impl BaseAnonCreds,
-        impl BaseWallet,
+        impl BaseWallet2,
     >,
     cred_def: &CredentialDef,
     rev_reg: &RevocationRegistry,
@@ -404,7 +404,7 @@ async fn create_credential_request(
         impl IndyLedgerRead + AnoncredsLedgerRead,
         impl IndyLedgerWrite + AnoncredsLedgerWrite,
         impl BaseAnonCreds,
-        impl BaseWallet,
+        impl BaseWallet2,
     >,
     cred_offer: OfferCredentialV1,
 ) -> Holder {

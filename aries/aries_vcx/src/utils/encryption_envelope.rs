@@ -1,5 +1,8 @@
 use agency_client::testing::mocking::AgencyMockDecrypted;
-use aries_vcx_core::{global::settings::VERKEY, wallet::base_wallet::BaseWallet};
+use aries_vcx_core::{
+    global::settings::VERKEY,
+    wallet2::{BaseWallet2, Key},
+};
 use diddoc_legacy::aries::diddoc::AriesDidDoc;
 use messages::{
     msg_fields::protocols::routing::{Forward, ForwardContent},
@@ -16,7 +19,7 @@ impl EncryptionEnvelope {
     /// Create an Encryption Envelope from a plaintext AriesMessage encoded as sequence of bytes.
     /// If did_doc includes routing_keys, then also wrap in appropriate layers of forward message.
     pub async fn create(
-        wallet: &impl BaseWallet,
+        wallet: &impl BaseWallet2,
         data: &[u8],
         sender_vk: Option<&str>,
         did_doc: &AriesDidDoc,
@@ -42,7 +45,7 @@ impl EncryptionEnvelope {
     }
 
     pub async fn create2(
-        wallet: &impl BaseWallet,
+        wallet: &impl BaseWallet2,
         data: &[u8],
         sender_vk: Option<&str>,
         recipient_key: String,
@@ -61,7 +64,7 @@ impl EncryptionEnvelope {
     }
 
     async fn encrypt_for_pairwise(
-        wallet: &impl BaseWallet,
+        wallet: &impl BaseWallet2,
         data: &[u8],
         sender_vk: Option<&str>,
         recipient_key: String,
@@ -70,15 +73,19 @@ impl EncryptionEnvelope {
             "Encrypting for pairwise; sender_vk: {:?}, recipient_key: {}",
             sender_vk, recipient_key
         );
-        let recipient_keys = json!([recipient_key.clone()]).to_string();
+
+        let recipient_keys = vec![Key {
+            pubkey_bs58: recipient_key,
+        }];
+
         wallet
-            .pack_message(sender_vk, &recipient_keys, data)
+            .pack_message(sender_vk.map(Into::into), recipient_keys, data)
             .await
             .map_err(|err| err.into())
     }
 
     async fn wrap_into_forward_messages(
-        wallet: &impl BaseWallet,
+        wallet: &impl BaseWallet2,
         mut data: Vec<u8>,
         recipient_key: String,
         routing_keys: Vec<String>,
@@ -99,7 +106,7 @@ impl EncryptionEnvelope {
     }
 
     async fn wrap_into_forward(
-        wallet: &impl BaseWallet,
+        wallet: &impl BaseWallet2,
         data: Vec<u8>,
         forward_to_key: &str,
         routing_key: &str,
@@ -115,16 +122,22 @@ impl EncryptionEnvelope {
             .build();
 
         let message = json!(AriesMessage::from(message)).to_string();
-        let receiver_keys = json!(vec![routing_key]).to_string();
+
+        let receiver_keys = vec![routing_key.into()]
+            .into_iter()
+            .map(|key_str| Key {
+                pubkey_bs58: key_str,
+            })
+            .collect();
 
         wallet
-            .pack_message(None, &receiver_keys, message.as_bytes())
+            .pack_message(None, receiver_keys, message.as_bytes())
             .await
             .map_err(|err| err.into())
     }
 
     async fn _unpack_a2a_message(
-        wallet: &impl BaseWallet,
+        wallet: &impl BaseWallet2,
         encrypted_data: Vec<u8>,
     ) -> VcxResult<(String, Option<String>)> {
         trace!(
@@ -136,7 +149,7 @@ impl EncryptionEnvelope {
     }
 
     pub async fn anon_unpack_aries_msg(
-        wallet: &impl BaseWallet,
+        wallet: &impl BaseWallet2,
         encrypted_data: Vec<u8>,
     ) -> VcxResult<(AriesMessage, Option<String>)> {
         let (message, sender_vk) = Self::anon_unpack(wallet, encrypted_data).await?;
@@ -150,7 +163,7 @@ impl EncryptionEnvelope {
     }
 
     pub async fn anon_unpack(
-        wallet: &impl BaseWallet,
+        wallet: &impl BaseWallet2,
         encrypted_data: Vec<u8>,
     ) -> VcxResult<(String, Option<String>)> {
         trace!(
@@ -171,7 +184,7 @@ impl EncryptionEnvelope {
     }
 
     pub async fn auth_unpack_aries_msg(
-        wallet: &impl BaseWallet,
+        wallet: &impl BaseWallet2,
         encrypted_data: Vec<u8>,
         expected_vk: &str,
     ) -> VcxResult<AriesMessage> {
@@ -186,7 +199,7 @@ impl EncryptionEnvelope {
     }
 
     pub async fn auth_unpack(
-        wallet: &impl BaseWallet,
+        wallet: &impl BaseWallet2,
         encrypted_data: Vec<u8>,
         expected_vk: &str,
     ) -> VcxResult<String> {
@@ -246,11 +259,12 @@ pub mod unit_tests {
     use test_utils::devsetup::build_setup_profile;
 
     use super::*;
+    use crate::aries_vcx_core::wallet2::DidWallet;
 
     #[tokio::test]
     async fn test_pack_unpack_anon() {
         let setup = build_setup_profile().await;
-        let (_, recipient_key) = setup
+        let did_data = setup
             .wallet
             .create_and_store_my_did(None, None)
             .await
@@ -262,7 +276,7 @@ pub mod unit_tests {
             &setup.wallet,
             data_original.as_bytes(),
             None,
-            recipient_key,
+            did_data.verkey,
             [].to_vec(),
         )
         .await
@@ -280,12 +294,12 @@ pub mod unit_tests {
     #[tokio::test]
     async fn test_pack_unpack_auth() {
         let setup = build_setup_profile().await;
-        let (_, sender_key) = setup
+        let sender_data = setup
             .wallet
             .create_and_store_my_did(None, None)
             .await
             .unwrap();
-        let (_, recipient_key) = setup
+        let recipient_data = setup
             .wallet
             .create_and_store_my_did(None, None)
             .await
@@ -296,16 +310,17 @@ pub mod unit_tests {
         let envelope = EncryptionEnvelope::create2(
             &setup.wallet,
             data_original.as_bytes(),
-            Some(&sender_key),
-            recipient_key,
+            Some(&sender_data.verkey),
+            recipient_data.verkey,
             [].to_vec(),
         )
         .await
         .unwrap();
 
-        let data_unpacked = EncryptionEnvelope::auth_unpack(&setup.wallet, envelope.0, &sender_key)
-            .await
-            .unwrap();
+        let data_unpacked =
+            EncryptionEnvelope::auth_unpack(&setup.wallet, envelope.0, &sender_data.verkey)
+                .await
+                .unwrap();
 
         assert_eq!(data_original, data_unpacked);
     }
@@ -313,17 +328,17 @@ pub mod unit_tests {
     #[tokio::test]
     async fn test_pack_unpack_with_routing() {
         let setup = build_setup_profile().await;
-        let (_, sender_key) = setup
+        let sender_data = setup
             .wallet
             .create_and_store_my_did(None, None)
             .await
             .unwrap();
-        let (_, recipient_key) = setup
+        let recipient_data = setup
             .wallet
             .create_and_store_my_did(None, None)
             .await
             .unwrap();
-        let (_, routing_key1) = setup
+        let routing_data = setup
             .wallet
             .create_and_store_my_did(None, None)
             .await
@@ -334,9 +349,9 @@ pub mod unit_tests {
         let envelope = EncryptionEnvelope::create2(
             &setup.wallet,
             data_original.as_bytes(),
-            Some(&sender_key),
-            recipient_key,
-            [routing_key1].to_vec(),
+            Some(&sender_data.verkey),
+            recipient_data.verkey,
+            [routing_data.verkey].to_vec(),
         )
         .await
         .unwrap();
@@ -359,17 +374,17 @@ pub mod unit_tests {
     #[tokio::test]
     async fn test_pack_unpack_unexpected_key_detection() {
         let setup = build_setup_profile().await;
-        let (_, sender_key_alice) = setup
+        let alice_data = setup
             .wallet
             .create_and_store_my_did(None, None)
             .await
             .unwrap();
-        let (_, sender_key_bob) = setup
+        let bob_data = setup
             .wallet
             .create_and_store_my_did(None, None)
             .await
             .unwrap();
-        let (_, recipient_key) = setup
+        let recipient_data = setup
             .wallet
             .create_and_store_my_did(None, None)
             .await
@@ -380,15 +395,15 @@ pub mod unit_tests {
         let envelope = EncryptionEnvelope::create2(
             &setup.wallet,
             data_original.as_bytes(),
-            Some(&sender_key_bob), // bob trying to impersonate alice
-            recipient_key,
+            Some(&bob_data.verkey), // bob trying to impersonate alice
+            recipient_data.verkey,
             [].to_vec(),
         )
         .await
         .unwrap();
 
         let err =
-            EncryptionEnvelope::auth_unpack(&setup.wallet, envelope.0, &sender_key_alice).await;
+            EncryptionEnvelope::auth_unpack(&setup.wallet, envelope.0, &alice_data.verkey).await;
         assert!(err.is_err());
         assert_eq!(
             err.unwrap_err().kind(),

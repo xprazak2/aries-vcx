@@ -1,6 +1,6 @@
 use aries_vcx_core::{
     anoncreds::base_anoncreds::BaseAnonCreds, ledger::base_ledger::AnoncredsLedgerRead,
-    wallet::base_wallet::BaseWallet,
+    wallet2::BaseWallet2,
 };
 use messages::{
     misc::MimeType,
@@ -144,7 +144,7 @@ impl Issuer {
     // from that
     pub async fn build_credential_offer_msg(
         &mut self,
-        wallet: &impl BaseWallet,
+        wallet: &impl BaseWallet2,
         anoncreds: &impl BaseAnonCreds,
         offer_info: OfferInfo,
         comment: Option<String>,
@@ -183,7 +183,7 @@ impl Issuer {
 
     pub async fn build_credential(
         &mut self,
-        wallet: &impl BaseWallet,
+        wallet: &impl BaseWallet2,
         anoncreds: &impl BaseAnonCreds,
     ) -> VcxResult<()> {
         self.issuer_sm = self
@@ -226,7 +226,7 @@ impl Issuer {
 
     pub async fn revoke_credential_local(
         &self,
-        wallet: &impl BaseWallet,
+        wallet: &impl BaseWallet2,
         anoncreds: &impl BaseAnonCreds,
     ) -> VcxResult<()> {
         let revocation_info: RevocationInfoV1 =

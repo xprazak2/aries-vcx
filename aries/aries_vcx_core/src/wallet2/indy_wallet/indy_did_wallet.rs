@@ -12,14 +12,14 @@ impl DidWallet for IndySdkWallet {
     async fn create_and_store_my_did(
         &self,
         seed: Option<&str>,
-        method_name: Option<&str>,
+        did_method_name: Option<&str>,
     ) -> VcxCoreResult<DidData> {
         let res = Locator::instance()
             .did_controller
             .create_and_store_my_did(
                 self.wallet_handle,
                 MyDidInfo {
-                    method_name: method_name.map(|m| DidMethod(m.into())),
+                    method_name: did_method_name.map(|m| DidMethod(m.into())),
                     seed: seed.map(Into::into),
                     ..MyDidInfo::default()
                 },
@@ -40,9 +40,9 @@ impl DidWallet for IndySdkWallet {
             .map_err(From::from)
     }
 
-    async fn replace_did_key_start(&self, did: &str, seed: &str) -> VcxCoreResult<String> {
+    async fn replace_did_key_start(&self, did: &str, seed: Option<&str>) -> VcxCoreResult<String> {
         let key_info = KeyInfo {
-            seed: Some(seed.into()),
+            seed: seed.map(Into::into),
             ..Default::default()
         };
 
@@ -171,7 +171,7 @@ mod tests {
             .collect();
 
         let res = wallet
-            .replace_did_key_start(&did_data.did, &new_seed)
+            .replace_did_key_start(&did_data.did, Some(&new_seed))
             .await
             .unwrap();
 

@@ -2,7 +2,7 @@ use std::collections::HashMap;
 
 use aries_vcx_core::{
     anoncreds::base_anoncreds::BaseAnonCreds, ledger::base_ledger::AnoncredsLedgerRead,
-    wallet::base_wallet::BaseWallet,
+    wallet2::BaseWallet2,
 };
 use time::OffsetDateTime;
 
@@ -22,7 +22,7 @@ pub struct ProverCredential {
 }
 
 pub async fn get_cred_rev_id(
-    wallet: &impl BaseWallet,
+    wallet: &impl BaseWallet2,
     anoncreds: &impl BaseAnonCreds,
     cred_id: &str,
 ) -> VcxResult<String> {

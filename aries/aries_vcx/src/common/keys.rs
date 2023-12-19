@@ -1,13 +1,13 @@
 use aries_vcx_core::{
     ledger::base_ledger::{IndyLedgerRead, IndyLedgerWrite},
-    wallet::base_wallet::BaseWallet,
+    wallet2::BaseWallet2,
 };
 use serde_json::Value;
 
 use crate::errors::error::prelude::*;
 
 pub async fn rotate_verkey_apply(
-    wallet: &impl BaseWallet,
+    wallet: &impl BaseWallet2,
     indy_ledger_write: &impl IndyLedgerWrite,
     did: &str,
     temp_vk: &str,
@@ -42,19 +42,16 @@ pub async fn rotate_verkey_apply(
         ));
     }
 
-    wallet
-        .replace_did_keys_apply(did)
-        .await
-        .map_err(|err| err.into())
+    Ok(wallet.replace_did_key_apply(did).await?)
 }
 
 pub async fn rotate_verkey(
-    wallet: &impl BaseWallet,
+    wallet: &impl BaseWallet2,
     indy_ledger_write: &impl IndyLedgerWrite,
     did: &str,
 ) -> VcxResult<()> {
-    let trustee_temp_verkey = wallet.replace_did_keys_start(did).await?;
-    rotate_verkey_apply(wallet, indy_ledger_write, did, &trustee_temp_verkey).await
+    let trustee_verkey = wallet.replace_did_key_start(did, None).await?;
+    rotate_verkey_apply(wallet, indy_ledger_write, did, &trustee_verkey).await
 }
 
 pub async fn get_verkey_from_ledger(

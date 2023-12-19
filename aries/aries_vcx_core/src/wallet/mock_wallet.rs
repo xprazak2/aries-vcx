@@ -12,6 +12,10 @@ use crate::{
         {self},
     },
     wallet::base_wallet::BaseWallet,
+    wallet2::{
+        BaseWallet2, DidData, DidWallet, Key, Record, RecordBuilder, RecordUpdate, RecordWallet,
+        SearchFilter, UnpackedMessage,
+    },
 };
 
 #[derive(Debug)]
@@ -145,6 +149,95 @@ impl BaseWallet for MockWallet {
 
     async fn unpack_message(&self, msg: &[u8]) -> VcxCoreResult<UnpackMessageOutput> {
         Ok(UnpackMessageOutput {
+            message: format!("{:?}", msg),
+            recipient_verkey: "".to_owned(),
+            sender_verkey: None,
+        })
+    }
+}
+
+impl BaseWallet2 for MockWallet {}
+
+#[async_trait]
+#[allow(unused_variables)]
+impl RecordWallet for MockWallet {
+    async fn add_record(&self, record: Record) -> VcxCoreResult<()> {
+        Ok(())
+    }
+
+    async fn get_record(&self, name: &str, category: &str) -> VcxCoreResult<Record> {
+        Ok(RecordBuilder::default()
+            .name("123".into())
+            .category("record type".into())
+            .value("record value".into())
+            .build()?)
+    }
+
+    async fn update_record(&self, record: RecordUpdate) -> VcxCoreResult<()> {
+        Ok(())
+    }
+
+    async fn delete_record(&self, name: &str, category: &str) -> VcxCoreResult<()> {
+        Ok(())
+    }
+
+    async fn search_record(
+        &self,
+        category: &str,
+        search_filter: Option<SearchFilter>,
+    ) -> VcxCoreResult<Vec<Record>> {
+        Err(AriesVcxCoreError::from_msg(
+            AriesVcxCoreErrorKind::UnimplementedFeature,
+            "unimplemented mock method: search_record",
+        ))
+    }
+}
+
+#[async_trait]
+#[allow(unused_variables)]
+impl DidWallet for MockWallet {
+    async fn create_and_store_my_did(
+        &self,
+        seed: Option<&str>,
+        method_name: Option<&str>,
+    ) -> VcxCoreResult<DidData> {
+        Ok(DidData {
+            did: utils::constants::DID.to_string(),
+            verkey: utils::constants::VERKEY.to_string(),
+        })
+    }
+
+    async fn did_key(&self, name: &str) -> VcxCoreResult<String> {
+        Ok(utils::constants::VERKEY.to_string())
+    }
+
+    async fn replace_did_key_start(&self, did: &str, seed: Option<&str>) -> VcxCoreResult<String> {
+        Ok(utils::constants::VERKEY.to_string())
+    }
+
+    async fn replace_did_key_apply(&self, did: &str) -> VcxCoreResult<()> {
+        Ok(())
+    }
+
+    async fn sign(&self, key: &str, msg: &[u8]) -> VcxCoreResult<Vec<u8>> {
+        Ok(Vec::from(msg))
+    }
+
+    async fn verify(&self, key: &str, msg: &[u8], signature: &[u8]) -> VcxCoreResult<bool> {
+        Ok(true)
+    }
+
+    async fn pack_message(
+        &self,
+        sender_vk: Option<String>,
+        receiver_keys: Vec<Key>,
+        msg: &[u8],
+    ) -> VcxCoreResult<Vec<u8>> {
+        Ok(Vec::from(msg))
+    }
+
+    async fn unpack_message(&self, msg: &[u8]) -> VcxCoreResult<UnpackedMessage> {
+        Ok(UnpackedMessage {
             message: format!("{:?}", msg),
             recipient_verkey: "".to_owned(),
             sender_verkey: None,
