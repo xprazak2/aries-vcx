@@ -47,6 +47,25 @@ impl From<SigType> for &str {
     }
 }
 
+impl TryFrom<KeyAlg> for SigType {
+    type Error = AriesVcxCoreError;
+
+    fn try_from(value: KeyAlg) -> Result<Self, Self::Error> {
+        match value {
+            KeyAlg::Ed25519 => Ok(SigType::EdDSA),
+            KeyAlg::EcCurve(item) => match item {
+                EcCurves::Secp256r1 => Ok(SigType::ES256),
+                EcCurves::Secp256k1 => Ok(SigType::ES256K),
+                EcCurves::Secp384r1 => Ok(SigType::ES384),
+            },
+            _ => Err(AriesVcxCoreError::from_msg(
+                AriesVcxCoreErrorKind::InvalidInput,
+                "this key does not support signing",
+            )),
+        }
+    }
+}
+
 #[derive(Debug)]
 pub struct AskarWallet {
     pub backend: Store,

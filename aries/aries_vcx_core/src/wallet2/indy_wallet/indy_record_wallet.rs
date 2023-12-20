@@ -8,9 +8,9 @@ use vdrtools::Locator;
 
 use super::{SEARCH_OPTIONS, WALLET_OPTIONS};
 use crate::{
-    errors::error::{AriesVcxCoreError, VcxCoreResult},
+    errors::error::{AriesVcxCoreError, AriesVcxCoreErrorKind, VcxCoreResult},
     wallet::indy::IndySdkWallet,
-    wallet2::{EntryTag, EntryTags, Record, RecordUpdate, RecordWallet, SearchFilter},
+    wallet2::{EntryTags, Record, RecordUpdate, RecordWallet, SearchFilter},
 };
 
 #[async_trait]
@@ -19,14 +19,7 @@ impl RecordWallet for IndySdkWallet {
         let tags_map = if record.tags.is_empty() {
             None
         } else {
-            let mut tags_map = HashMap::new();
-            for item in record.tags.into_iter() {
-                match item {
-                    EntryTag::Encrypted(key, value) => tags_map.insert(key, value),
-                    EntryTag::Plaintext(key, value) => tags_map.insert(format!("~{}", key), value),
-                };
-            }
-            Some(tags_map)
+            Some(record.tags.into())
         };
 
         Ok(Locator::instance()
@@ -97,6 +90,10 @@ impl RecordWallet for IndySdkWallet {
         let json_filter = search_filter
             .map(|filter| match filter {
                 SearchFilter::JsonFilter(inner) => Ok::<String, AriesVcxCoreError>(inner),
+                SearchFilter::TagFilter(_) => Err(AriesVcxCoreError::from_msg(
+                    AriesVcxCoreErrorKind::InvalidInput,
+                    "filter type not supported",
+                )),
             })
             .transpose()?;
 
@@ -250,8 +247,8 @@ mod tests {
         let category = "my";
         let value1 = "xxx";
         let value2 = "yyy";
-        let tags1 = vec![EntryTag::Plaintext("a".into(), "b".into())];
-        let tags2 = vec![];
+        let tags1 = EntryTags::from_vec(vec![EntryTag::Plaintext("a".into(), "b".into())]);
+        let tags2 = EntryTags::new();
 
         let record = RecordBuilder::default()
             .name(name.into())
@@ -264,9 +261,9 @@ mod tests {
 
         let record_update = RecordUpdateBuilder::default()
             .name(record.name)
-            .value(Some(value2.into()))
+            .value(value2.into())
             .category(record.category)
-            .tags(Some(tags2.clone()))
+            .tags(tags2.clone())
             .build()
             .unwrap();
 
@@ -274,6 +271,72 @@ mod tests {
 
         let res = wallet.get_record(name, category).await.unwrap();
         assert_eq!(value2, res.value);
+        assert_eq!(tags2, res.tags);
+    }
+
+    #[tokio::test]
+    async fn indy_wallet_should_update_only_value() {
+        let wallet = create_test_wallet().await;
+
+        let name = "foo";
+        let category = "my";
+        let value1 = "xxx";
+        let value2 = "yyy";
+        let tags = EntryTags::from_vec(vec![EntryTag::Plaintext("a".into(), "b".into())]);
+
+        let record = RecordBuilder::default()
+            .name(name.into())
+            .category(category.into())
+            .tags(tags.clone())
+            .value(value1.into())
+            .build()
+            .unwrap();
+        wallet.add_record(record.clone()).await.unwrap();
+
+        let record_update = RecordUpdateBuilder::default()
+            .name(record.name)
+            .value(value2.into())
+            .category(record.category)
+            .build()
+            .unwrap();
+
+        wallet.update_record(record_update.clone()).await.unwrap();
+
+        let res = wallet.get_record(name, category).await.unwrap();
+        assert_eq!(value2, res.value);
+        assert_eq!(tags, res.tags);
+    }
+
+    #[tokio::test]
+    async fn indy_wallet_should_update_only_tags() {
+        let wallet = create_test_wallet().await;
+
+        let name = "foo";
+        let category = "my";
+        let value = "xxx";
+        let tags1 = EntryTags::from_vec(vec![EntryTag::Plaintext("a".into(), "b".into())]);
+        let tags2 = EntryTags::from_vec(vec![EntryTag::Plaintext("c".into(), "d".into())]);
+
+        let record = RecordBuilder::default()
+            .name(name.into())
+            .category(category.into())
+            .tags(tags1.clone())
+            .value(value.into())
+            .build()
+            .unwrap();
+        wallet.add_record(record.clone()).await.unwrap();
+
+        let record_update = RecordUpdateBuilder::default()
+            .name(record.name)
+            .category(record.category)
+            .tags(tags2.clone())
+            .build()
+            .unwrap();
+
+        wallet.update_record(record_update.clone()).await.unwrap();
+
+        let res = wallet.get_record(name, category).await.unwrap();
+        assert_eq!(value, res.value);
         assert_eq!(tags2, res.tags);
     }
 }

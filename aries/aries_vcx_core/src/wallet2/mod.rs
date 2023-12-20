@@ -7,6 +7,7 @@ use derive_builder::Builder;
 use indy_api_types::domain::wallet::Record as IndyRecord;
 use serde::{Deserialize, Serialize};
 
+use self::entry_tag::EntryTags;
 use crate::{
     errors::error::{AriesVcxCoreError, AriesVcxCoreErrorKind, VcxCoreResult},
     wallet::structs_io::UnpackMessageOutput,
@@ -19,6 +20,7 @@ pub mod indy_wallet;
 pub mod askar_wallet;
 
 pub mod crypto_box;
+pub mod entry_tag;
 pub mod utils;
 
 pub struct Key {
@@ -41,132 +43,35 @@ impl From<RngMethod> for Option<&str> {
     }
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
-pub enum EntryTag {
-    Encrypted(String, String),
-    Plaintext(String, String),
-}
-
-#[derive(Default)]
-pub struct EntryTags {
-    inner: Vec<EntryTag>,
-}
-
-impl EntryTags {
-    pub fn add(&mut self, tag: EntryTag) {
-        self.inner.push(tag)
-    }
-}
-
-impl From<Vec<EntryTag>> for EntryTags {
-    fn from(value: Vec<EntryTag>) -> Self {
-        value.into_iter().fold(Self::default(), |mut memo, item| {
-            memo.add(item);
-            memo
-        })
-    }
-}
-
-impl From<EntryTags> for Vec<EntryTag> {
-    fn from(value: EntryTags) -> Self {
-        value.inner
-    }
-}
-
-impl From<EntryTags> for HashMap<String, String> {
-    fn from(value: EntryTags) -> Self {
-        let tags: Vec<EntryTag> = value.into();
-        tags.into_iter().fold(Self::new(), |mut memo, item| {
-            let (key, value) = item.into();
-            memo.insert(key, value);
-            memo
-        })
-    }
-}
-
-impl From<HashMap<String, String>> for EntryTags {
-    fn from(value: HashMap<String, String>) -> Self {
-        Self {
-            inner: value
-                .into_iter()
-                .map(|(key, value)| (key, value))
-                .map(From::from)
-                .collect(),
-        }
-    }
-}
-
-#[cfg(feature = "askar_wallet")]
-impl From<AskarEntryTag> for EntryTag {
-    fn from(value: AskarEntryTag) -> Self {
-        match value {
-            AskarEntryTag::Encrypted(key, val) => Self::Encrypted(key, val),
-            AskarEntryTag::Plaintext(key, val) => Self::Plaintext(key, val),
-        }
-    }
-}
-
-#[cfg(feature = "askar_wallet")]
-impl From<EntryTag> for AskarEntryTag {
-    fn from(value: EntryTag) -> Self {
-        match value {
-            EntryTag::Encrypted(key, val) => Self::Encrypted(key, val),
-            EntryTag::Plaintext(key, val) => Self::Plaintext(key, val),
-        }
-    }
-}
-
 #[derive(Debug, Default, Clone, Builder)]
 pub struct Record {
     pub category: String,
     pub name: String,
     pub value: String,
-    #[builder(default = "vec![]")]
-    pub tags: Vec<EntryTag>,
+    #[builder(default = "EntryTags::new()")]
+    pub tags: EntryTags,
 }
 
 #[derive(Debug, Default, Clone, Builder)]
+#[builder(setter(strip_option))]
 pub struct RecordUpdate {
     pub category: String,
     pub name: String,
-    #[builder(default)]
+    #[builder(default = "None")]
     pub value: Option<String>,
-    #[builder(default)]
-    pub tags: Option<Vec<EntryTag>>,
+    #[builder(default = "None")]
+    pub tags: Option<EntryTags>,
 }
 
 #[cfg(feature = "vdrtools_wallet")]
 impl From<IndyRecord> for Record {
     fn from(ir: IndyRecord) -> Self {
-        let tags = ir
-            .tags
-            .into_iter()
-            .map(|(key, value)| EntryTag::Plaintext(key, value))
-            .collect();
+        let tags = ir.tags.into_iter().map(From::from).collect();
         Self {
             name: ir.id,
             category: ir.type_,
             value: ir.value,
             tags,
-        }
-    }
-}
-
-impl From<(String, String)> for EntryTag {
-    fn from(value: (String, String)) -> Self {
-        if value.0.starts_with('~') {
-            EntryTag::Plaintext(value.0, value.1)
-        } else {
-            EntryTag::Encrypted(value.0, value.1)
-        }
-    }
-}
-
-impl From<EntryTag> for (String, String) {
-    fn from(value: EntryTag) -> Self {
-        match value {
-            EntryTag::Encrypted(key, val) => (key, val),
-            EntryTag::Plaintext(key, val) => (key, val),
         }
     }
 }
