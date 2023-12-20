@@ -4,7 +4,7 @@ use async_trait::async_trait;
 use super::AskarWallet;
 use crate::{
     errors::error::{AriesVcxCoreError, AriesVcxCoreErrorKind, VcxCoreResult},
-    wallet2::{EntryTag, Record, RecordUpdate, RecordWallet, SearchFilter},
+    wallet2::{Record, RecordUpdate, RecordWallet, SearchFilter},
 };
 
 #[async_trait]
@@ -43,24 +43,48 @@ impl RecordWallet for AskarWallet {
     }
 
     async fn update_record(&self, record: RecordUpdate) -> VcxCoreResult<()> {
-        let mut session = self.backend.session(self.profile.clone()).await?;
+        let mut tx = self.backend.transaction(self.profile.clone()).await?;
 
-        let tags: Option<Vec<AskarEntryTag>> = record
+        let mut tags: Option<Vec<AskarEntryTag>> = record
             .tags
             .map(|ary| ary.into_iter().map(From::from).collect());
 
-        let value = record.value.map(|item| item.as_bytes().to_vec());
+        let mut value = record.value.map(|item| item.as_bytes().to_vec());
 
-        Ok(session
-            .update(
-                EntryOperation::Replace,
-                &record.category,
-                &record.name,
-                value.as_deref(),
-                tags.as_deref(),
-                None,
-            )
-            .await?)
+        if value.is_none() || tags.is_none() {
+            let existing = tx.fetch(&record.category, &record.name, true).await?;
+
+            match existing {
+                Some(found) => {
+                    if value.is_none() {
+                        value = Some(found.value.into_vec())
+                    }
+
+                    if tags.is_none() {
+                        tags = Some(found.tags)
+                    }
+                },
+                None => {
+                    return Err(AriesVcxCoreError::from_msg(
+                        AriesVcxCoreErrorKind::WalletRecordNotFound,
+                        "wallet record not found",
+                    ));
+                }
+            }
+        }
+
+        tx.update(
+            EntryOperation::Replace,
+            &record.category,
+            &record.name,
+            value.as_deref(),
+            tags.as_deref(),
+            None,
+        )
+        .await?;
+        Ok(tx.commit().await?)
+
+        // Ok(())
     }
 
     async fn delete_record(&self, name: &str, category: &str) -> VcxCoreResult<()> {
@@ -104,7 +128,11 @@ mod test {
     use uuid::Uuid;
 
     use super::*;
-    use crate::wallet2::{askar_wallet::AskarWallet, RecordBuilder, RecordUpdateBuilder};
+    use crate::wallet2::{
+        askar_wallet::AskarWallet,
+        entry_tag::{EntryTag, EntryTags},
+        RecordBuilder, RecordUpdateBuilder,
+    };
 
     async fn create_test_wallet() -> AskarWallet {
         AskarWallet::create(
@@ -194,17 +222,19 @@ mod test {
     }
 
     #[tokio::test]
-    async fn test_askar_should_update_record() {
+    async fn test_askar_should_update_record_value() {
         let wallet = create_test_wallet().await;
 
         let name = "test-name".to_string();
         let category = "test-category".to_string();
         let value = "test-value".to_string();
+        let tags = EntryTags::from_vec(vec![EntryTag::Plaintext("a".into(), "b".into())]);
 
         let record = RecordBuilder::default()
             .name(name.clone())
             .category(category.clone())
             .value(value.clone().into())
+            .tags(tags.clone())
             .build()
             .unwrap();
 
@@ -215,7 +245,7 @@ mod test {
         let record_update = RecordUpdateBuilder::default()
             .name(name.clone())
             .category(category.clone())
-            .value(Some(updated_value.clone().into()))
+            .value(updated_value.clone().into())
             .build()
             .unwrap();
 
@@ -223,12 +253,13 @@ mod test {
 
         let found = wallet.get_record(&name, &category).await.unwrap();
         assert_eq!(updated_value, found.value);
+        assert_eq!(tags, found.tags);
 
         let other_category = "other-test-category".to_string();
         let record_update = RecordUpdateBuilder::default()
             .name(name.clone())
             .category(other_category.clone())
-            .value(Some(updated_value.clone().into()))
+            .value(updated_value.clone().into())
             .build()
             .unwrap();
 
@@ -238,6 +269,78 @@ mod test {
             .unwrap_err();
 
         assert_eq!(AriesVcxCoreErrorKind::WalletRecordNotFound, err.kind());
+    }
+
+    #[tokio::test]
+    async fn test_askar_should_update_record_value_and_tags() {
+        let wallet = create_test_wallet().await;
+
+        let name = "test-name".to_string();
+        let category = "test-category".to_string();
+        let value = "test-value".to_string();
+        let tags = EntryTags::from_vec(vec![EntryTag::Plaintext("a".into(), "b".into())]);
+
+        let record = RecordBuilder::default()
+            .name(name.clone())
+            .category(category.clone())
+            .value(value.clone().into())
+            .tags(tags)
+            .build()
+            .unwrap();
+
+        wallet.add_record(record.clone()).await.unwrap();
+
+        let updated_value = "updated-test-value".to_string();
+        let updated_tags = EntryTags::from_vec(vec![EntryTag::Plaintext("c".into(), "d".into())]);
+
+        let record_update = RecordUpdateBuilder::default()
+            .name(name.clone())
+            .category(category.clone())
+            .value(updated_value.clone())
+            .tags(updated_tags.clone())
+            .build()
+            .unwrap();
+
+        wallet.update_record(record_update.clone()).await.unwrap();
+
+        let found = wallet.get_record(&name, &category).await.unwrap();
+        assert_eq!(updated_value, found.value);
+        assert_eq!(updated_tags, found.tags);
+    }
+
+    #[tokio::test]
+    async fn test_askar_should_update_record_tags() {
+        let wallet = create_test_wallet().await;
+
+        let name = "test-name".to_string();
+        let category = "test-category".to_string();
+        let value = "test-value".to_string();
+        let tags = EntryTags::from_vec(vec![EntryTag::Plaintext("a".into(), "b".into())]);
+
+        let record = RecordBuilder::default()
+            .name(name.clone())
+            .category(category.clone())
+            .value(value.clone().into())
+            .tags(tags)
+            .build()
+            .unwrap();
+
+        wallet.add_record(record.clone()).await.unwrap();
+
+        let updated_tags = EntryTags::from_vec(vec![EntryTag::Plaintext("c".into(), "d".into())]);
+
+        let record_update = RecordUpdateBuilder::default()
+            .name(name.clone())
+            .category(category.clone())
+            .tags(updated_tags.clone())
+            .build()
+            .unwrap();
+
+        wallet.update_record(record_update.clone()).await.unwrap();
+
+        let found = wallet.get_record(&name, &category).await.unwrap();
+        assert_eq!(value, found.value);
+        assert_eq!(updated_tags, found.tags);
     }
 
     #[tokio::test]

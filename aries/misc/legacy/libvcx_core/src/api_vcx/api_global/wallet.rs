@@ -183,7 +183,7 @@ pub async fn wallet_update_wallet_record_value(
     let record = RecordUpdateBuilder::default()
         .name(id.into())
         .category(xtype.into())
-        .value(Some(value.into()))
+        .value(value.into())
         .build()?;
 
     map_ariesvcx_core_result(wallet.update_record(record).await)

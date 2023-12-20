@@ -703,14 +703,14 @@ impl BaseAnonCreds for IndyCredxAnonCreds {
                 let record = RecordUpdateBuilder::default()
                     .name(rev_reg_id.clone())
                     .category(CATEGORY_REV_REG.into())
-                    .value(Some(str_rev_reg.into()))
+                    .value(str_rev_reg.into())
                     .build()?;
                 wallet.update_record(record).await?;
 
                 let record = RecordUpdateBuilder::default()
                     .name(rev_reg_id)
                     .category(CATEGORY_REV_REG_INFO.into())
-                    .value(Some(str_rev_reg_info))
+                    .value(str_rev_reg_info)
                     .build()?;
                 wallet.update_record(record).await?;
 
@@ -1335,14 +1335,14 @@ impl BaseAnonCreds for IndyCredxAnonCreds {
         let record = RecordUpdateBuilder::default()
             .name(rev_reg_id.into())
             .category(CATEGORY_REV_REG.into())
-            .value(Some(str_rev_reg))
+            .value(str_rev_reg)
             .build()?;
         wallet.update_record(record).await?;
 
         let record = RecordUpdateBuilder::default()
             .name(rev_reg_id.into())
             .category(CATEGORY_REV_REG_INFO.into())
-            .value(Some(str_rev_reg_info))
+            .value(str_rev_reg_info)
             .build()?;
         wallet.update_record(record).await?;
 
@@ -1351,7 +1351,7 @@ impl BaseAnonCreds for IndyCredxAnonCreds {
                 let record = RecordUpdateBuilder::default()
                     .name(rev_reg_id.into())
                     .category(CATEGORY_REV_REG_DELTA.into())
-                    .value(Some(str_rev_reg_delta))
+                    .value(str_rev_reg_delta)
                     .build()?;
                 wallet.update_record(record).await?
             }
