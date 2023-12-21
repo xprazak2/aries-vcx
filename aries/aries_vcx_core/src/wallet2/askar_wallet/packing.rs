@@ -1,11 +1,14 @@
 use aries_askar::{
-    kms::{KeyAlg, KeyEntry, LocalKey, ToDecrypt},
+    crypto::alg::Chacha20Types,
+    kms::{KeyAlg, KeyAlg::Ed25519, KeyEntry, LocalKey, ToDecrypt},
     Session,
 };
-
-use aries_askar::crypto::alg::Chacha20Types;
 use serde::{Deserialize, Serialize};
 
+use super::askar_utils::{
+    ed25519_to_x25519_pair, ed25519_to_x25519_private, ed25519_to_x25519_public,
+    local_key_to_private_key_bytes, local_key_to_public_key_bytes,
+};
 use crate::{
     errors::error::{AriesVcxCoreError, AriesVcxCoreErrorKind, VcxCoreResult},
     wallet2::{
@@ -17,9 +20,6 @@ use crate::{
         Key, UnpackedMessage,
     },
 };
-
-use super::askar_utils::{local_key_to_private_key_bytes, local_key_to_public_key_bytes};
-use aries_askar::kms::KeyAlg::X25519;
 
 pub const PROTECTED_HEADER_ENC: &str = "xchacha20poly1305_ietf";
 pub const PROTECTED_HEADER_TYP: &str = "JWM/1.0";
@@ -166,19 +166,22 @@ impl Packing {
     ) -> VcxCoreResult<(LocalKey, Option<String>)> {
         let encrypted_key = decode_urlsafe(&recipient.encrypted_key)?;
         let iv = decode_urlsafe(&recipient.header.iv)?;
-
         let sender_vk_enc = decode_urlsafe(&recipient.header.sender)?;
-
-        let private_bytes = local_key_to_private_key_bytes(&local_key)?;
-        let public_bytes = local_key_to_public_key_bytes(&local_key)?;
+        let (private_bytes, public_bytes) = ed25519_to_x25519_pair(local_key)?;
 
         let sender_vk_vec =
             self.crypto_box
                 .sealedbox_decrypt(&private_bytes, &public_bytes, &sender_vk_enc)?;
 
-        let cek_vec =
-            self.crypto_box
-                .box_decrypt(&private_bytes, &sender_vk_vec, &encrypted_key, &iv)?;
+        let sender_vk_local_key = LocalKey::from_public_bytes(Ed25519, &sender_vk_vec)?;
+        let sender_vk_public_bytes = ed25519_to_x25519_public(&sender_vk_local_key)?;
+
+        let cek_vec = self.crypto_box.box_decrypt(
+            &private_bytes,
+            &sender_vk_public_bytes,
+            &encrypted_key,
+            &iv,
+        )?;
 
         let sender_vk = bytes_to_bs58(&sender_vk_vec);
 
@@ -193,9 +196,7 @@ impl Packing {
         recipient: &AnoncryptRecipient,
     ) -> VcxCoreResult<(LocalKey, Option<String>)> {
         let encrypted_key = decode_urlsafe(&recipient.encrypted_key)?;
-
-        let private_bytes = local_key_to_private_key_bytes(&local_key)?;
-        let public_bytes = local_key_to_public_key_bytes(&local_key)?;
+        let (private_bytes, public_bytes) = ed25519_to_x25519_pair(local_key)?;
 
         let cek_vec =
             self.crypto_box
@@ -261,7 +262,7 @@ impl Packing {
     }
 
     fn check_supported_key_alg(&self, key: &LocalKey) -> VcxCoreResult<()> {
-        let supported_algs = vec![X25519];
+        let supported_algs = vec![Ed25519];
 
         if !supported_algs.contains(&key.algorithm()) {
             let msg = format!(
@@ -286,25 +287,26 @@ impl Packing {
         recipient_keys: Vec<Key>,
         sender_local_key: LocalKey,
     ) -> VcxCoreResult<Vec<Recipient>> {
-        let my_secret_bytes = local_key_to_private_key_bytes(&sender_local_key)?;
-        let my_public_bytes = local_key_to_public_key_bytes(&sender_local_key)?;
-
+        let my_original_public_bytes = local_key_to_public_key_bytes(&sender_local_key)?;
+        let my_secret_bytes = ed25519_to_x25519_private(&sender_local_key)?;
         let enc_key_secret = local_key_to_private_key_bytes(enc_key)?;
 
         let mut encrypted_recipients = Vec::with_capacity(recipient_keys.len());
 
         for recipient_key in recipient_keys {
             let recipient_pubkey = bs58_to_bytes(&recipient_key.pubkey_bs58)?;
+            let recipient_local_key = LocalKey::from_public_bytes(Ed25519, &recipient_pubkey)?;
+            let recipient_public_bytes = ed25519_to_x25519_public(&recipient_local_key)?;
 
             let (enc_cek, nonce) = self.crypto_box.box_encrypt(
                 &my_secret_bytes,
-                &recipient_pubkey,
+                &recipient_public_bytes,
                 &enc_key_secret,
             )?;
 
             let enc_sender = self
                 .crypto_box
-                .sealedbox_encrypt(&recipient_pubkey, &my_public_bytes)?;
+                .sealedbox_encrypt(&recipient_public_bytes, &my_original_public_bytes)?;
 
             let kid = bytes_to_bs58(&recipient_pubkey);
             let sender = encode_urlsafe(&enc_sender);
