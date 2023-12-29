@@ -29,6 +29,24 @@ impl From<RngMethod> for Option<&str> {
     }
 }
 
+pub enum SigType {
+    EdDSA,
+    ES256,
+    ES256K,
+    ES384,
+}
+
+impl From<SigType> for &str {
+    fn from(value: SigType) -> Self {
+        match value {
+            SigType::EdDSA => "eddsa",
+            SigType::ES256 => "es256",
+            SigType::ES256K => "es256k",
+            SigType::ES384 => "es384",
+        }
+    }
+}
+
 #[derive(Debug)]
 pub struct AskarWallet {
     pub backend: Store,

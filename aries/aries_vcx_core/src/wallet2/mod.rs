@@ -15,10 +15,6 @@ use crate::{
 #[cfg(feature = "vdrtools_wallet")]
 pub mod indy_wallet;
 
-pub struct Key {
-    pub pubkey_bs58: String,
-}
-
 #[cfg(feature = "askar_wallet")]
 pub mod askar_wallet;
 
@@ -195,24 +191,6 @@ impl From<Record> for IndyRecord {
     }
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize)]
-pub struct UnpackedMessage {
-    pub message: String,
-    pub recipient_verkey: String,
-    pub sender_verkey: Option<String>,
-}
-
-#[cfg(feature = "vdrtools_wallet")]
-impl From<UnpackMessageOutput> for UnpackedMessage {
-    fn from(value: UnpackMessageOutput) -> Self {
-        Self {
-            message: value.message,
-            recipient_verkey: value.recipient_verkey,
-            sender_verkey: value.sender_verkey,
-        }
-    }
-}
-
 #[cfg(feature = "askar_wallet")]
 impl TryFrom<Entry> for Record {
     type Error = AriesVcxCoreError;
@@ -250,13 +228,14 @@ pub struct DidData {
     pub verkey: String,
 }
 
-#[derive(Clone)]
+#[derive(Clone, Serialize, Deserialize)]
 pub struct UnpackedMessage {
     pub message: String,
     pub recipient_verkey: String,
     pub sender_verkey: Option<String>,
 }
 
+#[cfg(feature = "vdrtools_wallet")]
 impl From<UnpackMessageOutput> for UnpackedMessage {
     fn from(value: UnpackMessageOutput) -> Self {
         Self {

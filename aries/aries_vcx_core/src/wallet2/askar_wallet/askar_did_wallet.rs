@@ -4,10 +4,10 @@ use aries_askar::{
 };
 use async_trait::async_trait;
 
-use super::{packing::Packing, AskarWallet, RngMethod};
+use super::{packing::Packing, AskarWallet, RngMethod, SigType};
 use crate::{
     errors::error::{AriesVcxCoreError, AriesVcxCoreErrorKind, VcxCoreResult},
-    wallet2::{DidData, DidWallet, Key, SigType, UnpackedMessage},
+    wallet2::{DidData, DidWallet, Key, UnpackedMessage},
 };
 
 #[async_trait]
