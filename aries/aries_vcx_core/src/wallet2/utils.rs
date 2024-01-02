@@ -3,6 +3,7 @@ use base64::{
     engine::{general_purpose, DecodePaddingMode, GeneralPurpose, GeneralPurposeConfig},
     Engine,
 };
+use rand::{distributions::Alphanumeric, Rng};
 use serde::Deserialize;
 
 use crate::errors::error::{AriesVcxCoreError, AriesVcxCoreErrorKind, VcxCoreResult};
@@ -39,4 +40,19 @@ pub fn bytes_to_bs58(bytes: &[u8]) -> String {
 pub fn from_json_str<T: for<'a> Deserialize<'a>>(json: &str) -> VcxCoreResult<T> {
     Ok(serde_json::from_str::<T>(json)
         .map_err(|err| AriesVcxCoreError::from_msg(AriesVcxCoreErrorKind::InvalidJson, err))?)
+}
+
+pub fn random_seed() -> String {
+    rand::thread_rng()
+        .sample_iter(Alphanumeric)
+        .take(32)
+        .map(char::from)
+        .collect()
+}
+
+pub fn seed_from_opt(maybe_seed: Option<&str>) -> String {
+    match maybe_seed {
+        Some(val) => val.into(),
+        None => random_seed(),
+    }
 }

@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use aries_askar::entry::{Entry, EntryKind, EntryTag as AskarEntryTag, TagFilter};
+use aries_askar::entry::{Entry, EntryKind, TagFilter};
 use async_trait::async_trait;
 use derive_builder::Builder;
 #[cfg(feature = "vdrtools_wallet")]
@@ -133,7 +133,7 @@ pub struct DidData {
     pub verkey: String,
 }
 
-#[derive(Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct UnpackedMessage {
     pub message: String,
     pub recipient_verkey: String,

@@ -1,14 +1,51 @@
 use aries_askar::{
-    crypto::alg::Chacha20Types,
+    crypto::alg::{Chacha20Types, EcCurves},
     kms::{KeyAlg, LocalKey},
 };
 use async_trait::async_trait;
 
-use super::{packing::Packing, AskarWallet, RngMethod, SigType};
+use super::{packing::Packing, AskarWallet, RngMethod};
 use crate::{
     errors::error::{AriesVcxCoreError, AriesVcxCoreErrorKind, VcxCoreResult},
-    wallet2::{DidData, DidWallet, Key, UnpackedMessage},
+    wallet2::{utils::seed_from_opt, DidData, DidWallet, Key, UnpackedMessage},
 };
+
+pub enum SigType {
+    EdDSA,
+    ES256,
+    ES256K,
+    ES384,
+}
+
+impl From<SigType> for &str {
+    fn from(value: SigType) -> Self {
+        match value {
+            SigType::EdDSA => "eddsa",
+            SigType::ES256 => "es256",
+            SigType::ES256K => "es256k",
+            SigType::ES384 => "es384",
+        }
+    }
+}
+
+impl TryFrom<KeyAlg> for SigType {
+    type Error = AriesVcxCoreError;
+
+    fn try_from(value: KeyAlg) -> Result<Self, Self::Error> {
+        match value {
+            KeyAlg::Ed25519 => Ok(SigType::EdDSA),
+            KeyAlg::EcCurve(item) => match item {
+                EcCurves::Secp256r1 => Ok(SigType::ES256),
+                EcCurves::Secp256k1 => Ok(SigType::ES256K),
+                EcCurves::Secp384r1 => Ok(SigType::ES384),
+            },
+            _ => Err(AriesVcxCoreError::from_msg(
+                AriesVcxCoreErrorKind::InvalidInput,
+                "this key does not support signing",
+            )),
+        }
+    }
+}
 
 #[async_trait]
 impl DidWallet for AskarWallet {
@@ -19,23 +56,25 @@ impl DidWallet for AskarWallet {
     ) -> VcxCoreResult<DidData> {
         let mut tx = self.backend.transaction(self.profile.clone()).await?;
 
-        let fix_seed = match seed {
-            Some(val) => val,
-            None => "",
-        };
-
         let (did, local_key) = self
             .insert_key(
                 &mut tx,
                 KeyAlg::Ed25519,
-                fix_seed.as_bytes(),
+                seed_from_opt(seed).as_bytes(),
                 RngMethod::RandomDet,
             )
             .await?;
 
         let verkey = self.local_key_to_bs58_pubkey(&local_key)?;
 
-        self.insert_did(&mut tx, &did, &did, &verkey, None).await?;
+        self.insert_did(
+            &mut tx,
+            &did,
+            AskarWallet::CURRENT_DID_CATEGORY,
+            &verkey,
+            None,
+        )
+        .await?;
 
         tx.commit().await?;
 
@@ -44,14 +83,10 @@ impl DidWallet for AskarWallet {
 
     async fn did_key(&self, did: &str) -> VcxCoreResult<String> {
         let mut session = self.backend.session(self.profile.clone()).await?;
+        let data = self.find_current_did(&mut session, did).await?;
 
-        let data = self.find_did(&mut session, did).await?;
-
-        if let Some(_) = data {
-            let local_key = self.fetch_local_key(&mut session, did).await?;
-            let verkey = self.local_key_to_bs58_pubkey(&local_key)?;
-
-            return Ok(verkey);
+        if let Some(did_data) = data {
+            return Ok(did_data.verkey);
         }
 
         Err(AriesVcxCoreError::from_msg(
@@ -63,44 +98,60 @@ impl DidWallet for AskarWallet {
     async fn replace_did_key_start(&self, did: &str, seed: Option<&str>) -> VcxCoreResult<String> {
         let mut tx = self.backend.transaction(self.profile.clone()).await?;
 
-        let data = self.find_did(&mut tx, did).await?;
+        let data = self.find_current_did(&mut tx, did).await?;
 
-        let fix_seed = match seed {
-            Some(val) => val,
-            None => "",
-        };
-
-        if let Some(did_data) = data {
-            let key_name = &did_data.verkey[0..16];
-
+        if let Some(_) = data {
             let (new_key_name, local_key) = self
                 .insert_key(
                     &mut tx,
                     KeyAlg::Ed25519,
-                    fix_seed.as_bytes(),
+                    seed_from_opt(seed).as_bytes(),
                     RngMethod::RandomDet,
                 )
                 .await?;
 
             let verkey = self.local_key_to_bs58_pubkey(&local_key)?;
 
-            self.insert_did(&mut tx, &new_key_name, &did, &verkey, None)
+            self.insert_did(&mut tx, did, AskarWallet::TMP_DID_CATEGORY, &verkey, None)
                 .await?;
 
-            tx.remove(key_name, did).await?;
-            tx.remove_key(key_name).await?;
             tx.commit().await?;
-            return Ok(verkey);
+
+            return Ok(new_key_name);
         }
 
         Err(AriesVcxCoreError::from_msg(
-            AriesVcxCoreErrorKind::InvalidDid,
-            "did not found",
+            AriesVcxCoreErrorKind::WalletRecordNotFound,
+            format!("did not found in wallet: {}", did),
         ))
     }
 
     async fn replace_did_key_apply(&self, did: &str) -> VcxCoreResult<()> {
-        Ok(())
+        let mut tx = self.backend.transaction(self.profile.clone()).await?;
+
+        let tmp_record = self
+            .find_did(&mut tx, did, AskarWallet::TMP_DID_CATEGORY)
+            .await?;
+
+        if let Some(did_data) = tmp_record {
+            tx.remove(AskarWallet::TMP_DID_CATEGORY, did).await?;
+            tx.remove_key(&did_data.verkey[0..16]).await?;
+            self.update_did(
+                &mut tx,
+                did,
+                AskarWallet::CURRENT_DID_CATEGORY,
+                &did_data.verkey,
+                None,
+            )
+            .await?;
+            tx.commit().await?;
+            return Ok(());
+        } else {
+            return Err(AriesVcxCoreError::from_msg(
+                AriesVcxCoreErrorKind::WalletRecordNotFound,
+                "temporary did key not found in wallet",
+            ));
+        }
     }
 
     async fn sign(&self, key_name: &str, msg: &[u8]) -> VcxCoreResult<Vec<u8>> {
@@ -177,14 +228,11 @@ impl DidWallet for AskarWallet {
 #[cfg(test)]
 mod test {
     use super::*;
-    use crate::{
-        errors::error::AriesVcxCoreErrorKind,
-        wallet2::{
-            askar_wallet::{
-                askar_utils::local_key_to_public_key_bytes, test_helper::create_test_wallet,
-            },
-            utils::bytes_to_bs58,
+    use crate::wallet2::{
+        askar_wallet::{
+            askar_utils::local_key_to_public_key_bytes, test_helper::create_test_wallet,
         },
+        utils::bytes_to_bs58,
     };
 
     #[tokio::test]
@@ -226,14 +274,85 @@ mod test {
             .await
             .unwrap();
 
-        let res = wallet
-            .replace_did_key(&first_data.did, "goo")
+        let new_key_name = wallet
+            .replace_did_key_start(&first_data.did, Some("goo"))
             .await
             .unwrap();
 
-        let new_data = wallet.did_key(&first_data.did).await.unwrap();
+        wallet.replace_did_key_apply(&first_data.did).await.unwrap();
 
-        assert_eq!(res, new_data);
+        let new_verkey = wallet.did_key(&first_data.did).await.unwrap();
+
+        assert_eq!(new_key_name, new_verkey[0..16]);
+    }
+
+    #[tokio::test]
+    async fn test_askar_should_replace_did_key_repeatedly() {
+        let wallet = create_test_wallet().await;
+
+        let first_data = wallet
+            .create_and_store_my_did("foo".into(), None)
+            .await
+            .unwrap();
+
+        let new_key_name = wallet
+            .replace_did_key_start(&first_data.did, Some("goo"))
+            .await
+            .unwrap();
+
+        wallet.replace_did_key_apply(&first_data.did).await.unwrap();
+
+        let new_verkey = wallet.did_key(&first_data.did).await.unwrap();
+
+        assert_eq!(new_key_name, new_verkey[0..16]);
+
+        let second_new_key_name = wallet
+            .replace_did_key_start(&first_data.did, Some("koo"))
+            .await
+            .unwrap();
+
+        wallet.replace_did_key_apply(&first_data.did).await.unwrap();
+
+        let second_new_verkey = wallet.did_key(&first_data.did).await.unwrap();
+
+        assert_eq!(second_new_key_name, second_new_verkey[0..16]);
+    }
+
+    #[tokio::test]
+    async fn test_askar_should_replace_did_key_interleaved() {
+        let wallet = create_test_wallet().await;
+
+        let first_data = wallet
+            .create_and_store_my_did("foo".into(), None)
+            .await
+            .unwrap();
+
+        let second_data = wallet
+            .create_and_store_my_did("boo".into(), None)
+            .await
+            .unwrap();
+
+        let first_new_key_name = wallet
+            .replace_did_key_start(&first_data.did, Some("goo"))
+            .await
+            .unwrap();
+
+        let second_new_key_name = wallet
+            .replace_did_key_start(&second_data.did, Some("moo"))
+            .await
+            .unwrap();
+
+        wallet
+            .replace_did_key_apply(&second_data.did)
+            .await
+            .unwrap();
+        wallet.replace_did_key_apply(&first_data.did).await.unwrap();
+
+        let first_new_verkey = wallet.did_key(&first_data.did).await.unwrap();
+        let second_new_verkey = wallet.did_key(&second_data.did).await.unwrap();
+
+        assert_eq!(first_new_key_name, first_new_verkey[0..16]);
+        assert_eq!(second_new_key_name, second_new_verkey[0..16]);
     }
 
     #[tokio::test]

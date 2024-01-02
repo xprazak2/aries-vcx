@@ -1,4 +1,4 @@
-use aries_askar::entry::{Entry, EntryOperation, EntryTag as AskarEntryTag};
+use aries_askar::entry::{EntryOperation, EntryTag as AskarEntryTag};
 use async_trait::async_trait;
 
 use super::AskarWallet;
@@ -63,7 +63,7 @@ impl RecordWallet for AskarWallet {
                     if tags.is_none() {
                         tags = Some(found.tags)
                     }
-                },
+                }
                 None => {
                     return Err(AriesVcxCoreError::from_msg(
                         AriesVcxCoreErrorKind::WalletRecordNotFound,

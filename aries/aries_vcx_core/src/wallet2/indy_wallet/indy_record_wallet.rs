@@ -1,5 +1,3 @@
-use std::collections::HashMap;
-
 use async_trait::async_trait;
 use indy_api_types::domain::wallet::Record as IndyRecord;
 use serde::Deserialize;
@@ -141,7 +139,11 @@ mod tests {
     use crate::{
         errors::error::AriesVcxCoreErrorKind,
         wallet::indy::IndySdkWallet,
-        wallet2::{EntryTag, RecordBuilder, RecordUpdateBuilder, RecordWallet},
+        wallet2::{
+            askar_wallet::test_helper::create_test_wallet,
+            entry_tag::{EntryTag, EntryTags},
+            RecordBuilder, RecordUpdateBuilder, RecordWallet,
+        },
     };
 
     #[tokio::test]

@@ -3,7 +3,6 @@ use aries_askar::{
     kms::{KeyAlg, KeyEntry, LocalKey},
     PassKey, Session, Store, StoreKeyMethod,
 };
-use async_trait::async_trait;
 
 use super::{BaseWallet2, DidData};
 use crate::errors::error::{AriesVcxCoreError, AriesVcxCoreErrorKind, VcxCoreResult};
@@ -29,43 +28,6 @@ impl From<RngMethod> for Option<&str> {
     }
 }
 
-pub enum SigType {
-    EdDSA,
-    ES256,
-    ES256K,
-    ES384,
-}
-
-impl From<SigType> for &str {
-    fn from(value: SigType) -> Self {
-        match value {
-            SigType::EdDSA => "eddsa",
-            SigType::ES256 => "es256",
-            SigType::ES256K => "es256k",
-            SigType::ES384 => "es384",
-        }
-    }
-}
-
-impl TryFrom<KeyAlg> for SigType {
-    type Error = AriesVcxCoreError;
-
-    fn try_from(value: KeyAlg) -> Result<Self, Self::Error> {
-        match value {
-            KeyAlg::Ed25519 => Ok(SigType::EdDSA),
-            KeyAlg::EcCurve(item) => match item {
-                EcCurves::Secp256r1 => Ok(SigType::ES256),
-                EcCurves::Secp256k1 => Ok(SigType::ES256K),
-                EcCurves::Secp384r1 => Ok(SigType::ES384),
-            },
-            _ => Err(AriesVcxCoreError::from_msg(
-                AriesVcxCoreErrorKind::InvalidInput,
-                "this key does not support signing",
-            )),
-        }
-    }
-}
-
 #[derive(Debug)]
 pub struct AskarWallet {
     pub backend: Store,
@@ -75,6 +37,9 @@ pub struct AskarWallet {
 impl BaseWallet2 for AskarWallet {}
 
 impl AskarWallet {
+    const CURRENT_DID_CATEGORY: &str = "did";
+    const TMP_DID_CATEGORY: &str = "tmp";
+
     pub async fn create(
         db_url: &str,
         key_method: StoreKeyMethod,
@@ -150,10 +115,15 @@ impl AskarWallet {
         Ok((key_name, key))
     }
 
-    async fn find_did(&self, session: &mut Session, did: &str) -> VcxCoreResult<Option<DidData>> {
-        let entries = session.fetch_all(Some(&did), None, None, false).await?;
+    async fn find_did(
+        &self,
+        session: &mut Session,
+        did: &str,
+        category: &str,
+    ) -> VcxCoreResult<Option<DidData>> {
+        let maybe_entry = session.fetch(category, did, false).await?;
 
-        for entry in entries.iter() {
+        if let Some(entry) = maybe_entry {
             if let Some(val) = entry.value.as_opt_str() {
                 let res: DidData = serde_json::from_str(val)?;
                 return Ok(Some(res));
@@ -163,15 +133,24 @@ impl AskarWallet {
         Ok(None)
     }
 
+    async fn find_current_did(
+        &self,
+        session: &mut Session,
+        did: &str,
+    ) -> VcxCoreResult<Option<DidData>> {
+        self.find_did(session, did, AskarWallet::CURRENT_DID_CATEGORY)
+            .await
+    }
+
     async fn insert_did(
         &self,
         session: &mut Session,
-        key_name: &str,
         did: &str,
+        category: &str,
         verkey: &str,
         tags: Option<&[EntryTag]>,
     ) -> VcxCoreResult<()> {
-        if let Some(_) = session.fetch(&did, key_name, false).await? {
+        if let Some(_) = session.fetch(&did, category, false).await? {
             return Err(AriesVcxCoreError::from_msg(
                 AriesVcxCoreErrorKind::DuplicationDid,
                 "did with given verkey already exists",
@@ -185,10 +164,32 @@ impl AskarWallet {
         let did_data = serde_json::to_string(&did_data)?;
 
         let res = session
-            .insert(key_name, did, did_data.as_bytes(), tags, None)
+            // .insert(category, did, did_data.as_bytes(), tags, None)
+            .insert(category, did, did_data.as_bytes(), tags, None)
             .await?;
 
         Ok(res)
+    }
+
+    async fn update_did(
+        &self,
+        session: &mut Session,
+        did: &str,
+        category: &str,
+        verkey: &str,
+        tags: Option<&[EntryTag]>,
+    ) -> VcxCoreResult<()> {
+        let did_data = DidData {
+            did: did.into(),
+            verkey: verkey.into(),
+        };
+
+        let did_data = serde_json::to_string(&did_data)?;
+        session
+            .replace(category, did, did_data.as_bytes(), tags, None)
+            .await?;
+
+        Ok(())
     }
 }
 

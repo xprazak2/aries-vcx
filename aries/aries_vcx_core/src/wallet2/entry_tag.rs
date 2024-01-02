@@ -1,5 +1,5 @@
 use std::collections::HashMap;
-
+#[cfg(feature = "askar_wallet")]
 use aries_askar::entry::EntryTag as AskarEntryTag;
 use serde::{Deserialize, Serialize};
 
@@ -137,6 +137,7 @@ impl From<EntryTags> for HashMap<String, String> {
     }
 }
 
+// vdrtools wallet
 impl From<HashMap<String, String>> for EntryTags {
     fn from(value: HashMap<String, String>) -> Self {
         Self {
