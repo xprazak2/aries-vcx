@@ -97,6 +97,16 @@ impl AskarWallet {
         Ok(res.to_string())
     }
 
+    pub async fn create_key(
+        &self,
+        alg: KeyAlg,
+        seed: &[u8],
+        rng_method: RngMethod,
+    ) -> Result<(String, LocalKey), AriesVcxCoreError> {
+        let mut session = self.backend.session(self.profile.clone()).await?;
+        self.insert_key(&mut session, alg, seed, rng_method).await
+    }
+
     async fn insert_key(
         &self,
         session: &mut Session,
