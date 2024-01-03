@@ -38,6 +38,15 @@ pub fn bytes_to_bs58(bytes: &[u8]) -> String {
     bs58::encode(bytes).into_string()
 }
 
+pub fn bytes_to_str(bytes: &[u8]) -> VcxCoreResult<String> {
+    String::from_utf8(bytes.to_vec()).map_err(|err| {
+        AriesVcxCoreError::from_msg(
+            AriesVcxCoreErrorKind::InvalidInput,
+            format!("failed to decode utf-8 string: {}", err),
+        )
+    })
+}
+
 pub fn from_json_str<T: for<'a> Deserialize<'a>>(json: &str) -> VcxCoreResult<T> {
     Ok(serde_json::from_str::<T>(json)
         .map_err(|err| AriesVcxCoreError::from_msg(AriesVcxCoreErrorKind::InvalidJson, err))?)

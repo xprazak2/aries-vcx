@@ -5181,6 +5181,27 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "3369f5ac52d5eb6ab48c6b4ffdc8efbcad6b89c765749064ba298f2c68a16a76"
 
 [[package]]
+name = "test-log"
+version = "0.2.14"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "6159ab4116165c99fc88cce31f99fa2c9dbe08d3691cb38da02fc3b45f357d2b"
+dependencies = [
+ "env_logger 0.10.0",
+ "test-log-macros",
+]
+
+[[package]]
+name = "test-log-macros"
+version = "0.2.14"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "7ba277e77219e9eea169e8508942db1bf5d8a41ff2db9b20aab5a5aadc9fa25d"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn 2.0.38",
+]
+
+[[package]]
 name = "test_utils"
 version = "0.61.0"
 dependencies = [
@@ -5817,13 +5838,17 @@ checksum = "f3c4517f54858c779bbcbf228f4fca63d121bf85fbecb2dc578cdf4a39395690"
 name = "wallet_migrator"
 version = "0.1.0"
 dependencies = [
+ "aries-askar",
  "aries_vcx_core",
  "indy-credx",
  "libvdrtools",
  "log",
+ "serde",
  "serde_json",
+ "test-log",
  "thiserror",
  "tokio",
+ "uuid 1.5.0",
 ]
 
 [[package]]

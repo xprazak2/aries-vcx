@@ -16,6 +16,7 @@ use indy_utils::{
     crypto::chacha20poly1305_ietf::{self, Key as MasterKey},
     secret,
 };
+pub use iterator::WalletIterator;
 use log::{error, info, trace, warn};
 use serde::{Deserialize, Serialize};
 use serde_json::Value as SValue;
@@ -31,7 +32,7 @@ use crate::{
 };
 
 mod encryption;
-mod iterator;
+pub mod iterator;
 mod query_encryption;
 mod storage;
 
@@ -44,10 +45,10 @@ mod wallet;
 
 #[derive(Debug)]
 pub struct MigrationResult {
-    migrated: u32,
-    skipped: u32,
-    duplicated: u32,
-    failed: u32,
+    pub migrated: u32,
+    pub skipped: u32,
+    pub duplicated: u32,
+    pub failed: u32,
 }
 
 #[allow(clippy::type_complexity)]
@@ -707,6 +708,11 @@ impl WalletService {
     pub async fn check(&self, handle: WalletHandle) -> IndyResult<()> {
         self.get_wallet(handle).await?;
         Ok(())
+    }
+
+    pub async fn get_all_records(&self, handle: WalletHandle) -> IndyResult<WalletIterator> {
+        let wallet = self.get_wallet(handle).await?;
+        wallet.get_all().await
     }
 
     pub async fn migrate_records<E>(

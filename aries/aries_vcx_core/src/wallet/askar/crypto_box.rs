@@ -1,9 +1,9 @@
-use crate::errors::error::{AriesVcxCoreError, AriesVcxCoreErrorKind, VcxCoreResult};
-
 use sodiumoxide::crypto::{
     box_::{self, Nonce},
-    sealedbox,
+    sealedbox, sign,
 };
+
+use crate::errors::error::{AriesVcxCoreError, AriesVcxCoreErrorKind, VcxCoreResult};
 
 pub trait CryptoBox {
     fn box_encrypt(

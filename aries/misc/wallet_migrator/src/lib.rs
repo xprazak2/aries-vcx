@@ -1,15 +1,28 @@
 pub mod credx2anoncreds;
 pub mod error;
+pub mod test_helper;
 pub mod vdrtools2credx;
+pub mod without_handle;
 
-use std::fmt::Display;
+use std::{collections::HashMap, fmt::Display};
 
+use aries_vcx_core::{
+    errors::error::AriesVcxCoreErrorKind,
+    wallet2::{BaseWallet2, Record},
+};
 use error::MigrationResult;
-use log::{error, info};
-pub use vdrtools::types::domain::wallet::Record;
+use log::{error, info, trace, warn};
+pub use vdrtools::types::domain::wallet::Record as IndyRecord;
 use vdrtools::{Locator, WalletHandle};
 
-use crate::error::MigrationError;
+use crate::{
+    error::MigrationError,
+    vdrtools2credx::{
+        INDY_CRED, INDY_CRED_DEF, INDY_CRED_DEF_CR_PROOF, INDY_CRED_DEF_PRIV, INDY_DID, INDY_KEY,
+        INDY_REV_REG, INDY_REV_REG_DEF, INDY_REV_REG_DEF_PRIV, INDY_REV_REG_DELTA,
+        INDY_REV_REG_INFO, INDY_SCHEMA, INDY_SCHEMA_ID,
+    },
+};
 
 /// Retrieves all records from the source wallet and migrates them
 /// by applying the `migrate_fn` argument. The records are then
@@ -17,7 +30,7 @@ use crate::error::MigrationError;
 pub async fn migrate_wallet<E>(
     src_wallet_handle: WalletHandle,
     dest_wallet_handle: WalletHandle,
-    migrate_fn: impl FnMut(Record) -> Result<Option<Record>, E>,
+    migrate_fn: impl FnMut(IndyRecord) -> Result<Option<IndyRecord>, E>,
 ) -> MigrationResult<()>
 where
     E: Display,

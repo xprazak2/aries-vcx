@@ -1,12 +1,18 @@
 use aries_askar::{
-    kms::{KeyAlg, KeyEntry, LocalKey, ToDecrypt},
+    crypto::alg::Chacha20Types,
+    kms::{KeyAlg, KeyAlg::Ed25519, KeyEntry, LocalKey, ToDecrypt},
     Session,
 };
 
 use aries_askar::crypto::alg::Chacha20Types;
 use public_key::Key;
+
 use serde::{Deserialize, Serialize};
 
+use super::askar_utils::{
+    ed25519_to_x25519_pair, ed25519_to_x25519_private, ed25519_to_x25519_public,
+    local_key_to_private_key_bytes, local_key_to_public_key_bytes,
+};
 use crate::{
     errors::error::{AriesVcxCoreError, AriesVcxCoreErrorKind, VcxCoreResult},
     wallet::structs_io::UnpackMessageOutput,
@@ -178,7 +184,6 @@ impl Packing {
     ) -> VcxCoreResult<(LocalKey, Option<String>)> {
         let encrypted_key = decode_urlsafe(&recipient.encrypted_key)?;
         let iv = decode_urlsafe(&recipient.header.iv)?;
-
         let sender_vk_enc = decode_urlsafe(&recipient.header.sender)?;
 
         let (private_bytes, public_bytes) = ed25519_to_x25519_pair(local_key)?;
@@ -196,8 +201,20 @@ impl Packing {
             &encrypted_key,
             &iv,
         )?;
+        // let sender_vk = bytes_to_string(sender_vk_vec)?;
 
-        let sender_vk = bytes_to_bs58(&sender_vk_vec);
+        let sender_vk_local_key =
+            LocalKey::from_public_bytes(Ed25519, &bs58_to_bytes(&sender_vk)?)?;
+        let sender_vk_public_bytes = ed25519_to_x25519_public(&sender_vk_local_key)?;
+
+        let cek_vec = self.crypto_box.box_decrypt(
+            &private_bytes,
+            &sender_vk_public_bytes,
+            &encrypted_key,
+            &iv,
+        )?;
+
+        // let sender_vk = bytes_to_bs58(&sender_vk_vec);
 
         let enc_key = LocalKey::from_secret_bytes(KeyAlg::Chacha20(Chacha20Types::C20P), &cek_vec)?;
 
@@ -312,6 +329,7 @@ impl Packing {
         for recipient_key in recipient_keys {
             // could it be &recipient_key.key()
             let recipient_pubkey = bs58_to_bytes(&recipient_key.base58())?;
+
             let recipient_local_key = LocalKey::from_public_bytes(Ed25519, &recipient_pubkey)?;
             let recipient_public_bytes = ed25519_to_x25519_public(&recipient_local_key)?;
 

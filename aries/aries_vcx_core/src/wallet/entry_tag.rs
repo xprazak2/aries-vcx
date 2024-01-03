@@ -103,6 +103,21 @@ impl From<EntryTags> for Vec<EntryTag> {
     }
 }
 
+#[cfg(feature = "askar_wallet")]
+impl From<EntryTags> for Vec<AskarEntryTag> {
+    fn from(value: EntryTags) -> Self {
+        let vc: Vec<EntryTag> = value.into();
+        vc.into_iter().map(Into::into).collect()
+    }
+}
+
+// #[cfg(feature = "vdrtools_wallet")]
+// impl From<EntryTags> for HashMap<String, String> {
+//     fn from(value: EntryTags) -> Self {
+//         let tags: Vec<EntryTag> = value.into();
+//         tags.into_iter().fold(Self::new(), |mut memo, item| {
+//             let (key, value) = item.into();
+
 impl TryFrom<EntryTags> for Option<String> {
     type Error = AriesVcxCoreError;
 

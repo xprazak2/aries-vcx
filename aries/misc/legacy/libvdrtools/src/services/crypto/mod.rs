@@ -6,9 +6,12 @@ use async_std::sync::RwLock;
 use ed25519::ED25519CryptoType;
 use hex::FromHex;
 use indy_api_types::errors::prelude::*;
-use indy_utils::crypto::{
-    base64, chacha20poly1305_ietf, chacha20poly1305_ietf::gen_nonce_and_encrypt_detached,
-    ed25519_box, ed25519_sign,
+use indy_utils::{
+    crypto::{
+        base64, chacha20poly1305_ietf, chacha20poly1305_ietf::gen_nonce_and_encrypt_detached,
+        ed25519_box, ed25519_sign,
+    },
+    secret,
 };
 
 use crate::{

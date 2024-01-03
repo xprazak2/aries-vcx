@@ -42,9 +42,6 @@ pub struct AskarWallet {
 impl BaseWallet for AskarWallet {}
 
 impl AskarWallet {
-    const CURRENT_DID_CATEGORY: &str = "did";
-    const TMP_DID_CATEGORY: &str = "tmp";
-
     pub async fn create(
         db_url: &str,
         key_method: StoreKeyMethod,
@@ -96,10 +93,33 @@ impl AskarWallet {
         Ok(bs58::encode(local_key.to_public_bytes()?).into_string())
     }
 
-    fn local_key_to_bs58_name(&self, local_key: &LocalKey) -> VcxCoreResult<String> {
-        let public_bytes = local_key.to_public_bytes()?;
-        let res = &bs58::encode(public_bytes).into_string()[0..16];
-        Ok(res.to_string())
+    // fn local_key_to_bs58_name(&self, local_key: &LocalKey) -> VcxCoreResult<String> {
+    //     let public_bytes = local_key.to_public_bytes()?;
+    //     let res = &bs58::encode(public_bytes).into_string()[0..16];
+    //     Ok(res.to_string())
+    // }
+
+    pub async fn generate_key(
+        &self,
+        alg: KeyAlg,
+        seed: &[u8],
+        rng_method: RngMethod,
+    ) -> Result<(String, LocalKey), AriesVcxCoreError> {
+        let mut session = self.backend.session(self.profile.clone()).await?;
+        self.insert_key(&mut session, alg, seed, rng_method).await
+    }
+
+    pub async fn create_key(
+        &self,
+        name: &str,
+        private_bytes: &[u8],
+        tags: Option<&[EntryTag]>,
+    ) -> VcxCoreResult<LocalKey> {
+        let mut session = self.backend.session(self.profile.clone()).await?;
+
+        let key = LocalKey::from_secret_bytes(KeyAlg::Ed25519, private_bytes)?;
+        let res = session.insert_key(name, &key, None, tags, None).await?;
+        return Ok(key);
     }
 
     async fn insert_key(
@@ -111,7 +131,8 @@ impl AskarWallet {
     ) -> Result<(String, LocalKey), AriesVcxCoreError> {
         let key = LocalKey::from_seed(alg, seed, rng_method.into())?;
 
-        let key_name = self.local_key_to_bs58_name(&key)?;
+        // let key_name = self.local_key_to_bs58_name(&key)?;
+        let key_name = self.local_key_to_bs58_pubkey(&key)?;
 
         session
             .insert_key(&key_name, &key, None, None, None)
@@ -143,8 +164,7 @@ impl AskarWallet {
         session: &mut Session,
         did: &str,
     ) -> VcxCoreResult<Option<DidData>> {
-        self.find_did(session, did, AskarWallet::CURRENT_DID_CATEGORY)
-            .await
+        self.find_did(session, did, DID_CATEGORY).await
     }
 
     async fn insert_did(
@@ -189,5 +209,28 @@ impl AskarWallet {
             .await?;
 
         Ok(())
+    }
+
+    pub async fn get_all_records(&self) -> VcxCoreResult<Vec<Record>> {
+        let mut session = self.backend.session(self.profile.clone()).await?;
+
+        let res = session.fetch_all(None, None, None, false).await?;
+
+        let rs = res
+            .into_iter()
+            .map(TryInto::try_into)
+            .collect::<Result<Vec<_>, _>>()?;
+
+        Ok(rs)
+    }
+
+    pub async fn get_all_keys(&self) -> VcxCoreResult<Vec<KeyEntry>> {
+        let mut session = self.backend.session(self.profile.clone()).await?;
+
+        let res = session
+            .fetch_all_keys(None, None, None, None, false)
+            .await?;
+
+        Ok(res)
     }
 }
