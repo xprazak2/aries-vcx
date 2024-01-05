@@ -91,11 +91,11 @@ impl AskarWallet {
         Ok(bs58::encode(local_key.to_public_bytes()?).into_string())
     }
 
-    fn local_key_to_bs58_name(&self, local_key: &LocalKey) -> VcxCoreResult<String> {
-        let public_bytes = local_key.to_public_bytes()?;
-        let res = &bs58::encode(public_bytes).into_string()[0..16];
-        Ok(res.to_string())
-    }
+    // fn local_key_to_bs58_name(&self, local_key: &LocalKey) -> VcxCoreResult<String> {
+    //     let public_bytes = local_key.to_public_bytes()?;
+    //     let res = &bs58::encode(public_bytes).into_string()[0..16];
+    //     Ok(res.to_string())
+    // }
 
     pub async fn create_key(
         &self,
@@ -116,7 +116,8 @@ impl AskarWallet {
     ) -> Result<(String, LocalKey), AriesVcxCoreError> {
         let key = LocalKey::from_seed(alg, seed, rng_method.into())?;
 
-        let key_name = self.local_key_to_bs58_name(&key)?;
+        // let key_name = self.local_key_to_bs58_name(&key)?;
+        let key_name = self.local_key_to_bs58_pubkey(&key)?;
 
         session
             .insert_key(&key_name, &key, None, None, None)

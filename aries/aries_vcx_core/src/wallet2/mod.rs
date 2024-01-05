@@ -203,59 +203,92 @@ pub trait RecordWallet {
     ) -> VcxCoreResult<Vec<Record>>;
 }
 
-// #[cfg(test)]
-// mod test {
-//     use aries_askar::kms::{KeyAlg, LocalKey};
-//     use test_utils::devsetup::create_indy_test_wallet_handle;
+#[cfg(test)]
+mod test {
+    use aries_askar::kms::{KeyAlg, LocalKey};
+    use test_utils::devsetup::create_indy_test_wallet_handle;
 
-//     use crate::{
-//         wallet::indy::IndySdkWallet,
-//         wallet2::{
-//             askar_wallet::{
-//                 askar_utils::local_key_to_public_key_bytes, test_helper::create_test_wallet,
-//                 RngMethod,
-//             },
-//             utils::bytes_to_bs58,
-//             DidWallet, Key,
-//         },
-//     };
+    use super::BaseWallet2;
+    use crate::{
+        wallet::indy::IndySdkWallet,
+        wallet2::{
+            askar_wallet::{
+                askar_utils::local_key_to_public_key_bytes, test_helper::create_test_wallet,
+                RngMethod,
+            },
+            utils::bytes_to_bs58,
+            DidWallet, Key,
+        },
+    };
 
-//     #[tokio::test]
-//     async fn test_askar_should_pack_and_indy_should_unpack_anoncrypt() {
-//         let askar_wallet = create_test_wallet().await;
+    async fn pack_and_unpack_anoncrypt(sender: impl BaseWallet2, recipient: impl BaseWallet2) {
+        let did_data = recipient.create_and_store_my_did(None, None).await.unwrap();
 
-//         let (key_name, recipient_key) = askar_wallet
-//             .create_key(KeyAlg::Ed25519, "foo".as_bytes(), RngMethod::RandomDet)
-//             .await
-//             .unwrap();
+        let msg = "send me";
 
-//         // let mut session = askar_wallet
-//         //     .backend
-//         //     .session(askar_wallet.profile.clone())
-//         //     .await
-//         //     .unwrap();
+        let rec_key = Key {
+            pubkey_bs58: did_data.verkey,
+        };
 
-//         let msg = "send me";
+        let packed = sender
+            .pack_message(None, vec![rec_key], msg.as_bytes())
+            .await
+            .unwrap();
 
-//         // let recipient_key = LocalKey::generate(KeyAlg::Ed25519, true).unwrap();
+        let unpacked = recipient.unpack_message(&packed).await.unwrap();
 
-//         let kid = bytes_to_bs58(&local_key_to_public_key_bytes(&recipient_key).unwrap());
-//         // session
-//         //     .insert_key(&kid, &recipient_key, None, None, None)
-//         //     .await
-//         //     .unwrap();
+        assert_eq!(msg, unpacked.message);
+    }
 
-//         let rec_key = Key { pubkey_bs58: kid };
+    async fn pack_and_unpack_authcrypt(sender: impl BaseWallet2, recipient: impl BaseWallet2) {
+        let sender_did_data = sender.create_and_store_my_did(None, None).await.unwrap();
+        let recipient_did_data = recipient.create_and_store_my_did(None, None).await.unwrap();
 
-//         let packed = askar_wallet
-//             .pack_message(None, vec![rec_key], msg.as_bytes())
-//             .await
-//             .unwrap();
+        let msg = "send me";
 
-//         let indy_wallet = IndySdkWallet::new(create_indy_test_wallet_handle().await);
+        let rec_key = Key {
+            pubkey_bs58: recipient_did_data.verkey,
+        };
 
-//         let unpacked = indy_wallet.unpack_message(&packed).await.unwrap();
+        let packed = sender
+            .pack_message(Some(sender_did_data.verkey), vec![rec_key], msg.as_bytes())
+            .await
+            .unwrap();
 
-//         assert_eq!(msg, unpacked.message);
-//     }
-// }
+        let unpacked = recipient.unpack_message(&packed).await.unwrap();
+
+        assert_eq!(msg, unpacked.message);
+    }
+
+    #[tokio::test]
+    async fn test_askar_should_pack_and_indy_should_unpack_anoncrypt() {
+        let askar_wallet = create_test_wallet().await;
+        let indy_wallet = IndySdkWallet::new(create_indy_test_wallet_handle().await);
+
+        pack_and_unpack_anoncrypt(askar_wallet, indy_wallet).await;
+    }
+
+    #[tokio::test]
+    async fn test_indy_should_pack_and_askar_should_unpack_anoncrypt() {
+        let askar_wallet = create_test_wallet().await;
+        let indy_wallet = IndySdkWallet::new(create_indy_test_wallet_handle().await);
+
+        pack_and_unpack_anoncrypt(indy_wallet, askar_wallet).await;
+    }
+
+    #[tokio::test]
+    async fn test_askar_should_pack_and_indy_should_unpack_authcrypt() {
+        let askar_wallet = create_test_wallet().await;
+        let indy_wallet = IndySdkWallet::new(create_indy_test_wallet_handle().await);
+
+        pack_and_unpack_authcrypt(askar_wallet, indy_wallet).await;
+    }
+
+    #[tokio::test]
+    async fn test_indy_should_pack_and_askar_should_unpack_authcrypt() {
+        let askar_wallet = create_test_wallet().await;
+        let indy_wallet = IndySdkWallet::new(create_indy_test_wallet_handle().await);
+
+        pack_and_unpack_authcrypt(indy_wallet, askar_wallet).await;
+    }
+}
