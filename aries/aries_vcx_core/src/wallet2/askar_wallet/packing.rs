@@ -342,10 +342,12 @@ impl Packing {
 
         for recipient_key in recipient_keys {
             let recipient_pubkey = bs58_to_bytes(&recipient_key.pubkey_bs58)?;
+            let recipient_local_key = LocalKey::from_public_bytes(Ed25519, &recipient_pubkey)?;
+            let recipient_public_bytes = ed25519_to_x25519_public(&recipient_local_key)?;
 
             let enc_cek = self
                 .crypto_box
-                .sealedbox_encrypt(&recipient_pubkey, &enc_key_secret)?;
+                .sealedbox_encrypt(&recipient_public_bytes, &enc_key_secret)?;
 
             let kid = bytes_to_bs58(&recipient_pubkey);
 
