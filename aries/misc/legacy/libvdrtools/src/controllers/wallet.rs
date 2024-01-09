@@ -401,6 +401,14 @@ impl WalletController {
             .await
     }
 
+    pub async fn get_all_records(
+        &self,
+        handle: WalletHandle,
+    ) -> IndyResult<indy_wallet::iterator::WalletIterator> {
+        self.wallet_service.get_all_records(handle).await
+        // Ok(())
+    }
+
     /// Generate wallet master key.
     /// Returned key is compatible with "RAW" key derivation method.
     /// It allows to avoid expensive key derivation for use cases when wallet keys can be stored in
