@@ -6,9 +6,11 @@ use std::fmt::Display;
 
 use aries_vcx_core::wallet2::BaseWallet2;
 use error::MigrationResult;
-use log::{error, info};
+use log::{error, info, trace, warn};
 pub use vdrtools::types::domain::wallet::Record;
-use vdrtools::{iterator::WalletIterator, Locator, WalletHandle};
+use vdrtools::{
+    iterator::WalletIterator, Locator, MigrationResult as IndyMigrationResult, WalletHandle,
+};
 
 use crate::error::MigrationError;
 
@@ -68,7 +70,7 @@ async fn migrate_records(
     let total = records.get_total_count()?;
     info!("Migrating {total:?} records");
     let mut num_record = 0;
-    let mut migration_result = MigrationResult {
+    let mut migration_result = IndyMigrationResult {
         migrated: 0,
         skipped: 0,
         duplicated: 0,

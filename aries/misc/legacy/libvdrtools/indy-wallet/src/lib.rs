@@ -32,7 +32,7 @@ use crate::{
 };
 
 mod encryption;
-mod iterator;
+pub mod iterator;
 mod query_encryption;
 mod storage;
 
@@ -45,10 +45,10 @@ mod wallet;
 
 #[derive(Debug)]
 pub struct MigrationResult {
-    migrated: u32,
-    skipped: u32,
-    duplicated: u32,
-    failed: u32,
+    pub migrated: u32,
+    pub skipped: u32,
+    pub duplicated: u32,
+    pub failed: u32,
 }
 
 #[allow(clippy::type_complexity)]
