@@ -23,6 +23,7 @@ use aries_vcx::{
         },
     },
 };
+use aries_vcx_core::test_utils::constants::{DEFAULT_PROOF_NAME, TEST_TAILS_URL};
 use aries_vcx_core::{
     anoncreds::base_anoncreds::BaseAnonCreds,
     ledger::{
@@ -46,7 +47,6 @@ use messages::{
     AriesMessage,
 };
 use serde_json::Value;
-use test_utils::constants::{DEFAULT_PROOF_NAME, TEST_TAILS_URL};
 
 use super::requested_attrs_address;
 use crate::utils::{scenarios::requested_attr_objects, test_agent::TestAgent};

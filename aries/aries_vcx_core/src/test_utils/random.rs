@@ -1,4 +1,4 @@
-use aries_vcx_core::global::settings::DEFAULT_DID;
+use crate::global::settings::DEFAULT_DID;
 use rand::{distributions::Alphanumeric, Rng};
 
 pub fn generate_random_schema_name() -> String {

@@ -3,19 +3,19 @@
 use aries_vcx::{
     common::ledger::transactions::write_endorser_did, global::settings::DEFAULT_LINK_SECRET_ALIAS,
 };
+use aries_vcx_core::test_utils::{
+    constants::TRUSTEE_SEED,
+    devsetup::{
+        dev_build_featured_anoncreds, dev_build_featured_indy_ledger, dev_build_featured_wallet,
+    },
+    random::generate_random_seed,
+};
 use aries_vcx_core::{
     anoncreds::base_anoncreds::BaseAnonCreds,
     ledger::base_ledger::{
         AnoncredsLedgerRead, AnoncredsLedgerWrite, IndyLedgerRead, IndyLedgerWrite,
     },
     wallet::{base_wallet::BaseWallet, indy::wallet::get_verkey_from_wallet},
-};
-use test_utils::{
-    constants::TRUSTEE_SEED,
-    devsetup::{
-        dev_build_featured_anoncreds, dev_build_featured_indy_ledger, dev_build_featured_wallet,
-    },
-    random::generate_random_seed,
 };
 
 pub struct TestAgent<LR, LW, A, W>

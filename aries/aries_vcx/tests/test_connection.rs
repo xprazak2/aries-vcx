@@ -5,6 +5,7 @@ use aries_vcx::{
     protocols::{connection::GenericConnection, mediated_connection::pairwise_info::PairwiseInfo},
     utils::encryption_envelope::EncryptionEnvelope,
 };
+use aries_vcx_core::test_utils::devsetup::*;
 use aries_vcx_core::{
     anoncreds::base_anoncreds::BaseAnonCreds,
     ledger::base_ledger::{
@@ -21,7 +22,6 @@ use messages::{
     },
     AriesMessage,
 };
-use test_utils::devsetup::*;
 use utils::test_agent::TestAgent;
 use uuid::Uuid;
 

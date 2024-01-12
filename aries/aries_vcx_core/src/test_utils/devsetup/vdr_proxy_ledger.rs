@@ -1,6 +1,6 @@
 use std::{env, sync::Arc};
 
-use aries_vcx_core::{
+use crate::{
     ledger::{
         indy_vdr_ledger::{
             IndyVdrLedgerRead, IndyVdrLedgerReadConfig, IndyVdrLedgerWrite,
@@ -13,7 +13,7 @@ use aries_vcx_core::{
 };
 use log::info;
 
-use crate::devsetup::prepare_taa_options;
+use crate::test_utils::devsetup::prepare_taa_options;
 
 pub async fn dev_build_profile_vdr_proxy_ledger() -> (
     IndyVdrLedgerRead<VdrProxySubmitter, InMemoryResponseCacher>,

@@ -13,6 +13,10 @@ use aries_vcx::{
     },
     global::settings,
 };
+use aries_vcx_core::test_utils::{
+    constants::TEST_TAILS_URL,
+    random::{generate_random_schema_name, generate_random_schema_version},
+};
 use aries_vcx_core::{
     anoncreds::base_anoncreds::BaseAnonCreds,
     ledger::{
@@ -20,10 +24,6 @@ use aries_vcx_core::{
         indy::pool::test_utils::get_temp_dir_path,
     },
     wallet::base_wallet::BaseWallet,
-};
-use test_utils::{
-    constants::TEST_TAILS_URL,
-    random::{generate_random_schema_name, generate_random_schema_version},
 };
 
 pub async fn create_and_write_test_schema(

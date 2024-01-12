@@ -1,4 +1,4 @@
-use aries_vcx_core::{
+use crate::{
     global::settings::{DEFAULT_WALLET_KEY, WALLET_KDF_RAW},
     wallet::{
         base_wallet::BaseWallet,
@@ -33,7 +33,7 @@ pub async fn dev_setup_wallet_indy(key_seed: &str) -> (String, WalletHandle) {
 }
 
 pub async fn dev_build_indy_wallet(key_seed: &str) -> (String, impl BaseWallet) {
-    use aries_vcx_core::wallet::indy::IndySdkWallet;
+    use crate::wallet::indy::IndySdkWallet;
 
     let (public_did, wallet_handle) = dev_setup_wallet_indy(key_seed).await;
     (public_did, IndySdkWallet::new(wallet_handle))

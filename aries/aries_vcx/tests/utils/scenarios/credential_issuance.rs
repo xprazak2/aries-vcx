@@ -14,6 +14,7 @@ use aries_vcx::{
         mediated_connection::pairwise_info::PairwiseInfo,
     },
 };
+use aries_vcx_core::test_utils::constants::TEST_TAILS_URL;
 use aries_vcx_core::{
     anoncreds::base_anoncreds::BaseAnonCreds,
     ledger::base_ledger::{
@@ -29,7 +30,6 @@ use messages::msg_fields::protocols::{
     report_problem::ProblemReport,
 };
 use serde_json::json;
-use test_utils::constants::TEST_TAILS_URL;
 
 use super::{attr_names_address_list, create_credential_proposal, credential_data_address_1};
 use crate::utils::{
