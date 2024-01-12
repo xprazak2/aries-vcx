@@ -5815,6 +5815,7 @@ checksum = "f3c4517f54858c779bbcbf228f4fca63d121bf85fbecb2dc578cdf4a39395690"
 name = "wallet_migrator"
 version = "0.1.0"
 dependencies = [
+ "aries-askar",
  "aries_vcx_core",
  "indy-credx",
  "libvdrtools",
@@ -5822,6 +5823,7 @@ dependencies = [
  "serde_json",
  "thiserror",
  "tokio",
+ "uuid 1.5.0",
 ]
 
 [[package]]

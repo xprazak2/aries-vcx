@@ -1,3 +1,4 @@
+use aries_vcx_core::errors::error::AriesVcxCoreError;
 use serde_json::Error as JsonError;
 use thiserror::Error as ThisError;
 use vdrtools::IndyError;
@@ -12,4 +13,6 @@ pub enum MigrationError {
     Indy(#[from] IndyError),
     #[error("Source and destination wallets must be different!")]
     EqualWalletHandles,
+    #[error("AriesVcxCore error: {0}")]
+    AriesVcxCore(#[from] AriesVcxCoreError),
 }
