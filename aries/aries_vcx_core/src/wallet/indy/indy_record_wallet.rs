@@ -100,7 +100,7 @@ impl RecordWallet for IndySdkWallet {
         let json_filter = search_filter
             .map(|filter| match filter {
                 SearchFilter::JsonFilter(inner) => Ok::<String, AriesVcxCoreError>(inner),
-                SearchFilter::TagFilter(_) => Err(AriesVcxCoreError::from_msg(
+                _ => Err(AriesVcxCoreError::from_msg(
                     AriesVcxCoreErrorKind::InvalidInput,
                     "filter type not supported",
                 )),

@@ -115,6 +115,7 @@ impl TryFrom<EntryTags> for Option<String> {
     }
 }
 
+#[cfg(feature = "askar_wallet")]
 impl From<EntryTags> for Vec<AskarEntryTag> {
     fn from(tags: EntryTags) -> Self {
         let tags_vec: Vec<EntryTag> = tags.into();

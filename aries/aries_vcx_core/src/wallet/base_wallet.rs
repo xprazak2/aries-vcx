@@ -1,3 +1,5 @@
+#[cfg(feature = "askar_wallet")]
+use aries_askar::entry::{Entry, EntryKind, TagFilter};
 use async_trait::async_trait;
 use derive_builder::Builder;
 #[cfg(feature = "vdrtools_wallet")]
@@ -5,8 +7,11 @@ use indy_api_types::domain::wallet::Record as IndyRecord;
 use public_key::Key;
 use serde::{Deserialize, Serialize};
 
-use super::entry_tag::EntryTags;
-use crate::{errors::error::VcxCoreResult, wallet::structs_io::UnpackMessageOutput};
+use super::{entry_tag::EntryTags, utils::did_from_key};
+use crate::{
+    errors::error::{AriesVcxCoreError, AriesVcxCoreErrorKind, VcxCoreResult},
+    wallet::structs_io::UnpackMessageOutput,
+};
 
 #[derive(Debug, Default, Clone, Builder)]
 pub struct Record {
@@ -59,6 +64,36 @@ impl From<Record> for IndyRecord {
     }
 }
 
+#[cfg(feature = "askar_wallet")]
+impl TryFrom<Entry> for Record {
+    type Error = AriesVcxCoreError;
+
+    fn try_from(entry: Entry) -> Result<Self, Self::Error> {
+        let string_value = std::str::from_utf8(&entry.value)
+            .map_err(|err| AriesVcxCoreError::from_msg(AriesVcxCoreErrorKind::WalletError, err))?;
+
+        Ok(Self {
+            category: entry.category,
+            name: entry.name,
+            value: string_value.into(),
+            tags: entry.tags.into_iter().map(From::from).collect(),
+        })
+    }
+}
+
+#[cfg(feature = "askar_wallet")]
+impl From<Record> for Entry {
+    fn from(record: Record) -> Self {
+        Self {
+            category: record.category,
+            name: record.name,
+            value: record.value.into(),
+            kind: EntryKind::Item,
+            tags: record.tags.into_iter().map(From::from).collect(),
+        }
+    }
+}
+
 #[derive(Debug, Deserialize, Serialize)]
 pub struct DidData {
     did: String,
@@ -80,10 +115,16 @@ impl DidData {
     pub fn get_verkey(&self) -> &Key {
         &self.verkey
     }
+
+    pub fn did_from_verkey(&self) -> String {
+        did_from_key(self.verkey.clone())
+    }
 }
 
 pub enum SearchFilter {
     JsonFilter(String),
+    #[cfg(feature = "askar_wallet")]
+    TagFilter(TagFilter),
 }
 
 pub trait BaseWallet: RecordWallet + DidWallet + Send + Sync + std::fmt::Debug {}
@@ -153,9 +194,9 @@ mod tests {
     use crate::{
         errors::error::AriesVcxCoreErrorKind,
         wallet::{
-            base_wallet::{DidWallet, RecordBuilder, RecordWallet},
+            base_wallet::RecordBuilder,
             entry_tag::{EntryTag, EntryTags},
-            indy::IndySdkWallet,
+            utils::did_from_key,
         },
     };
 
@@ -167,19 +208,25 @@ mod tests {
             .collect()
     }
 
-    async fn build_test_wallet() -> impl BaseWallet {
+    async fn build_test_wallet() -> Box<dyn BaseWallet> {
         #[cfg(feature = "vdrtools_wallet")]
         return dev_setup_indy_wallet().await;
+
+        #[cfg(feature = "askar_wallet")]
+        return dev_setup_askar_wallet().await;
     }
 
     #[cfg(feature = "vdrtools_wallet")]
-    async fn dev_setup_indy_wallet() -> IndySdkWallet {
-        use crate::wallet::indy::{wallet::create_and_open_wallet, WalletConfig};
+    async fn dev_setup_indy_wallet() -> Box<dyn BaseWallet> {
+        use crate::{
+            global::settings::{DEFAULT_WALLET_KEY, WALLET_KDF_RAW},
+            wallet::indy::{wallet::create_and_open_wallet, IndySdkWallet, WalletConfig},
+        };
 
         let config_wallet = WalletConfig {
             wallet_name: format!("wallet_{}", uuid::Uuid::new_v4()),
-            wallet_key: "8dvfYSt5d1taSd6yJdpjq4emkwsPDDLYxkNFysFD2cZY".into(),
-            wallet_key_derivation: "RAW".into(),
+            wallet_key: DEFAULT_WALLET_KEY.into(),
+            wallet_key_derivation: WALLET_KDF_RAW.into(),
             wallet_type: None,
             storage_config: None,
             storage_credentials: None,
@@ -188,7 +235,27 @@ mod tests {
         };
         let wallet_handle = create_and_open_wallet(&config_wallet).await.unwrap();
 
-        IndySdkWallet::new(wallet_handle)
+        Box::new(IndySdkWallet::new(wallet_handle))
+    }
+
+    #[cfg(feature = "askar_wallet")]
+    async fn dev_setup_askar_wallet() -> Box<dyn BaseWallet> {
+        use aries_askar::StoreKeyMethod;
+        use uuid::Uuid;
+
+        use crate::wallet::askar::AskarWallet;
+
+        Box::new(
+            AskarWallet::create(
+                "sqlite://:memory:",
+                StoreKeyMethod::Unprotected,
+                None.into(),
+                true,
+                Some(Uuid::new_v4().to_string()),
+            )
+            .await
+            .unwrap(),
+        )
     }
 
     #[tokio::test]
@@ -208,31 +275,91 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn did_wallet_should_rotate_keys() {
+    async fn did_wallet_should_replace_did_key_repeatedly() {
         let wallet = build_test_wallet().await;
 
-        let did_data = wallet
-            .create_and_store_my_did(Some(&random_seed()), None)
+        let first_data = wallet
+            .create_and_store_my_did("foo".into(), None)
             .await
             .unwrap();
 
-        let key = wallet.did_key(&did_data.did).await.unwrap();
-
-        assert_eq!(did_data.verkey, key);
-
-        let res = wallet
-            .replace_did_key_start(&did_data.did, Some(&random_seed()))
+        let new_key = wallet
+            .replace_did_key_start(&first_data.get_did(), Some("goo"))
             .await
             .unwrap();
 
-        wallet.replace_did_key_apply(&did_data.did).await.unwrap();
+        wallet
+            .replace_did_key_apply(&first_data.get_did())
+            .await
+            .unwrap();
 
-        let new_key = wallet.did_key(&did_data.did).await.unwrap();
-        assert_eq!(res, new_key);
+        let new_verkey = wallet.did_key(&first_data.get_did()).await.unwrap();
+
+        assert_eq!(did_from_key(new_key), did_from_key(new_verkey));
+
+        let second_new_key = wallet
+            .replace_did_key_start(&first_data.get_did(), Some("koo"))
+            .await
+            .unwrap();
+
+        wallet
+            .replace_did_key_apply(&first_data.get_did())
+            .await
+            .unwrap();
+
+        let second_new_verkey = wallet.did_key(&first_data.get_did()).await.unwrap();
+
+        assert_eq!(
+            did_from_key(second_new_key),
+            did_from_key(second_new_verkey)
+        );
     }
 
     #[tokio::test]
-    async fn did_wallet_should_pack_and_unpack() {
+    async fn did_wallet_should_replace_did_key_interleaved() {
+        let wallet = build_test_wallet().await;
+
+        let first_data = wallet
+            .create_and_store_my_did("foo".into(), None)
+            .await
+            .unwrap();
+
+        let second_data = wallet
+            .create_and_store_my_did("boo".into(), None)
+            .await
+            .unwrap();
+
+        let first_new_key = wallet
+            .replace_did_key_start(&first_data.get_did(), Some("goo"))
+            .await
+            .unwrap();
+
+        let second_new_key = wallet
+            .replace_did_key_start(&second_data.get_did(), Some("moo"))
+            .await
+            .unwrap();
+
+        wallet
+            .replace_did_key_apply(&second_data.get_did())
+            .await
+            .unwrap();
+        wallet
+            .replace_did_key_apply(&first_data.get_did())
+            .await
+            .unwrap();
+
+        let first_new_verkey = wallet.did_key(&first_data.get_did()).await.unwrap();
+        let second_new_verkey = wallet.did_key(&second_data.get_did()).await.unwrap();
+
+        assert_eq!(did_from_key(first_new_key), did_from_key(first_new_verkey));
+        assert_eq!(
+            did_from_key(second_new_key),
+            did_from_key(second_new_verkey)
+        );
+    }
+
+    #[tokio::test]
+    async fn did_wallet_should_pack_and_unpack_authcrypt() {
         let wallet = build_test_wallet().await;
 
         let sender_data = wallet.create_and_store_my_did(None, None).await.unwrap();
@@ -247,6 +374,24 @@ mod tests {
                 vec![receiver_data.verkey],
                 msg.as_bytes(),
             )
+            .await
+            .unwrap();
+
+        let unpacked = wallet.unpack_message(&packed).await.unwrap();
+
+        assert_eq!(msg, unpacked.message);
+    }
+
+    #[tokio::test]
+    async fn did_wallet_should_pack_and_unpack_anoncrypt() {
+        let wallet = build_test_wallet().await;
+
+        let receiver_data = wallet.create_and_store_my_did(None, None).await.unwrap();
+
+        let msg = "pack me";
+
+        let packed = wallet
+            .pack_message(None, vec![receiver_data.verkey], msg.as_bytes())
             .await
             .unwrap();
 

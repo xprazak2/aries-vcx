@@ -3,14 +3,18 @@ use aries_askar::{
     kms::{KeyAlg, KeyEntry, LocalKey},
     PassKey, Session, Store, StoreKeyMethod,
 };
-use public_key::{Key, KeyType};
 
-use super::{BaseWallet2, DidData};
 use crate::errors::error::{AriesVcxCoreError, AriesVcxCoreErrorKind, VcxCoreResult};
+
+use super::{
+    base_wallet::{BaseWallet, DidData},
+    utils::key_from_base58,
+};
 
 pub mod askar_did_wallet;
 pub mod askar_record_wallet;
 pub mod askar_utils;
+mod crypto_box;
 pub mod packing;
 
 #[derive(Clone, Default)]
@@ -35,7 +39,7 @@ pub struct AskarWallet {
     profile: Option<String>,
 }
 
-impl BaseWallet2 for AskarWallet {}
+impl BaseWallet for AskarWallet {}
 
 impl AskarWallet {
     const CURRENT_DID_CATEGORY: &str = "did";
@@ -158,14 +162,11 @@ impl AskarWallet {
             ));
         }
 
-        let did_data = DidData {
-            did: did.into(),
-            verkey: Key::from_base58(verkey, KeyType::Ed25519)?,
-        };
+        let did_data = DidData::new(did.into(), key_from_base58(verkey)?);
+
         let did_data = serde_json::to_string(&did_data)?;
 
         let res = session
-            // .insert(category, did, did_data.as_bytes(), tags, None)
             .insert(category, did, did_data.as_bytes(), tags, None)
             .await?;
 
@@ -180,10 +181,7 @@ impl AskarWallet {
         verkey: &str,
         tags: Option<&[EntryTag]>,
     ) -> VcxCoreResult<()> {
-        let did_data = DidData {
-            did: did.into(),
-            verkey: Key::from_base58(verkey, KeyType::Ed25519)?,
-        };
+        let did_data = DidData::new(did, key_from_base58(verkey)?);
 
         let did_data = serde_json::to_string(&did_data)?;
         session
@@ -191,24 +189,5 @@ impl AskarWallet {
             .await?;
 
         Ok(())
-    }
-}
-
-pub(crate) mod test_helper {
-    use aries_askar::StoreKeyMethod;
-    use uuid::Uuid;
-
-    use super::AskarWallet;
-
-    pub async fn create_test_wallet() -> AskarWallet {
-        AskarWallet::create(
-            "sqlite://:memory:",
-            StoreKeyMethod::Unprotected,
-            None.into(),
-            true,
-            Some(Uuid::new_v4().to_string()),
-        )
-        .await
-        .unwrap()
     }
 }

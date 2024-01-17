@@ -3,13 +3,15 @@ use aries_askar::{
     kms::{KeyAlg, LocalKey},
 };
 use async_trait::async_trait;
+use public_key::Key;
 
 use super::{packing::Packing, AskarWallet, RngMethod};
 use crate::{
     errors::error::{AriesVcxCoreError, AriesVcxCoreErrorKind, VcxCoreResult},
-    wallet2::{
+    wallet::{
+        base_wallet::{DidData, DidWallet},
+        structs_io::UnpackMessageOutput,
         utils::{did_from_key, key_from_base58, seed_from_opt},
-        DidData, DidWallet, Key, UnpackMessageOutput,
     },
 };
 
@@ -81,10 +83,7 @@ impl DidWallet for AskarWallet {
 
         tx.commit().await?;
 
-        Ok(DidData {
-            did,
-            verkey: key_from_base58(&verkey)?,
-        })
+        Ok(DidData::new(&did, key_from_base58(&verkey)?))
     }
 
     async fn did_key(&self, did: &str) -> VcxCoreResult<Key> {
@@ -92,7 +91,7 @@ impl DidWallet for AskarWallet {
         let data = self.find_current_did(&mut session, did).await?;
 
         if let Some(did_data) = data {
-            return Ok(did_data.verkey);
+            return Ok(did_data.get_verkey().to_owned());
         }
 
         Err(AriesVcxCoreError::from_msg(
@@ -234,224 +233,5 @@ impl DidWallet for AskarWallet {
         let mut session = self.backend.session(self.profile.clone()).await?;
 
         Ok(packing.unpack(msg_jwe, &mut session).await?)
-    }
-}
-
-#[cfg(test)]
-mod test {
-    use super::*;
-    use crate::wallet2::{
-        askar_wallet::{
-            askar_utils::local_key_to_public_key_bytes, test_helper::create_test_wallet,
-        },
-        utils::{bytes_to_bs58, key_from_base58, key_from_bytes},
-    };
-
-    #[tokio::test]
-    async fn test_askar_should_sign_and_verify() {
-        let wallet = create_test_wallet().await;
-
-        let first_data = wallet
-            .create_and_store_my_did("foo".into(), None)
-            .await
-            .unwrap();
-
-        let second_data = wallet
-            .create_and_store_my_did("bar".into(), None)
-            .await
-            .unwrap();
-
-        let msg = "sign this message";
-        let sig = wallet
-            .sign(&first_data.verkey, msg.as_bytes())
-            .await
-            .unwrap();
-
-        assert!(wallet
-            .verify(&first_data.verkey, msg.as_bytes(), &sig)
-            .await
-            .unwrap());
-        assert!(!wallet
-            .verify(&second_data.verkey, msg.as_bytes(), &sig)
-            .await
-            .unwrap());
-    }
-
-    #[tokio::test]
-    async fn test_askar_should_replace_did_key() {
-        let wallet = create_test_wallet().await;
-
-        let first_data = wallet
-            .create_and_store_my_did("foo".into(), None)
-            .await
-            .unwrap();
-
-        let new_key = wallet
-            .replace_did_key_start(&first_data.did, Some("goo"))
-            .await
-            .unwrap();
-
-        wallet.replace_did_key_apply(&first_data.did).await.unwrap();
-
-        let new_verkey = wallet.did_key(&first_data.did).await.unwrap();
-
-        assert_eq!(did_from_key(new_key), did_from_key(new_verkey));
-    }
-
-    #[tokio::test]
-    async fn test_askar_should_replace_did_key_repeatedly() {
-        let wallet = create_test_wallet().await;
-
-        let first_data = wallet
-            .create_and_store_my_did("foo".into(), None)
-            .await
-            .unwrap();
-
-        let new_key = wallet
-            .replace_did_key_start(&first_data.did, Some("goo"))
-            .await
-            .unwrap();
-
-        wallet.replace_did_key_apply(&first_data.did).await.unwrap();
-
-        let new_verkey = wallet.did_key(&first_data.did).await.unwrap();
-
-        assert_eq!(did_from_key(new_key), did_from_key(new_verkey));
-
-        let second_new_key = wallet
-            .replace_did_key_start(&first_data.did, Some("koo"))
-            .await
-            .unwrap();
-
-        wallet.replace_did_key_apply(&first_data.did).await.unwrap();
-
-        let second_new_verkey = wallet.did_key(&first_data.did).await.unwrap();
-
-        assert_eq!(
-            did_from_key(second_new_key),
-            did_from_key(second_new_verkey)
-        );
-    }
-
-    #[tokio::test]
-    async fn test_askar_should_replace_did_key_interleaved() {
-        let wallet = create_test_wallet().await;
-
-        let first_data = wallet
-            .create_and_store_my_did("foo".into(), None)
-            .await
-            .unwrap();
-
-        let second_data = wallet
-            .create_and_store_my_did("boo".into(), None)
-            .await
-            .unwrap();
-
-        let first_new_key = wallet
-            .replace_did_key_start(&first_data.did, Some("goo"))
-            .await
-            .unwrap();
-
-        let second_new_key = wallet
-            .replace_did_key_start(&second_data.did, Some("moo"))
-            .await
-            .unwrap();
-
-        wallet
-            .replace_did_key_apply(&second_data.did)
-            .await
-            .unwrap();
-        wallet.replace_did_key_apply(&first_data.did).await.unwrap();
-
-        let first_new_verkey = wallet.did_key(&first_data.did).await.unwrap();
-        let second_new_verkey = wallet.did_key(&second_data.did).await.unwrap();
-
-        assert_eq!(did_from_key(first_new_key), did_from_key(first_new_verkey));
-        assert_eq!(
-            did_from_key(second_new_key),
-            did_from_key(second_new_verkey)
-        );
-    }
-
-    #[tokio::test]
-    async fn test_askar_should_pack_and_unpack_authcrypt() {
-        let wallet = create_test_wallet().await;
-
-        let mut session = wallet
-            .backend
-            .session(wallet.profile.clone())
-            .await
-            .unwrap();
-
-        let key_name = "sender_key";
-        let sender_key = LocalKey::generate(KeyAlg::Ed25519, true).unwrap();
-        session
-            .insert_key(key_name, &sender_key, None, None, None)
-            .await
-            .unwrap();
-
-        let sender_public_key =
-            key_from_bytes(local_key_to_public_key_bytes(&sender_key).unwrap()).unwrap();
-
-        let msg = "send me";
-
-        let recipient_key = LocalKey::generate(KeyAlg::Ed25519, true).unwrap();
-
-        // Kid is base58 pubkey, we need to use it as a name in askar to be able to retrieve the
-        // key. Somewhat awkward. Also does not align with `create_and_store_my_did` which
-        // generates keys with names using only first 16 bytes of (pub)key
-        let kid = bytes_to_bs58(&local_key_to_public_key_bytes(&recipient_key).unwrap());
-
-        session
-            .insert_key(&kid, &recipient_key, None, None, None)
-            .await
-            .unwrap();
-
-        let rec_key = key_from_base58(&kid).unwrap();
-
-        let packed = wallet
-            .pack_message(Some(sender_public_key), vec![rec_key], msg.as_bytes())
-            .await
-            .unwrap();
-
-        let unpacked = wallet.unpack_message(&packed).await.unwrap();
-
-        assert_eq!(msg, unpacked.message);
-    }
-
-    #[tokio::test]
-    async fn test_askar_should_pack_and_unpack_anoncrypt() {
-        let wallet = create_test_wallet().await;
-
-        let mut session = wallet
-            .backend
-            .session(wallet.profile.clone())
-            .await
-            .unwrap();
-
-        let msg = "send me";
-
-        let recipient_key = LocalKey::generate(KeyAlg::Ed25519, true).unwrap();
-
-        // Kid is base58 pubkey, we need to use it as a name in askar to be able to retrieve the
-        // key. Somewhat awkward. Also does not align with `create_and_store_my_did` which
-        // generates keys with names using only first 16 bytes of (pub)key
-
-        let kid = bytes_to_bs58(&local_key_to_public_key_bytes(&recipient_key).unwrap());
-        session
-            .insert_key(&kid, &recipient_key, None, None, None)
-            .await
-            .unwrap();
-
-        let rec_key = key_from_base58(&kid).unwrap();
-
-        let packed = wallet
-            .pack_message(None, vec![rec_key], msg.as_bytes())
-            .await
-            .unwrap();
-
-        let unpacked = wallet.unpack_message(&packed).await.unwrap();
-
-        assert_eq!(msg, unpacked.message);
     }
 }

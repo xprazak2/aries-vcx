@@ -6,8 +6,6 @@ use crate::{
 };
 use public_key::PublicKeyError;
 
-use crate::errors::error::{AriesVcxCoreError, AriesVcxCoreErrorKind};
-
 impl From<serde_json::Error> for AriesVcxCoreError {
     fn from(_err: serde_json::Error) -> Self {
         AriesVcxCoreError::from_msg(

@@ -3,7 +3,6 @@ use base64::{
     engine::{general_purpose, DecodePaddingMode, GeneralPurpose, GeneralPurposeConfig},
     Engine,
 };
-use indy_vdr::utils::keys::KeyType;
 use public_key::Key;
 use rand::{distributions::Alphanumeric, Rng};
 use serde::Deserialize;

@@ -1,7 +1,9 @@
 use crate::errors::error::{AriesVcxCoreError, AriesVcxCoreErrorKind, VcxCoreResult};
 
-use sodiumoxide::crypto::box_::{self, Nonce, PublicKey, SecretKey};
-use sodiumoxide::crypto::sealedbox;
+use sodiumoxide::crypto::{
+    box_::{self, Nonce},
+    sealedbox,
+};
 
 pub trait CryptoBox {
     fn box_encrypt(
@@ -52,8 +54,8 @@ impl CryptoBox for SodiumCryptoBox {
             .try_into()
             .map_err(|err| AriesVcxCoreError::from_msg(AriesVcxCoreErrorKind::InvalidInput, err))?;
 
-        let sk = SecretKey(sk_bytes);
-        let pk = PublicKey(pk_bytes);
+        let sk = box_::SecretKey(sk_bytes);
+        let pk = box_::PublicKey(pk_bytes);
 
         let nonce = box_::gen_nonce();
 
@@ -77,8 +79,8 @@ impl CryptoBox for SodiumCryptoBox {
             .try_into()
             .map_err(|err| AriesVcxCoreError::from_msg(AriesVcxCoreErrorKind::InvalidInput, err))?;
 
-        let sk = SecretKey(sk_bytes);
-        let pk = PublicKey(pk_bytes);
+        let sk = box_::SecretKey(sk_bytes);
+        let pk = box_::PublicKey(pk_bytes);
 
         let nonce_bytes = iv
             .try_into()
@@ -115,8 +117,8 @@ impl CryptoBox for SodiumCryptoBox {
             .try_into()
             .map_err(|err| AriesVcxCoreError::from_msg(AriesVcxCoreErrorKind::InvalidInput, err))?;
 
-        let sk = SecretKey(sk_bytes);
-        let pk = PublicKey(pk_bytes);
+        let sk = box_::SecretKey(sk_bytes);
+        let pk = box_::PublicKey(pk_bytes);
 
         Ok(sealedbox::open(msg, &pk, &sk).map_err(|_| {
             AriesVcxCoreError::from_msg(
@@ -129,14 +131,13 @@ impl CryptoBox for SodiumCryptoBox {
 
 #[cfg(test)]
 mod test {
-    use aries_askar::kms::KeyAlg::X25519;
-    use aries_askar::kms::LocalKey;
+    use aries_askar::kms::{KeyAlg::X25519, LocalKey};
 
-    use crate::wallet2::{
-        askar_wallet::askar_utils::{
-            local_key_to_private_key_bytes, local_key_to_public_key_bytes,
+    use crate::wallet::{
+        askar::{
+            askar_utils::{local_key_to_private_key_bytes, local_key_to_public_key_bytes},
+            crypto_box::{CryptoBox, SodiumCryptoBox},
         },
-        crypto_box::{CryptoBox, SodiumCryptoBox},
         utils::bytes_to_string,
     };
 
