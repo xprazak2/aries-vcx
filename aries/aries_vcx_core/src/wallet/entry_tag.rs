@@ -114,3 +114,10 @@ impl TryFrom<EntryTags> for Option<String> {
         }
     }
 }
+
+impl From<EntryTags> for Vec<AskarEntryTag> {
+    fn from(tags: EntryTags) -> Self {
+        let tags_vec: Vec<EntryTag> = tags.into();
+        tags_vec.into_iter().map(Into::into).collect()
+    }
+}

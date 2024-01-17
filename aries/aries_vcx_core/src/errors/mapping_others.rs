@@ -4,6 +4,9 @@ use crate::{
     errors::error::{AriesVcxCoreError, AriesVcxCoreErrorKind},
     wallet::base_wallet::RecordBuilderError,
 };
+use public_key::PublicKeyError;
+
+use crate::errors::error::{AriesVcxCoreError, AriesVcxCoreErrorKind};
 
 impl From<serde_json::Error> for AriesVcxCoreError {
     fn from(_err: serde_json::Error) -> Self {
@@ -32,5 +35,11 @@ impl From<RecordBuilderError> for AriesVcxCoreError {
                 format!("invalid record field: {:?}", field),
             ),
         }
+    }
+}
+
+impl From<PublicKeyError> for AriesVcxCoreError {
+    fn from(value: PublicKeyError) -> Self {
+        AriesVcxCoreError::from_msg(AriesVcxCoreErrorKind::NotBase58, value)
     }
 }

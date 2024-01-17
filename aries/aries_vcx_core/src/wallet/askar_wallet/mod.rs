@@ -3,6 +3,7 @@ use aries_askar::{
     kms::{KeyAlg, KeyEntry, LocalKey},
     PassKey, Session, Store, StoreKeyMethod,
 };
+use public_key::{Key, KeyType};
 
 use super::{BaseWallet2, DidData};
 use crate::errors::error::{AriesVcxCoreError, AriesVcxCoreErrorKind, VcxCoreResult};
@@ -159,7 +160,7 @@ impl AskarWallet {
 
         let did_data = DidData {
             did: did.into(),
-            verkey: verkey.into(),
+            verkey: Key::from_base58(verkey, KeyType::Ed25519)?,
         };
         let did_data = serde_json::to_string(&did_data)?;
 
@@ -181,7 +182,7 @@ impl AskarWallet {
     ) -> VcxCoreResult<()> {
         let did_data = DidData {
             did: did.into(),
-            verkey: verkey.into(),
+            verkey: Key::from_base58(verkey, KeyType::Ed25519)?,
         };
 
         let did_data = serde_json::to_string(&did_data)?;

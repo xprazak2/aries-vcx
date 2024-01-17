@@ -8,13 +8,14 @@ use serde::{Deserialize, Serialize};
 
 use crate::{
     errors::error::{AriesVcxCoreError, AriesVcxCoreErrorKind, VcxCoreResult},
+    wallet::structs_io::UnpackMessageOutput,
     wallet2::{
         crypto_box::{CryptoBox, SodiumCryptoBox},
         utils::{
             bs58_to_bytes, bytes_to_bs58, bytes_to_string, decode_urlsafe, encode_urlsafe,
             from_json_str,
         },
-        Key, UnpackedMessage,
+        Key,
     },
 };
 
@@ -115,7 +116,11 @@ impl Packing {
         }
     }
 
-    pub async fn unpack(&self, jwe: Jwe, session: &mut Session) -> VcxCoreResult<UnpackedMessage> {
+    pub async fn unpack(
+        &self,
+        jwe: Jwe,
+        session: &mut Session,
+    ) -> VcxCoreResult<UnpackMessageOutput> {
         let protected_data_vec = decode_urlsafe(&jwe.protected)?;
         let protected_data_str = bytes_to_string(protected_data_vec)?;
         let protected_data = from_json_str(&protected_data_str)?;
@@ -133,7 +138,7 @@ impl Packing {
 
         let msg = enc_key.aead_decrypt(to_decrypt, &nonce, &jwe.protected.as_bytes())?;
 
-        let unpacked = UnpackedMessage {
+        let unpacked = UnpackMessageOutput {
             message: bytes_to_string(msg.to_vec())?,
             recipient_verkey: recipient.unwrap_kid().to_owned(),
             sender_verkey,
@@ -294,7 +299,7 @@ impl Packing {
         let mut encrypted_recipients = Vec::with_capacity(recipient_keys.len());
 
         for recipient_key in recipient_keys {
-            let recipient_pubkey = bs58_to_bytes(&recipient_key.pubkey_bs58)?;
+            let recipient_pubkey = bs58_to_bytes(&recipient_key.base58())?;
 
             let (enc_cek, nonce) = self.crypto_box.box_encrypt(
                 &my_secret_bytes,
@@ -341,7 +346,7 @@ impl Packing {
         let enc_key_secret = local_key_to_private_key_bytes(enc_key)?;
 
         for recipient_key in recipient_keys {
-            let recipient_pubkey = bs58_to_bytes(&recipient_key.pubkey_bs58)?;
+            let recipient_pubkey = bs58_to_bytes(&recipient_key.base58())?;
 
             let enc_cek = self
                 .crypto_box
