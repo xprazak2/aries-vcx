@@ -3,6 +3,8 @@ use base64::{
     engine::{general_purpose, DecodePaddingMode, GeneralPurpose, GeneralPurposeConfig},
     Engine,
 };
+use indy_vdr::utils::keys::KeyType;
+use public_key::Key;
 use rand::{distributions::Alphanumeric, Rng};
 use serde::Deserialize;
 
@@ -30,7 +32,7 @@ pub fn bytes_to_string(vec: Vec<u8>) -> VcxCoreResult<String> {
 pub fn bs58_to_bytes(key: &str) -> VcxCoreResult<Vec<u8>> {
     Ok(bs58::decode(key)
         .into_vec()
-        .map_err(|err| AriesVcxCoreError::from_msg(AriesVcxCoreErrorKind::WalletUnexpected, err))?)
+        .map_err(|err| AriesVcxCoreError::from_msg(AriesVcxCoreErrorKind::WalletError, err))?)
 }
 
 pub fn bytes_to_bs58(bytes: &[u8]) -> String {
@@ -55,4 +57,16 @@ pub fn seed_from_opt(maybe_seed: Option<&str>) -> String {
         Some(val) => val.into(),
         None => random_seed(),
     }
+}
+
+pub fn key_from_base58(value: &str) -> VcxCoreResult<Key> {
+    Ok(Key::from_base58(value, public_key::KeyType::Ed25519)?)
+}
+
+pub fn key_from_bytes(value: Vec<u8>) -> VcxCoreResult<Key> {
+    Ok(Key::new(value, public_key::KeyType::Ed25519)?)
+}
+
+pub fn did_from_key(key: Key) -> String {
+    key.base58()[0..16].to_string()
 }

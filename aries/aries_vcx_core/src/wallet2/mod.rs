@@ -1,4 +1,3 @@
-
 use std::collections::HashMap;
 
 use aries_askar::entry::{Entry, EntryKind, TagFilter};
@@ -9,7 +8,7 @@ use indy_api_types::domain::wallet::Record as IndyRecord;
 use public_key::Key;
 use serde::{Deserialize, Serialize};
 
-use self::entry_tag::EntryTags;
+use self::{entry_tag::EntryTags, utils::did_from_key};
 
 use crate::{
     errors::error::{AriesVcxCoreError, AriesVcxCoreErrorKind, VcxCoreResult},
@@ -88,9 +87,8 @@ impl TryFrom<Entry> for Record {
     type Error = AriesVcxCoreError;
 
     fn try_from(entry: Entry) -> Result<Self, Self::Error> {
-        let string_value = std::str::from_utf8(&entry.value).map_err(|err| {
-            AriesVcxCoreError::from_msg(AriesVcxCoreErrorKind::WalletUnexpected, err)
-        })?;
+        let string_value = std::str::from_utf8(&entry.value)
+            .map_err(|err| AriesVcxCoreError::from_msg(AriesVcxCoreErrorKind::WalletError, err))?;
 
         Ok(Self {
             category: entry.category,
@@ -118,6 +116,12 @@ impl From<Record> for Entry {
 pub struct DidData {
     did: String,
     verkey: Key,
+}
+
+impl DidData {
+    pub fn did_from_verkey(&self) -> String {
+        did_from_key(self.verkey.clone())
+    }
 }
 
 pub enum SearchFilter {
@@ -190,7 +194,6 @@ mod tests {
     use super::BaseWallet2;
     use crate::{
         errors::error::AriesVcxCoreErrorKind,
-        wallet::indy::IndySdkWallet,
         wallet2::{
             entry_tag::{EntryTag, EntryTags},
             utils::random_seed,
@@ -198,19 +201,25 @@ mod tests {
         },
     };
 
-    async fn build_test_wallet() -> impl BaseWallet2 {
+    async fn build_test_wallet() -> Box<dyn BaseWallet2> {
         #[cfg(feature = "vdrtools_wallet")]
         return dev_setup_indy_wallet().await;
+
+        #[cfg(feature = "askar_wallet")]
+        return dev_setup_askar_wallet().await;
     }
 
     #[cfg(feature = "vdrtools_wallet")]
-    async fn dev_setup_indy_wallet() -> IndySdkWallet {
-        use crate::wallet::indy::{wallet::create_and_open_wallet, WalletConfig};
+    async fn dev_setup_indy_wallet() -> Box<dyn BaseWallet2> {
+        use crate::{
+            global::settings::{DEFAULT_WALLET_KEY, WALLET_KDF_RAW},
+            wallet::indy::{wallet::create_and_open_wallet, IndySdkWallet, WalletConfig},
+        };
 
         let config_wallet = WalletConfig {
             wallet_name: format!("wallet_{}", uuid::Uuid::new_v4()),
-            wallet_key: "8dvfYSt5d1taSd6yJdpjq4emkwsPDDLYxkNFysFD2cZY".into(),
-            wallet_key_derivation: "RAW".into(),
+            wallet_key: DEFAULT_WALLET_KEY.into(),
+            wallet_key_derivation: WALLET_KDF_RAW.into(),
             wallet_type: None,
             storage_config: None,
             storage_credentials: None,
@@ -219,7 +228,27 @@ mod tests {
         };
         let wallet_handle = create_and_open_wallet(&config_wallet).await.unwrap();
 
-        IndySdkWallet::new(wallet_handle)
+        Box::new(IndySdkWallet::new(wallet_handle))
+    }
+
+    #[cfg(feature = "askar_wallet")]
+    async fn dev_setup_askar_wallet() -> Box<dyn BaseWallet2> {
+        use aries_askar::StoreKeyMethod;
+        use uuid::Uuid;
+
+        use super::askar_wallet::AskarWallet;
+
+        Box::new(
+            AskarWallet::create(
+                "sqlite://:memory:",
+                StoreKeyMethod::Unprotected,
+                None.into(),
+                true,
+                Some(Uuid::new_v4().to_string()),
+            )
+            .await
+            .unwrap(),
+        )
     }
 
     #[tokio::test]
