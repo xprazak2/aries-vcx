@@ -221,7 +221,7 @@ mod tests {
     }
 
     #[test_log::test(tokio::test)]
-    async fn test_did_wallet_trait_compatibility() {
+    async fn test_create_and_store_my_did_compatibility() {
         let (creds, config) = make_wallet_reqs("original_wallet".into());
         let indy_wallet = open_indy_wallet(config.clone(), creds.clone()).await;
         let askar_wallet = open_askar_wallet().await;
@@ -250,6 +250,46 @@ mod tests {
         teardown_indy_wallet(indy_wallet, config, creds).await;
 
         let res = askar_wallet.did_key(&did_data.did).await.unwrap();
+    }
+
+    #[test_log::test(tokio::test)]
+    async fn test_replace_key_compatibility() {
+        let (creds, config) = make_wallet_reqs("original_wallet".into());
+        let indy_wallet = open_indy_wallet(config.clone(), creds.clone()).await;
+        let askar_wallet = open_askar_wallet().await;
+
+        let did_data = DidWallet::create_and_store_my_did(&indy_wallet, None, None)
+            .await
+            .unwrap();
+
+        let res = indy_wallet
+            .replace_did_key_start(&did_data.did, None)
+            .await
+            .unwrap();
+
+        // println!("Did data: {:?}", did_data);
+
+        // let askar_data = askar_wallet
+        //     .create_and_store_my_did(None, None)
+        //     .await
+        //     .unwrap();
+
+        let res = migrate_without_handle(indy_wallet.get_wallet_handle(), &askar_wallet)
+            .await
+            .unwrap();
+
+        // let askar_all = askar_wallet.get_all().await.unwrap();
+
+        // for record in askar_all {
+        //     info!("Askar record: {record:?}");
+        // }
+
+        teardown_indy_wallet(indy_wallet, config, creds).await;
+
+        let res = askar_wallet
+            .replace_did_key_apply(&did_data.did)
+            .await
+            .unwrap();
     }
 
     async fn create_test_data(indy_wallet: &IndySdkWallet, data_vec: TestDataVec) {
