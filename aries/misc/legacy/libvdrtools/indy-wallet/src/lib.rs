@@ -16,7 +16,7 @@ use indy_utils::{
     crypto::chacha20poly1305_ietf::{self, Key as MasterKey},
     secret,
 };
-use iterator::WalletIterator;
+pub use iterator::WalletIterator;
 use log::{error, info, trace, warn};
 use serde::{Deserialize, Serialize};
 use serde_json::Value as SValue;

@@ -19,6 +19,7 @@ pub mod indy_wallet;
 #[cfg(feature = "askar_wallet")]
 pub mod askar_wallet;
 
+pub mod constants;
 pub mod crypto_box;
 pub mod entry_tag;
 pub mod utils;

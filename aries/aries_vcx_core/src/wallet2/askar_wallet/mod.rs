@@ -4,7 +4,7 @@ use aries_askar::{
     PassKey, Session, Store, StoreKeyMethod,
 };
 
-use super::{BaseWallet2, DidData};
+use super::{constants::DID_CATEGORY, BaseWallet2, DidData, Record};
 use crate::errors::error::{AriesVcxCoreError, AriesVcxCoreErrorKind, VcxCoreResult};
 
 pub mod askar_did_wallet;
@@ -37,9 +37,6 @@ pub struct AskarWallet {
 impl BaseWallet2 for AskarWallet {}
 
 impl AskarWallet {
-    const CURRENT_DID_CATEGORY: &str = "did";
-    const TMP_DID_CATEGORY: &str = "tmp";
-
     pub async fn create(
         db_url: &str,
         key_method: StoreKeyMethod,
@@ -149,8 +146,7 @@ impl AskarWallet {
         session: &mut Session,
         did: &str,
     ) -> VcxCoreResult<Option<DidData>> {
-        self.find_did(session, did, AskarWallet::CURRENT_DID_CATEGORY)
-            .await
+        self.find_did(session, did, DID_CATEGORY).await
     }
 
     async fn insert_did(
@@ -201,6 +197,19 @@ impl AskarWallet {
             .await?;
 
         Ok(())
+    }
+
+    pub async fn get_all(&self) -> VcxCoreResult<Vec<Record>> {
+        let mut session = self.backend.session(self.profile.clone()).await?;
+
+        let res = session.fetch_all(None, None, None, false).await?;
+
+        let rs = res
+            .into_iter()
+            .map(TryInto::try_into)
+            .collect::<Result<Vec<_>, _>>()?;
+
+        Ok(rs)
     }
 }
 

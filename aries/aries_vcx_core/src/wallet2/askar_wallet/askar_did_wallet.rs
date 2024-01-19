@@ -7,7 +7,11 @@ use async_trait::async_trait;
 use super::{packing::Packing, AskarWallet, RngMethod};
 use crate::{
     errors::error::{AriesVcxCoreError, AriesVcxCoreErrorKind, VcxCoreResult},
-    wallet2::{utils::seed_from_opt, DidData, DidWallet, Key, UnpackedMessage},
+    wallet2::{
+        constants::{DID_CATEGORY, TMP_DID_CATEGORY},
+        utils::seed_from_opt,
+        DidData, DidWallet, Key, UnpackedMessage,
+    },
 };
 
 pub enum SigType {
@@ -67,14 +71,8 @@ impl DidWallet for AskarWallet {
 
         let verkey = self.local_key_to_bs58_pubkey(&local_key)?;
 
-        self.insert_did(
-            &mut tx,
-            &did,
-            AskarWallet::CURRENT_DID_CATEGORY,
-            &verkey,
-            None,
-        )
-        .await?;
+        self.insert_did(&mut tx, &did, DID_CATEGORY, &verkey, None)
+            .await?;
 
         tx.commit().await?;
 
@@ -112,7 +110,7 @@ impl DidWallet for AskarWallet {
 
             let verkey = self.local_key_to_bs58_pubkey(&local_key)?;
 
-            self.insert_did(&mut tx, did, AskarWallet::TMP_DID_CATEGORY, &verkey, None)
+            self.insert_did(&mut tx, did, TMP_DID_CATEGORY, &verkey, None)
                 .await?;
 
             tx.commit().await?;
@@ -129,21 +127,13 @@ impl DidWallet for AskarWallet {
     async fn replace_did_key_apply(&self, did: &str) -> VcxCoreResult<()> {
         let mut tx = self.backend.transaction(self.profile.clone()).await?;
 
-        let tmp_record = self
-            .find_did(&mut tx, did, AskarWallet::TMP_DID_CATEGORY)
-            .await?;
+        let tmp_record = self.find_did(&mut tx, did, TMP_DID_CATEGORY).await?;
 
         if let Some(did_data) = tmp_record {
-            tx.remove(AskarWallet::TMP_DID_CATEGORY, did).await?;
+            tx.remove(TMP_DID_CATEGORY, did).await?;
             tx.remove_key(&did_data.verkey[0..16]).await?;
-            self.update_did(
-                &mut tx,
-                did,
-                AskarWallet::CURRENT_DID_CATEGORY,
-                &did_data.verkey,
-                None,
-            )
-            .await?;
+            self.update_did(&mut tx, did, DID_CATEGORY, &did_data.verkey, None)
+                .await?;
             tx.commit().await?;
             return Ok(());
         } else {

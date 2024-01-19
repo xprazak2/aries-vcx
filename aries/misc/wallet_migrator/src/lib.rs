@@ -13,9 +13,7 @@ use aries_vcx_core::{
 use error::MigrationResult;
 use log::{error, info, trace, warn};
 pub use vdrtools::types::domain::wallet::Record as IndyRecord;
-use vdrtools::{
-    iterator::WalletIterator, Locator, MigrationResult as IndyMigrationResult, WalletHandle,
-};
+use vdrtools::{Locator, WalletHandle};
 
 use crate::{
     error::MigrationError,

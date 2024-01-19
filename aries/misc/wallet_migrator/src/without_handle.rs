@@ -2,10 +2,10 @@ use std::collections::HashMap;
 
 use aries_vcx_core::errors::error::AriesVcxCoreErrorKind;
 use aries_vcx_core::wallet2::{BaseWallet2, Record};
-use log::{error, info, trace, warn};
-use vdrtools::{Locator, MigrationResult as IndyMigrationResult, WalletHandle};
+use log::{debug, error, info, trace, warn};
 
-use vdrtools::iterator::WalletIterator;
+use vdrtools::indy_wallet::{MigrationResult as IndyMigrationResult, WalletIterator};
+use vdrtools::{Locator, WalletHandle};
 
 use crate::error::MigrationResult;
 use crate::vdrtools2credx::{
@@ -16,7 +16,7 @@ use crate::vdrtools2credx::{
 
 pub async fn migrate_without_handle(
     src_wallet_handle: WalletHandle,
-    dest_wallet: impl BaseWallet2,
+    dest_wallet: &impl BaseWallet2,
 ) -> MigrationResult<IndyMigrationResult> {
     let all_records = Locator::instance()
         .wallet_controller
@@ -30,7 +30,7 @@ pub async fn migrate_without_handle(
 
 async fn migrate_records(
     mut records: WalletIterator,
-    new_wallet: impl BaseWallet2,
+    new_wallet: &impl BaseWallet2,
 ) -> MigrationResult<IndyMigrationResult> {
     let total = records.get_total_count()?;
     info!("Migrating {total:?} records");
@@ -50,7 +50,7 @@ async fn migrate_records(
                  result: ${migration_result:?}"
             );
         }
-        trace!("Migrating record: {:?}", source_record);
+        // trace!("Migrating record: {:?}", source_record);
         let unwrapped_type_ = match &source_record.get_type() {
             None => {
                 warn!(
@@ -144,7 +144,7 @@ fn map_record(
         tags: tags.into(),
     };
 
-    trace!("Migrating wallet record {record:?}");
+    info!("Migrating wallet record {record:?}");
 
     let record = match record.category.as_str() {
         INDY_DID
@@ -171,8 +171,9 @@ mod tests {
     use aries_askar::StoreKeyMethod;
     use aries_vcx_core::{
         wallet::{base_wallet::BaseWallet, indy::IndySdkWallet},
-        wallet2::{askar_wallet::AskarWallet, RecordBuilder, RecordWallet},
+        wallet2::{askar_wallet::AskarWallet, DidWallet, Record, RecordBuilder, RecordWallet},
     };
+    use log::{debug, info};
     use uuid::Uuid;
     use vdrtools::{
         types::domain::wallet::{Config, Credentials},
@@ -210,13 +211,45 @@ mod tests {
         let data = generate_test_data();
         create_test_data(&indy_wallet, data.data_vec).await;
 
-        let res = migrate_without_handle(indy_wallet.get_wallet_handle(), askar_wallet)
+        let res = migrate_without_handle(indy_wallet.get_wallet_handle(), &askar_wallet)
             .await
             .unwrap();
 
         teardown_indy_wallet(indy_wallet, config, creds).await;
 
         assert_eq!(data.expected_count, res.migrated);
+    }
+
+    #[test_log::test(tokio::test)]
+    async fn test_did_wallet_trait_compatibility() {
+        let (creds, config) = make_wallet_reqs("original_wallet".into());
+        let indy_wallet = open_indy_wallet(config.clone(), creds.clone()).await;
+        let askar_wallet = open_askar_wallet().await;
+
+        let did_data = DidWallet::create_and_store_my_did(&indy_wallet, None, None)
+            .await
+            .unwrap();
+
+        // println!("Did data: {:?}", did_data);
+
+        // let askar_data = askar_wallet
+        //     .create_and_store_my_did(None, None)
+        //     .await
+        //     .unwrap();
+
+        // let askar_all = askar_wallet.get_all().await.unwrap();
+
+        // for record in askar_all {
+        //     info!("Askar record: {record:?}");
+        // }
+
+        let res = migrate_without_handle(indy_wallet.get_wallet_handle(), &askar_wallet)
+            .await
+            .unwrap();
+
+        teardown_indy_wallet(indy_wallet, config, creds).await;
+
+        let res = askar_wallet.did_key(&did_data.did).await.unwrap();
     }
 
     async fn create_test_data(indy_wallet: &IndySdkWallet, data_vec: TestDataVec) {

@@ -50,7 +50,8 @@ pub use indy_api_types::{
     CommandHandle, IndyError, SearchHandle, WalletHandle, INVALID_COMMAND_HANDLE,
     INVALID_SEARCH_HANDLE, INVALID_WALLET_HANDLE,
 };
-pub use indy_wallet::{iterator, MigrationResult, WalletRecord};
+
+pub use indy_wallet;
 use lazy_static::lazy_static;
 
 use crate::{
