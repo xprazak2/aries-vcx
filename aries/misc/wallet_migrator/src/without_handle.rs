@@ -1,14 +1,13 @@
 use std::collections::HashMap;
 
 use aries_vcx_core::errors::error::AriesVcxCoreErrorKind;
-use aries_vcx_core::wallet::indy::WalletRecord;
 use aries_vcx_core::wallet2::{
     constants::{DID_CATEGORY, TMP_DID_CATEGORY},
     BaseWallet2, Record,
 };
 use log::{debug, error, info, trace, warn};
 
-use vdrtools::indy_wallet::{MigrationResult as IndyMigrationResult, WalletIterator};
+use vdrtools::indy_wallet::{MigrationResult as IndyMigrationResult, WalletIterator, WalletRecord};
 use vdrtools::{Locator, WalletHandle};
 
 use crate::error::MigrationResult;
@@ -55,56 +54,60 @@ async fn migrate_records(
             );
         }
         // trace!("Migrating record: {:?}", source_record);
-        let unwrapped_type_ = match &source_record.get_type() {
-            None => {
-                warn!(
-                    "Skipping item missing 'type' field, record ({num_record}): {source_record:?}"
-                );
-                migration_result.skipped += 1;
-                continue;
-            }
-            Some(type_) => type_.clone(),
-        };
-        let unwrapped_value = match &source_record.get_value() {
-            None => {
-                warn!(
-                    "Skipping item missing 'value' field, record ({num_record}): {source_record:?}"
-                );
-                migration_result.skipped += 1;
-                continue;
-            }
-            Some(value) => value.clone(),
-        };
-        let unwrapped_tags = match source_record.get_tags() {
-            None => HashMap::new(),
-            Some(tags) => tags.clone(),
-        };
+        // let unwrapped_type_ = match &source_record.get_type() {
+        //     None => {
+        //         warn!(
+        //             "Skipping item missing 'type' field, record ({num_record}): {source_record:?}"
+        //         );
+        //         migration_result.skipped += 1;
+        //         continue;
+        //     }
+        //     Some(type_) => type_.clone(),
+        // };
+        // let unwrapped_value = match &source_record.get_value() {
+        //     None => {
+        //         warn!(
+        //             "Skipping item missing 'value' field, record ({num_record}): {source_record:?}"
+        //         );
+        //         migration_result.skipped += 1;
+        //         continue;
+        //     }
+        //     Some(value) => value.clone(),
+        // };
+        // let unwrapped_tags = match source_record.get_tags() {
+        //     None => HashMap::new(),
+        //     Some(tags) => tags.clone(),
+        // };
 
-        let mapped_record = match map_record(
-            source_record.get_id(),
-            unwrapped_type_,
-            unwrapped_value,
-            unwrapped_tags,
-        ) {
-            Ok(record) => match record {
-                None => {
-                    warn!("Skipping non-migratable record ({num_record}): {source_record:?}");
-                    migration_result.skipped += 1;
-                    continue;
-                }
-                Some(record) => record,
-            },
-            Err(err) => {
-                warn!(
-                    "Skipping item due failed item migration, record ({num_record}): \
-                     {source_record:?}, err: {err}"
-                );
-                migration_result.failed += 1;
-                continue;
-            }
-        };
+        // let mapped_record = match map_record(
+        //     source_record.get_id(),
+        //     unwrapped_type_,
+        //     unwrapped_value,
+        //     unwrapped_tags,
+        // ) {
+        //     Ok(record) => match record {
+        //         None => {
+        //             warn!("Skipping non-migratable record ({num_record}): {source_record:?}");
+        //             migration_result.skipped += 1;
+        //             continue;
+        //         }
+        //         Some(record) => record,
+        //     },
+        //     Err(err) => {
+        //         warn!(
+        //             "Skipping item due failed item migration, record ({num_record}): \
+        //              {source_record:?}, err: {err}"
+        //         );
+        //         migration_result.failed += 1;
+        //         continue;
+        //     }
+        // };
 
-        add_record(new_wallet, &mut migration_result, mapped_record).await
+        let rec = transform_record(num_record, source_record, &mut migration_result)?;
+
+        if let Some(mapped_record) = rec {
+            add_record(new_wallet, &mut migration_result, mapped_record).await
+        }
     }
     warn!("Migration of total {total:?} records completed, result: ${migration_result:?}");
     Ok(migration_result)
@@ -123,7 +126,7 @@ fn transform_record(
         None => {
             warn!("Skipping item missing 'type' field, record ({num_record}): {source_record:?}");
             migration_result.skipped += 1;
-            None;
+            return Ok(None);
         }
         Some(type_) => type_.clone(),
     };
@@ -131,7 +134,7 @@ fn transform_record(
         None => {
             warn!("Skipping item missing 'value' field, record ({num_record}): {source_record:?}");
             migration_result.skipped += 1;
-            None;
+            return Ok(None);
         }
         Some(value) => value.clone(),
     };
@@ -150,8 +153,9 @@ fn transform_record(
             None => {
                 warn!("Skipping non-migratable record ({num_record}): {source_record:?}");
                 migration_result.skipped += 1;
+                None
             }
-            Some(record) => record,
+            Some(record) => Some(record),
         },
         Err(err) => {
             warn!(
@@ -159,8 +163,11 @@ fn transform_record(
                  {source_record:?}, err: {err}"
             );
             migration_result.failed += 1;
+            None
         }
     };
+
+    Ok(mapped_record)
 }
 
 async fn add_record(
