@@ -103,10 +103,13 @@ async fn migrate_records(
         //     }
         // };
 
-        let rec = transform_record(num_record, source_record, &mut migration_result)?;
+        let rec = transform_record(num_record, source_record, &mut migration_result);
 
-        if let Some(mapped_record) = rec {
-            add_record(new_wallet, &mut migration_result, mapped_record).await
+        if let Some(wallet_item) = rec {
+            match wallet_item {
+                WalletItem::Record(mapped_record) => add_record(new_wallet, &mut migration_result, mapped_record).await,
+                WalletItem::Key(key) => add_key(new_wallet, &mut migration_result, key).await
+            }
         }
     }
     warn!("Migration of total {total:?} records completed, result: ${migration_result:?}");
@@ -115,18 +118,14 @@ async fn migrate_records(
 
 fn transform_record(
     num_record: i32,
-    // type_: &str,
-    // id: &str,
-    // value: &str,
-    // tags: HashMap<String, String>,
     source_record: WalletRecord,
     migration_result: &mut IndyMigrationResult,
-) -> MigrationResult<Option<Record>> {
+) -> Option<WalletItem> {
     let unwrapped_type = match &source_record.get_type() {
         None => {
             warn!("Skipping item missing 'type' field, record ({num_record}): {source_record:?}");
             migration_result.skipped += 1;
-            return Ok(None);
+            return None;
         }
         Some(type_) => type_.clone(),
     };
@@ -134,7 +133,7 @@ fn transform_record(
         None => {
             warn!("Skipping item missing 'value' field, record ({num_record}): {source_record:?}");
             migration_result.skipped += 1;
-            return Ok(None);
+            return None;
         }
         Some(value) => value.clone(),
     };
@@ -143,32 +142,30 @@ fn transform_record(
         Some(tags) => tags.clone(),
     };
 
-    let mapped_record = match map_record(
+    let maybe_mapped_record = map_record(
         source_record.get_id(),
         unwrapped_type,
         unwrapped_value,
         unwrapped_tags,
-    ) {
-        Ok(record) => match record {
-            None => {
-                warn!("Skipping non-migratable record ({num_record}): {source_record:?}");
-                migration_result.skipped += 1;
-                None
-            }
-            Some(record) => Some(record),
-        },
-        Err(err) => {
-            warn!(
-                "Skipping item due failed item migration, record ({num_record}): \
-                 {source_record:?}, err: {err}"
-            );
-            migration_result.failed += 1;
+    );
+
+    let mapped_record = match maybe_mapped_record {
+        None => {
+            warn!("Skipping non-migratable record ({num_record}): {source_record:?}");
+            migration_result.skipped += 1;
             None
         }
+        Some(record) => Some(record),
     };
 
-    Ok(mapped_record)
+    mapped_record
 }
+
+async fn add_key(
+    new_wallet: &impl BaseWallet2,
+    migration_result: &mut IndyMigrationResult,
+    key_record: Record
+)
 
 async fn add_record(
     new_wallet: &impl BaseWallet2,
@@ -198,12 +195,17 @@ async fn add_record(
     }
 }
 
+enum WalletItem {
+    Record(Record),
+    Key(Record),
+}
+
 fn map_record(
     name: &str,
     category: &str,
     value: &str,
     tags: HashMap<String, String>,
-) -> MigrationResult<Option<Record>> {
+) -> Option<WalletItem> {
     let record = Record {
         category: category.into(),
         name: name.into(),
@@ -216,7 +218,7 @@ fn map_record(
     let record = match record.category.as_str() {
         DID_CATEGORY
         | TMP_DID_CATEGORY
-        | INDY_KEY
+        // | INDY_KEY
         | INDY_CRED
         | INDY_CRED_DEF
         | INDY_CRED_DEF_PRIV
@@ -227,9 +229,11 @@ fn map_record(
         | INDY_REV_REG_DELTA
         | INDY_REV_REG_INFO
         | INDY_REV_REG_DEF
-        | INDY_REV_REG_DEF_PRIV => Ok(Some(record)),
+        | INDY_REV_REG_DEF_PRIV => Some(WalletItem::Record(record)),
 
-        _ => Ok(None),
+        INDY_KEY => Some(WalletItem::Key(record)),
+
+        _ => None,
     };
 
     record
