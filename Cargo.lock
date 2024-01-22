@@ -5841,6 +5841,7 @@ dependencies = [
  "indy-credx",
  "libvdrtools",
  "log",
+ "serde",
  "serde_json",
  "test-log",
  "thiserror",
