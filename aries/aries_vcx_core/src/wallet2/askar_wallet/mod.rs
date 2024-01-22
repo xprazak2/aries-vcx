@@ -199,7 +199,7 @@ impl AskarWallet {
         Ok(())
     }
 
-    pub async fn get_all(&self) -> VcxCoreResult<Vec<Record>> {
+    pub async fn get_all_records(&self) -> VcxCoreResult<Vec<Record>> {
         let mut session = self.backend.session(self.profile.clone()).await?;
 
         let res = session.fetch_all(None, None, None, false).await?;
@@ -210,6 +210,16 @@ impl AskarWallet {
             .collect::<Result<Vec<_>, _>>()?;
 
         Ok(rs)
+    }
+
+    pub async fn get_all_keys(&self) -> VcxCoreResult<Vec<KeyEntry>> {
+        let mut session = self.backend.session(self.profile.clone()).await?;
+
+        let res = session
+            .fetch_all_keys(None, None, None, None, false)
+            .await?;
+
+        Ok(res)
     }
 }
 

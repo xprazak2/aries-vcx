@@ -131,9 +131,16 @@ impl DidWallet for AskarWallet {
 
         if let Some(did_data) = tmp_record {
             tx.remove(TMP_DID_CATEGORY, did).await?;
-            tx.remove_key(&did_data.verkey[0..16]).await?;
+            println!("Removed temp did\n");
+
+            println!("\nDid data {:?}\n", did_data.verkey);
+
+            tx.remove_key(&did_data.verkey).await?;
+            println!("Removed old verkey\n");
+
             self.update_did(&mut tx, did, DID_CATEGORY, &did_data.verkey, None)
                 .await?;
+            println!("Updated did\n");
             tx.commit().await?;
             return Ok(());
         } else {
