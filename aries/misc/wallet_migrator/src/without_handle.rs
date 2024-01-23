@@ -456,12 +456,11 @@ mod tests {
     }
 
     async fn add_wallet_item(indy_wallet: &IndySdkWallet, category: &str, value: &str) {
-        let record = RecordBuilder::default()
+        let record = Record::builder()
             .name(Uuid::new_v4().to_string())
             .category(category.into())
             .value(value.into())
-            .build()
-            .unwrap();
+            .build();
 
         indy_wallet.add_record(record).await.unwrap();
     }

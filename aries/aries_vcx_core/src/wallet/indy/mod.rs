@@ -1,5 +1,5 @@
-use derive_builder::Builder;
 use serde::{Deserialize, Serialize};
+use typed_builder::TypedBuilder;
 
 use crate::{errors::error::AriesVcxCoreError, WalletHandle};
 
@@ -25,26 +25,31 @@ impl IndySdkWallet {
     }
 }
 
-#[derive(Clone, Debug, Default, Builder, Serialize, Deserialize)]
-#[builder(setter(into, strip_option), default)]
+#[derive(Clone, Debug, TypedBuilder, Serialize, Deserialize)]
+#[builder(field_defaults(default))]
 pub struct WalletConfig {
     pub wallet_name: String,
     pub wallet_key: String,
     pub wallet_key_derivation: String,
     #[serde(skip_serializing_if = "Option::is_none")]
+    #[builder(setter(strip_option))]
     pub wallet_type: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
+    #[builder(setter(strip_option))]
     pub storage_config: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
+    #[builder(setter(strip_option))]
     pub storage_credentials: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
+    #[builder(setter(strip_option))]
     pub rekey: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
+    #[builder(setter(strip_option))]
     pub rekey_derivation_method: Option<String>,
 }
 
-#[derive(Clone, Debug, Default, Builder, Serialize, Deserialize)]
-#[builder(setter(into, strip_option), default)]
+#[derive(Clone, Debug, TypedBuilder, Serialize, Deserialize)]
+#[builder(field_defaults(default))]
 pub struct IssuerConfig {
     pub institution_did: String,
 }

@@ -2,9 +2,7 @@ use async_trait::async_trait;
 use public_key::{Key, KeyType};
 
 use super::{
-    base_wallet::{
-        BaseWallet, DidData, DidWallet, Record, RecordBuilder, RecordWallet, SearchFilter,
-    },
+    base_wallet::{BaseWallet, DidData, DidWallet, Record, RecordWallet, SearchFilter},
     structs_io::UnpackMessageOutput,
 };
 use crate::{
@@ -26,11 +24,11 @@ impl RecordWallet for MockWallet {
     }
 
     async fn get_record(&self, name: &str, category: &str) -> VcxCoreResult<Record> {
-        Ok(RecordBuilder::default()
+        Ok(Record::builder()
             .name("123".into())
             .category("record type".into())
             .value("record value".into())
-            .build()?)
+            .build())
     }
 
     async fn update_record_value(

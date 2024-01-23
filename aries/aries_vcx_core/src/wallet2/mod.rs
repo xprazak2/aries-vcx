@@ -2,10 +2,10 @@ use std::collections::HashMap;
 
 use aries_askar::entry::{Entry, EntryKind, TagFilter};
 use async_trait::async_trait;
-use derive_builder::Builder;
 #[cfg(feature = "vdrtools_wallet")]
 use indy_api_types::domain::wallet::Record as IndyRecord;
 use serde::{Deserialize, Serialize};
+use typed_builder::TypedBuilder;
 
 use self::entry_tag::EntryTags;
 use crate::{
@@ -24,27 +24,23 @@ pub mod crypto_box;
 pub mod entry_tag;
 pub mod utils;
 
-pub struct Key {
-    pub pubkey_bs58: String,
-}
+// #[derive(Clone, Default)]
+// pub enum RngMethod {
+//     #[default]
+//     RandomDet,
+//     Bls,
+// }
 
-#[derive(Clone, Default)]
-pub enum RngMethod {
-    #[default]
-    RandomDet,
-    Bls,
-}
+// impl From<RngMethod> for Option<&str> {
+//     fn from(value: RngMethod) -> Self {
+//         match value {
+//             RngMethod::RandomDet => None,
+//             RngMethod::Bls => Some("bls_keygen"),
+//         }
+//     }
+// }
 
-impl From<RngMethod> for Option<&str> {
-    fn from(value: RngMethod) -> Self {
-        match value {
-            RngMethod::RandomDet => None,
-            RngMethod::Bls => Some("bls_keygen"),
-        }
-    }
-}
-
-#[derive(Debug, Default, Clone, Builder)]
+#[derive(Debug, Clone, TypedBuilder)]
 pub struct Record {
     pub category: String,
     pub name: String,
@@ -217,8 +213,10 @@ mod test {
                 askar_utils::local_key_to_public_key_bytes, test_helper::create_test_wallet,
                 RngMethod,
             },
+            entry_tag::{EntryTag, EntryTags},
             utils::bytes_to_bs58,
-            DidWallet, Key,
+            utils::random_seed,
+            DidWallet, DidWallet, Key, Record, RecordWallet,
         },
     };
 

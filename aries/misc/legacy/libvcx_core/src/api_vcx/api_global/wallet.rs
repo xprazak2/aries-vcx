@@ -21,7 +21,7 @@ use aries_vcx::{
     protocols::mediated_connection::pairwise_info::PairwiseInfo,
 };
 use aries_vcx_core::wallet::{
-    base_wallet::{DidWallet, RecordBuilder, RecordWallet},
+    base_wallet::{DidWallet, Record, RecordBuilder, RecordWallet},
     indy::WalletRecord,
 };
 use futures::FutureExt;
@@ -190,17 +190,20 @@ pub async fn wallet_add_wallet_record(
     let wallet = get_main_wallet()?;
     let tags: Option<HashMap<String, String>> = option.map(serde_json::from_str).transpose()?;
 
-    let mut record_builder = RecordBuilder::default();
-    record_builder
-        .name(id.into())
-        .category(type_.into())
-        .value(value.into());
-
-    if let Some(record_tags) = tags {
-        record_builder.tags(record_tags.into());
-    }
-
-    let record = record_builder.build()?;
+    let record = if let Some(record_tags) = tags {
+        Record::builder()
+            .name(id.into())
+            .category(type_.into())
+            .value(value.into())
+            .tags(record_tags.into())
+            .build()
+    } else {
+        Record::builder()
+            .name(id.into())
+            .category(type_.into())
+            .value(value.into())
+            .build()
+    };
 
     map_ariesvcx_core_result(wallet.add_record(record).await)
 }
@@ -349,7 +352,7 @@ pub mod test_utils {
         aries_vcx_core::wallet::indy::WalletConfig,
         global::settings::{DEFAULT_WALLET_BACKUP_KEY, DEFAULT_WALLET_KEY, WALLET_KDF_RAW},
     };
-    use aries_vcx_core::wallet::base_wallet::{DidWallet, RecordBuilder, RecordWallet};
+    use aries_vcx_core::wallet::base_wallet::{DidWallet, Record, RecordBuilder, RecordWallet};
 
     use crate::{
         api_vcx::api_global::{
@@ -388,12 +391,11 @@ pub mod test_utils {
         wallet.create_and_store_my_did(None, None).await.unwrap();
         let (type_, id, value) = _record();
 
-        let new_record = RecordBuilder::default()
+        let new_record = Record::builder()
             .name(id.into())
             .category(type_.into())
             .value(value.into())
-            .build()
-            .unwrap();
+            .build();
 
         wallet.add_record(new_record).await.unwrap();
         export_main_wallet(&export_file.path, DEFAULT_WALLET_BACKUP_KEY)

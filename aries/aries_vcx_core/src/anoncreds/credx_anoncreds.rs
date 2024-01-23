@@ -331,35 +331,35 @@ impl BaseAnonCreds for IndyCredxAnonCreds {
         };
 
         let str_rev_reg_info = serde_json::to_string(&rev_reg_info)?;
-        let record = RecordBuilder::default()
+        let record = Record::builder()
             .name(rev_reg_id.0.clone())
             .category(CATEGORY_REV_REG_INFO.to_string())
             .value(str_rev_reg_info)
-            .build()?;
+            .build();
         wallet.add_record(record).await?;
 
         let str_rev_reg_def = serde_json::to_string(&rev_reg_def)?;
-        let record = RecordBuilder::default()
+        let record = Record::builder()
             .name(rev_reg_id.0.clone())
             .category(CATEGORY_REV_REG_DEF.to_string())
             .value(str_rev_reg_def.clone())
-            .build()?;
+            .build();
         wallet.add_record(record).await?;
 
         let str_rev_reg_def_priv = serde_json::to_string(&rev_reg_def_priv)?;
-        let record = RecordBuilder::default()
+        let record = Record::builder()
             .name(rev_reg_id.0.clone())
             .category(CATEGORY_REV_REG_DEF_PRIV.to_string())
             .value(str_rev_reg_def_priv)
-            .build()?;
+            .build();
         wallet.add_record(record).await?;
 
         let str_rev_reg = serde_json::to_string(&rev_reg)?;
-        let record = RecordBuilder::default()
+        let record = Record::builder()
             .name(rev_reg_id.0.clone())
             .category(CATEGORY_REV_REG.to_string())
             .value(str_rev_reg.clone())
-            .build()?;
+            .build();
         wallet.add_record(record).await?;
 
         Ok((rev_reg_id.0, str_rev_reg_def, str_rev_reg))
@@ -411,46 +411,46 @@ impl BaseAnonCreds for IndyCredxAnonCreds {
             )?;
 
         let str_cred_def = serde_json::to_string(&cred_def)?;
-        let record = RecordBuilder::default()
+        let record = Record::builder()
             .name(cred_def_id.0.clone())
             .category(CATEGORY_CRED_DEF.to_string())
             .value(str_cred_def.clone())
-            .build()?;
+            .build();
         // Store stuff in wallet
         wallet.add_record(record).await?;
 
         let str_cred_def_priv = serde_json::to_string(&cred_def_priv)?;
-        let record = RecordBuilder::default()
+        let record = Record::builder()
             .name(cred_def_id.0.clone())
             .category(CATEGORY_CRED_DEF_PRIV.to_string())
             .value(str_cred_def_priv)
-            .build()?;
+            .build();
         wallet.add_record(record).await?;
 
         let str_cred_key_proof = serde_json::to_string(&cred_key_correctness_proof)?;
-        let record = RecordBuilder::default()
+        let record = Record::builder()
             .name(cred_def_id.0.clone())
             .category(CATEGORY_CRED_KEY_CORRECTNESS_PROOF.to_string())
             .value(str_cred_key_proof)
-            .build()?;
+            .build();
         wallet.add_record(record).await?;
 
-        let record = RecordBuilder::default()
+        let record = Record::builder()
             .name(schema.id().to_string())
             .category(CATEGORY_CRED_SCHEMA.to_string())
             .value(schema_json.into())
-            .build()?;
+            .build();
         let store_schema_res = wallet.add_record(record).await;
 
         if let Err(e) = store_schema_res {
             warn!("Storing schema {schema_json} failed - {e}. It's possible it is already stored.")
         }
 
-        let record = RecordBuilder::default()
+        let record = Record::builder()
             .name(cred_def_id.0.clone())
             .category(CATEGORY_CRED_MAP_SCHEMA_ID.to_string())
             .value(schema.id().0.clone())
-            .build()?;
+            .build();
         wallet.add_record(record).await?;
 
         // Return the ID and the cred def
@@ -1030,12 +1030,12 @@ impl BaseAnonCreds for IndyCredxAnonCreds {
         let record_value = serde_json::to_string(&credential)?;
         let tags_map: HashMap<String, String> = serde_json::from_value(tags.clone())?;
 
-        let record = RecordBuilder::default()
+        let record = Record::builder()
             .name(credential_id.clone())
             .category(CATEGORY_CREDENTIAL.into())
             .value(record_value)
             .tags(tags_map.into())
-            .build()?;
+            .build();
 
         wallet.add_record(record).await?;
 
@@ -1086,11 +1086,11 @@ impl BaseAnonCreds for IndyCredxAnonCreds {
                 )
             })?;
 
-        let record = RecordBuilder::default()
+        let record = Record::builder()
             .name(link_secret_id.into())
             .category(CATEGORY_LINK_SECRET.into())
             .value(ms_decimal)
-            .build()?;
+            .build();
 
         wallet.add_record(record).await?;
 
@@ -1224,11 +1224,11 @@ impl BaseAnonCreds for IndyCredxAnonCreds {
                     .await?
             }
             None => {
-                let record = RecordBuilder::default()
+                let record = Record::builder()
                     .name(rev_reg_id.into())
                     .category(CATEGORY_REV_REG_DELTA.into())
                     .value(str_rev_reg_delta)
-                    .build()?;
+                    .build();
                 wallet.add_record(record).await?
             }
         }

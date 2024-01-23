@@ -1,11 +1,12 @@
 #[cfg(feature = "askar_wallet")]
 use aries_askar::entry::{Entry, EntryKind, TagFilter};
 use async_trait::async_trait;
-use derive_builder::Builder;
+
 #[cfg(feature = "vdrtools_wallet")]
 use indy_api_types::domain::wallet::Record as IndyRecord;
 use public_key::Key;
 use serde::{Deserialize, Serialize};
+use typed_builder::TypedBuilder;
 
 use super::{entry_tag::EntryTags, utils::did_from_key};
 use crate::{
@@ -13,7 +14,7 @@ use crate::{
     wallet::structs_io::UnpackMessageOutput,
 };
 
-#[derive(Debug, Default, Clone, Builder)]
+#[derive(Debug, Default, Clone, TypedBuilder)]
 pub struct Record {
     category: String,
     name: String,
@@ -194,7 +195,7 @@ mod tests {
     use crate::{
         errors::error::AriesVcxCoreErrorKind,
         wallet::{
-            base_wallet::RecordBuilder,
+            base_wallet::{Record, RecordBuilder},
             entry_tag::{EntryTag, EntryTags},
             utils::did_from_key,
         },
@@ -408,18 +409,16 @@ mod tests {
         let category = "my";
         let value = "bar";
 
-        let record1 = RecordBuilder::default()
+        let record1 = Record::builder()
             .name(name.into())
             .category(category.into())
             .value(value.into())
-            .build()
-            .unwrap();
-        let record2 = RecordBuilder::default()
+            .build();
+        let record2 = Record::builder()
             .name("baz".into())
             .category(category.into())
             .value("box".into())
-            .build()
-            .unwrap();
+            .build();
 
         wallet.add_record(record1).await.unwrap();
         wallet.add_record(record2).await.unwrap();
@@ -437,12 +436,11 @@ mod tests {
         let category = "my";
         let value = "bar";
 
-        let record = RecordBuilder::default()
+        let record = Record::builder()
             .name(name.into())
             .category(category.into())
             .value(value.into())
-            .build()
-            .unwrap();
+            .build();
 
         wallet.add_record(record).await.unwrap();
 
@@ -467,23 +465,27 @@ mod tests {
         let category2 = "your";
         let value = "xxx";
 
-        let mut record_builder = RecordBuilder::default();
-        record_builder
+        let record1 = Record::builder()
             .name(name1.into())
             .category(category1.into())
-            .value(value.into());
+            .value(value.into())
+            .build();
 
-        let record1 = record_builder.build().unwrap();
         wallet.add_record(record1).await.unwrap();
 
-        let record2 = record_builder.name(name2.into()).build().unwrap();
+        let record2 = Record::builder()
+            .name(name2.into())
+            .category(category1.into())
+            .value(value.into())
+            .build();
         wallet.add_record(record2).await.unwrap();
 
-        let record3 = record_builder
+        let record3 = Record::builder()
             .name(name3.into())
             .category(category2.into())
-            .build()
-            .unwrap();
+            .value(value.into())
+            .build();
+
         wallet.add_record(record3).await.unwrap();
 
         let res = wallet.search_record(category1, None).await.unwrap();
@@ -502,13 +504,12 @@ mod tests {
         let tags1: EntryTags = vec![EntryTag::Plaintext("a".into(), "b".into())].into();
         let tags2 = EntryTags::default();
 
-        let record = RecordBuilder::default()
+        let record = Record::builder()
             .name(name.into())
             .category(category.into())
             .tags(tags1.clone())
             .value(value1.into())
-            .build()
-            .unwrap();
+            .build();
         wallet.add_record(record.clone()).await.unwrap();
 
         wallet
@@ -535,13 +536,12 @@ mod tests {
         let value2 = "yyy";
         let tags: EntryTags = vec![EntryTag::Plaintext("a".into(), "b".into())].into();
 
-        let record = RecordBuilder::default()
+        let record = Record::builder()
             .name(name.into())
             .category(category.into())
             .tags(tags.clone())
             .value(value1.into())
-            .build()
-            .unwrap();
+            .build();
         wallet.add_record(record.clone()).await.unwrap();
 
         wallet
@@ -564,13 +564,12 @@ mod tests {
         let tags1: EntryTags = vec![EntryTag::Plaintext("a".into(), "b".into())].into();
         let tags2: EntryTags = vec![EntryTag::Plaintext("c".into(), "d".into())].into();
 
-        let record = RecordBuilder::default()
+        let record = Record::builder()
             .name(name.into())
             .category(category.into())
             .tags(tags1.clone())
             .value(value.into())
-            .build()
-            .unwrap();
+            .build();
         wallet.add_record(record.clone()).await.unwrap();
 
         wallet
