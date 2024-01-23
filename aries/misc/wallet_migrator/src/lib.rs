@@ -8,7 +8,7 @@ use std::{collections::HashMap, fmt::Display};
 
 use aries_vcx_core::{
     errors::error::AriesVcxCoreErrorKind,
-    wallet2::{BaseWallet2, Record},
+    wallet::base_wallet::{BaseWallet, Record},
 };
 use error::MigrationResult;
 use log::{error, info, trace, warn};

@@ -10,6 +10,7 @@ use crate::{
     errors::error::{AriesVcxCoreError, AriesVcxCoreErrorKind, VcxCoreResult},
     wallet::{
         base_wallet::{DidData, DidWallet},
+        constants::{DID_CATEGORY, TMP_DID_CATEGORY},
         structs_io::UnpackMessageOutput,
         utils::{did_from_key, key_from_base58, seed_from_opt},
     },
@@ -72,14 +73,8 @@ impl DidWallet for AskarWallet {
 
         let verkey = self.local_key_to_bs58_pubkey(&local_key)?;
 
-        self.insert_did(
-            &mut tx,
-            &did,
-            AskarWallet::CURRENT_DID_CATEGORY,
-            &verkey,
-            None,
-        )
-        .await?;
+        self.insert_did(&mut tx, &did, DID_CATEGORY, &verkey, None)
+            .await?;
 
         tx.commit().await?;
 
@@ -117,7 +112,7 @@ impl DidWallet for AskarWallet {
 
             let verkey = self.local_key_to_bs58_pubkey(&local_key)?;
 
-            self.insert_did(&mut tx, did, AskarWallet::TMP_DID_CATEGORY, &verkey, None)
+            self.insert_did(&mut tx, did, TMP_DID_CATEGORY, &verkey, None)
                 .await?;
 
             tx.commit().await?;
@@ -134,22 +129,14 @@ impl DidWallet for AskarWallet {
     async fn replace_did_key_apply(&self, did: &str) -> VcxCoreResult<()> {
         let mut tx = self.backend.transaction(self.profile.clone()).await?;
 
-        let tmp_record = self
-            .find_did(&mut tx, did, AskarWallet::TMP_DID_CATEGORY)
-            .await?;
+        let tmp_record = self.find_did(&mut tx, did, TMP_DID_CATEGORY).await?;
 
         if let Some(did_data) = tmp_record {
             let verkey_did = did_data.did_from_verkey();
-            tx.remove(AskarWallet::TMP_DID_CATEGORY, did).await?;
+            tx.remove(TMP_DID_CATEGORY, did).await?;
             tx.remove_key(&verkey_did).await?;
-            self.update_did(
-                &mut tx,
-                did,
-                AskarWallet::CURRENT_DID_CATEGORY,
-                &verkey_did,
-                None,
-            )
-            .await?;
+            self.update_did(&mut tx, did, DID_CATEGORY, &verkey_did, None)
+                .await?;
             tx.commit().await?;
             return Ok(());
         } else {

@@ -111,13 +111,6 @@ impl From<EntryTags> for Vec<AskarEntryTag> {
     }
 }
 
-// #[cfg(feature = "vdrtools_wallet")]
-// impl From<EntryTags> for HashMap<String, String> {
-//     fn from(value: EntryTags) -> Self {
-//         let tags: Vec<EntryTag> = value.into();
-//         tags.into_iter().fold(Self::new(), |mut memo, item| {
-//             let (key, value) = item.into();
-
 impl TryFrom<EntryTags> for Option<String> {
     type Error = AriesVcxCoreError;
 
@@ -127,13 +120,5 @@ impl TryFrom<EntryTags> for Option<String> {
         } else {
             Ok(Some(serde_json::to_string(&tags)?))
         }
-    }
-}
-
-#[cfg(feature = "askar_wallet")]
-impl From<EntryTags> for Vec<AskarEntryTag> {
-    fn from(tags: EntryTags) -> Self {
-        let tags_vec: Vec<EntryTag> = tags.into();
-        tags_vec.into_iter().map(Into::into).collect()
     }
 }

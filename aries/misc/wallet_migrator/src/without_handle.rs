@@ -2,18 +2,19 @@ use std::collections::HashMap;
 
 use aries_askar::entry::EntryTag as AskarEntryTag;
 use aries_vcx_core::errors::error::AriesVcxCoreErrorKind;
-use aries_vcx_core::wallet2::askar_wallet::AskarWallet;
-use aries_vcx_core::wallet2::utils::bs58_to_bytes;
-use aries_vcx_core::wallet2::{
+use aries_vcx_core::wallet::base_wallet::{BaseWallet, RecordBuilder};
+use aries_vcx_core::wallet::{
+    askar::AskarWallet,
+    base_wallet::Record,
     constants::{DID_CATEGORY, TMP_DID_CATEGORY},
-    BaseWallet2, Record,
+    utils::bs58_to_bytes,
 };
-use log::{debug, error, info, trace, warn};
+use log::{error, info, trace, warn};
 
 use vdrtools::indy_wallet::{MigrationResult as IndyMigrationResult, WalletIterator, WalletRecord};
 use vdrtools::{Locator, WalletHandle};
 
-use serde::{Deserialize, Serialize};
+use serde::Deserialize;
 
 use crate::error::{MigrationError, MigrationResult};
 use crate::vdrtools2credx::{
@@ -179,7 +180,7 @@ async fn add_key(
     migration_result: &mut IndyMigrationResult,
     key_record: Record,
 ) {
-    let val: KeyValue = match serde_json::from_str(&key_record.value) {
+    let val: KeyValue = match serde_json::from_str(&key_record.get_value()) {
         Ok(val) => val,
         Err(err) => {
             error!("Deserialization error when adding key {key_record:?} to destination wallet: {err:?}");
@@ -188,7 +189,7 @@ async fn add_key(
         }
     };
 
-    let tags_vec: Vec<AskarEntryTag> = key_record.tags.clone().into();
+    let tags_vec: Vec<AskarEntryTag> = key_record.get_tags().clone().into();
 
     let private_bytes = match bs58_to_bytes(&val.signkey) {
         Ok(val) => val,
@@ -202,7 +203,11 @@ async fn add_key(
     println!("Key data length: {:?}", private_bytes.len());
 
     match new_wallet
-        .create_key(&key_record.name, &private_bytes[0..32], Some(&tags_vec))
+        .create_key(
+            &key_record.get_name(),
+            &private_bytes[0..32],
+            Some(&tags_vec),
+        )
         .await
     {
         Err(err) => {
@@ -216,7 +221,7 @@ async fn add_key(
 }
 
 async fn add_record(
-    new_wallet: &impl BaseWallet2,
+    new_wallet: &impl BaseWallet,
     migration_result: &mut IndyMigrationResult,
     record: Record,
 ) {
@@ -254,19 +259,18 @@ fn map_record(
     value: &str,
     tags: HashMap<String, String>,
 ) -> Option<WalletItem> {
-    let record = Record {
-        category: category.into(),
-        name: name.into(),
-        value: value.into(),
-        tags: tags.into(),
-    };
+    let record = Record::builder()
+        .category(category.into())
+        .name(name.into())
+        .value(value.into())
+        .tags(tags.into())
+        .build();
 
     info!("Migrating wallet record {record:?}");
 
-    let record = match record.category.as_str() {
+    let record = match record.get_category() {
         DID_CATEGORY
         | TMP_DID_CATEGORY
-        // | INDY_KEY
         | INDY_CRED
         | INDY_CRED_DEF
         | INDY_CRED_DEF_PRIV
@@ -291,10 +295,10 @@ fn map_record(
 mod tests {
     use aries_askar::StoreKeyMethod;
     use aries_vcx_core::{
-        wallet::{base_wallet::BaseWallet, indy::IndySdkWallet},
-        wallet2::{
-            askar_wallet::AskarWallet, utils::random_seed, DidWallet, Record, RecordBuilder,
-            RecordWallet,
+        wallet::{askar::AskarWallet, utils::random_seed},
+        wallet::{
+            base_wallet::{BaseWallet, DidWallet, Record, RecordBuilder, RecordWallet},
+            indy::IndySdkWallet,
         },
     };
     use log::{debug, info};
@@ -354,26 +358,13 @@ mod tests {
             .await
             .unwrap();
 
-        // println!("Did data: {:?}", did_data);
-
-        // let askar_data = askar_wallet
-        //     .create_and_store_my_did(None, None)
-        //     .await
-        //     .unwrap();
-
-        // let askar_all = askar_wallet.get_all().await.unwrap();
-
-        // for record in askar_all {
-        //     info!("Askar record: {record:?}");
-        // }
-
         let res = migrate_without_handle(indy_wallet.get_wallet_handle(), &askar_wallet)
             .await
             .unwrap();
 
         teardown_indy_wallet(indy_wallet, config, creds).await;
 
-        let res = askar_wallet.did_key(&did_data.did).await.unwrap();
+        let res = askar_wallet.did_key(&did_data.get_did()).await.unwrap();
     }
 
     async fn list_askar_records(askar_wallet: &AskarWallet) {
@@ -403,7 +394,7 @@ mod tests {
             .unwrap();
 
         let res = indy_wallet
-            .replace_did_key_start(&did_data.did, Some(&random_seed()))
+            .replace_did_key_start(&did_data.get_did(), Some(&random_seed()))
             .await
             .unwrap();
 
@@ -417,7 +408,7 @@ mod tests {
         teardown_indy_wallet(indy_wallet, config, creds).await;
 
         let res = askar_wallet
-            .replace_did_key_apply(&did_data.did)
+            .replace_did_key_apply(&did_data.get_did())
             .await
             .unwrap();
     }
@@ -433,7 +424,7 @@ mod tests {
             .unwrap();
 
         let msg = "sign this message";
-        let sig = DidWallet::sign(&indy_wallet, &did_data.verkey, msg.as_bytes())
+        let sig = DidWallet::sign(&indy_wallet, &did_data.get_verkey(), msg.as_bytes())
             .await
             .unwrap();
 
@@ -444,7 +435,7 @@ mod tests {
         teardown_indy_wallet(indy_wallet, config, creds).await;
 
         assert!(askar_wallet
-            .verify(&did_data.verkey, msg.as_bytes(), &sig)
+            .verify(&did_data.get_verkey(), msg.as_bytes(), &sig)
             .await
             .unwrap());
     }

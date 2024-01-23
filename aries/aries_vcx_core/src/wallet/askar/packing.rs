@@ -4,7 +4,6 @@ use aries_askar::{
     Session,
 };
 
-use aries_askar::crypto::alg::Chacha20Types;
 use public_key::Key;
 
 use serde::{Deserialize, Serialize};
@@ -24,12 +23,6 @@ use crate::{
         },
     },
 };
-
-use super::askar_utils::{
-    ed25519_to_x25519_pair, ed25519_to_x25519_private, ed25519_to_x25519_public,
-    local_key_to_private_key_bytes, local_key_to_public_key_bytes,
-};
-use aries_askar::kms::KeyAlg::Ed25519;
 
 pub const PROTECTED_HEADER_ENC: &str = "xchacha20poly1305_ietf";
 pub const PROTECTED_HEADER_TYP: &str = "JWM/1.0";
@@ -201,7 +194,7 @@ impl Packing {
             &encrypted_key,
             &iv,
         )?;
-        // let sender_vk = bytes_to_string(sender_vk_vec)?;
+        let sender_vk = bytes_to_string(sender_vk_vec)?;
 
         let sender_vk_local_key =
             LocalKey::from_public_bytes(Ed25519, &bs58_to_bytes(&sender_vk)?)?;

@@ -7,7 +7,8 @@ use aries_askar::{
 use crate::errors::error::{AriesVcxCoreError, AriesVcxCoreErrorKind, VcxCoreResult};
 
 use super::{
-    base_wallet::{BaseWallet, DidData},
+    base_wallet::{BaseWallet, DidData, Record},
+    constants::DID_CATEGORY,
     utils::key_from_base58,
 };
 
