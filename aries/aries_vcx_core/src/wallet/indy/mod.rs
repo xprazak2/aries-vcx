@@ -84,25 +84,24 @@ impl Drop for IndyWalletRecordIterator {
 }
 
 #[derive(Clone, Debug, TypedBuilder, Serialize, Deserialize)]
-#[builder(field_defaults(default))]
 pub struct WalletConfig {
     pub wallet_name: String,
     pub wallet_key: String,
     pub wallet_key_derivation: String,
     #[serde(skip_serializing_if = "Option::is_none")]
-    #[builder(setter(strip_option))]
+    #[builder(setter(strip_option), default)]
     pub wallet_type: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    #[builder(setter(strip_option))]
+    #[builder(setter(strip_option), default)]
     pub storage_config: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    #[builder(setter(strip_option))]
+    #[builder(setter(strip_option), default)]
     pub storage_credentials: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    #[builder(setter(strip_option))]
+    #[builder(setter(strip_option), default)]
     pub rekey: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    #[builder(setter(strip_option))]
+    #[builder(setter(strip_option), default)]
     pub rekey_derivation_method: Option<String>,
 }
 
