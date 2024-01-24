@@ -83,7 +83,8 @@ impl Recipient {
     }
 
     pub fn key_name(&self) -> &str {
-        &self.unwrap_kid()[0..16]
+        // &self.unwrap_kid()[0..16]
+        &self.unwrap_kid()
     }
 }
 
@@ -134,6 +135,8 @@ impl Packing {
         let (recipient, key_entry) = self.find_recipient_key(&protected_data, session).await?;
         let local_key = key_entry.load_local_key()?;
 
+        println!("Local key: {:?}", local_key);
+
         let (enc_key, sender_verkey) = self.unpack_recipient(recipient, &local_key)?;
 
         let nonce = decode_urlsafe(&jwe.iv)?;
@@ -179,7 +182,9 @@ impl Packing {
         let iv = decode_urlsafe(&recipient.header.iv)?;
         let sender_vk_enc = decode_urlsafe(&recipient.header.sender)?;
 
+        println!("converting keys");
         let (private_bytes, public_bytes) = ed25519_to_x25519_pair(local_key)?;
+        println!("converted keys");
 
         let sender_vk_vec =
             self.crypto_box
@@ -194,20 +199,20 @@ impl Packing {
             &encrypted_key,
             &iv,
         )?;
-        let sender_vk = bytes_to_string(sender_vk_vec)?;
+        // let sender_vk = bytes_to_string(sender_vk_vec)?;
 
-        let sender_vk_local_key =
-            LocalKey::from_public_bytes(Ed25519, &bs58_to_bytes(&sender_vk)?)?;
-        let sender_vk_public_bytes = ed25519_to_x25519_public(&sender_vk_local_key)?;
+        // let sender_vk_local_key =
+        //     LocalKey::from_public_bytes(Ed25519, &bs58_to_bytes(&sender_vk)?)?;
+        // let sender_vk_public_bytes = ed25519_to_x25519_public(&sender_vk_local_key)?;
 
-        let cek_vec = self.crypto_box.box_decrypt(
-            &private_bytes,
-            &sender_vk_public_bytes,
-            &encrypted_key,
-            &iv,
-        )?;
+        // let cek_vec = self.crypto_box.box_decrypt(
+        //     &private_bytes,
+        //     &sender_vk_public_bytes,
+        //     &encrypted_key,
+        //     &iv,
+        // )?;
 
-        // let sender_vk = bytes_to_bs58(&sender_vk_vec);
+        let sender_vk = bytes_to_bs58(&sender_vk_vec);
 
         let enc_key = LocalKey::from_secret_bytes(KeyAlg::Chacha20(Chacha20Types::C20P), &cek_vec)?;
 

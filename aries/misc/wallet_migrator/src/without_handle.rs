@@ -2,7 +2,7 @@ use std::collections::HashMap;
 
 use aries_askar::entry::EntryTag as AskarEntryTag;
 use aries_vcx_core::errors::error::AriesVcxCoreErrorKind;
-use aries_vcx_core::wallet::base_wallet::{BaseWallet, RecordBuilder};
+use aries_vcx_core::wallet::base_wallet::BaseWallet;
 use aries_vcx_core::wallet::{
     askar::AskarWallet,
     base_wallet::Record,
@@ -33,8 +33,6 @@ pub async fn migrate_without_handle(
         .await?;
 
     migrate_records(all_records, dest_wallet).await
-
-    // Ok(())
 }
 
 async fn migrate_records(
@@ -200,7 +198,7 @@ async fn add_key(
         }
     };
 
-    println!("Key data length: {:?}", private_bytes.len());
+    // println!("Key data length: {:?}", private_bytes.len());
 
     match new_wallet
         .create_key(
@@ -440,12 +438,45 @@ mod tests {
             .unwrap());
     }
 
-    // async fn test_pack_and_unpack_authcrypt_compatibility() {
-    //     let (creds, config) = make_wallet_reqs("original_wallet".into());
-    //     let indy_wallet = open_indy_wallet(config.clone(), creds.clone()).await;
-    //     let askar_wallet = open_askar_wallet().await;
+    #[test_log::test(tokio::test)]
+    async fn test_pack_and_unpack_authcrypt_compatibility() {
+        let (creds, config) = make_wallet_reqs("original_wallet".into());
+        let indy_wallet = open_indy_wallet(config.clone(), creds.clone()).await;
+        let askar_wallet = open_askar_wallet().await;
 
-    // }
+        let sender_did_data =
+            DidWallet::create_and_store_my_did(&indy_wallet, Some(&random_seed()), None)
+                .await
+                .unwrap();
+
+        let recipient_did_data =
+            DidWallet::create_and_store_my_did(&indy_wallet, Some(&random_seed()), None)
+                .await
+                .unwrap();
+
+        let msg = "pack me";
+
+        let data = indy_wallet
+            .pack_message(
+                Some(sender_did_data.get_verkey().to_owned()),
+                vec![recipient_did_data.get_verkey().to_owned()],
+                msg.as_bytes(),
+            )
+            .await
+            .unwrap();
+
+        let res = migrate_without_handle(indy_wallet.get_wallet_handle(), &askar_wallet)
+            .await
+            .unwrap();
+
+        teardown_indy_wallet(indy_wallet, config, creds).await;
+
+        list_askar_keys(&askar_wallet).await;
+
+        let res = askar_wallet.unpack_message(&data).await.unwrap();
+
+        assert_eq!(res.message, msg);
+    }
 
     async fn create_test_data(indy_wallet: &IndySdkWallet, data_vec: TestDataVec) {
         for (category, value, count) in data_vec {
