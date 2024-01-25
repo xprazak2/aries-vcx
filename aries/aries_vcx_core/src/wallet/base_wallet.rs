@@ -581,4 +581,81 @@ mod tests {
         assert_eq!(value, res.value);
         assert_eq!(tags2, res.tags);
     }
+
+    async fn pack_and_unpack_anoncrypt(
+        sender: Box<dyn BaseWallet>,
+        recipient: Box<dyn BaseWallet>,
+    ) {
+        let did_data = recipient.create_and_store_my_did(None, None).await.unwrap();
+
+        let msg = "send me";
+
+        let rec_key = did_data.get_verkey().to_owned();
+
+        let packed = sender
+            .pack_message(None, vec![rec_key], msg.as_bytes())
+            .await
+            .unwrap();
+
+        let unpacked = recipient.unpack_message(&packed).await.unwrap();
+
+        assert_eq!(msg, unpacked.message);
+    }
+
+    async fn pack_and_unpack_authcrypt(
+        sender: Box<dyn BaseWallet>,
+        recipient: Box<dyn BaseWallet>,
+    ) {
+        let sender_did_data = sender.create_and_store_my_did(None, None).await.unwrap();
+        let recipient_did_data = recipient.create_and_store_my_did(None, None).await.unwrap();
+
+        let msg = "send me";
+
+        let rec_key = recipient_did_data.get_verkey().to_owned();
+
+        let packed = sender
+            .pack_message(
+                Some(sender_did_data.get_verkey().to_owned()),
+                vec![rec_key],
+                msg.as_bytes(),
+            )
+            .await
+            .unwrap();
+
+        let unpacked = recipient.unpack_message(&packed).await.unwrap();
+
+        assert_eq!(msg, unpacked.message);
+    }
+
+    #[tokio::test]
+    async fn test_askar_should_pack_and_indy_should_unpack_anoncrypt() {
+        let askar_wallet = dev_setup_askar_wallet().await;
+        let indy_wallet = dev_setup_indy_wallet().await;
+
+        pack_and_unpack_anoncrypt(askar_wallet, indy_wallet).await;
+    }
+
+    #[tokio::test]
+    async fn test_indy_should_pack_and_askar_should_unpack_anoncrypt() {
+        let askar_wallet = dev_setup_askar_wallet().await;
+        let indy_wallet = dev_setup_indy_wallet().await;
+
+        pack_and_unpack_anoncrypt(indy_wallet, askar_wallet).await;
+    }
+
+    #[tokio::test]
+    async fn test_askar_should_pack_and_indy_should_unpack_authcrypt() {
+        let askar_wallet = dev_setup_askar_wallet().await;
+        let indy_wallet = dev_setup_indy_wallet().await;
+
+        pack_and_unpack_authcrypt(askar_wallet, indy_wallet).await;
+    }
+
+    #[tokio::test]
+    async fn test_indy_should_pack_and_askar_should_unpack_authcrypt() {
+        let askar_wallet = dev_setup_askar_wallet().await;
+        let indy_wallet = dev_setup_indy_wallet().await;
+
+        pack_and_unpack_authcrypt(indy_wallet, askar_wallet).await;
+    }
 }

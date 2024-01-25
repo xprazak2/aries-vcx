@@ -57,55 +57,6 @@ async fn migrate_records(
                  result: ${migration_result:?}"
             );
         }
-        // trace!("Migrating record: {:?}", source_record);
-        // let unwrapped_type_ = match &source_record.get_type() {
-        //     None => {
-        //         warn!(
-        //             "Skipping item missing 'type' field, record ({num_record}): {source_record:?}"
-        //         );
-        //         migration_result.skipped += 1;
-        //         continue;
-        //     }
-        //     Some(type_) => type_.clone(),
-        // };
-        // let unwrapped_value = match &source_record.get_value() {
-        //     None => {
-        //         warn!(
-        //             "Skipping item missing 'value' field, record ({num_record}): {source_record:?}"
-        //         );
-        //         migration_result.skipped += 1;
-        //         continue;
-        //     }
-        //     Some(value) => value.clone(),
-        // };
-        // let unwrapped_tags = match source_record.get_tags() {
-        //     None => HashMap::new(),
-        //     Some(tags) => tags.clone(),
-        // };
-
-        // let mapped_record = match map_record(
-        //     source_record.get_id(),
-        //     unwrapped_type_,
-        //     unwrapped_value,
-        //     unwrapped_tags,
-        // ) {
-        //     Ok(record) => match record {
-        //         None => {
-        //             warn!("Skipping non-migratable record ({num_record}): {source_record:?}");
-        //             migration_result.skipped += 1;
-        //             continue;
-        //         }
-        //         Some(record) => record,
-        //     },
-        //     Err(err) => {
-        //         warn!(
-        //             "Skipping item due failed item migration, record ({num_record}): \
-        //              {source_record:?}, err: {err}"
-        //         );
-        //         migration_result.failed += 1;
-        //         continue;
-        //     }
-        // };
 
         let rec = transform_record(num_record, source_record, &mut migration_result);
 
@@ -471,7 +422,38 @@ mod tests {
 
         teardown_indy_wallet(indy_wallet, config, creds).await;
 
-        list_askar_keys(&askar_wallet).await;
+        let res = askar_wallet.unpack_message(&data).await.unwrap();
+
+        assert_eq!(res.message, msg);
+    }
+
+    #[test_log::test(tokio::test)]
+    async fn test_pack_and_unpack_anoncrypt_compatibility() {
+        let (creds, config) = make_wallet_reqs("original_wallet".into());
+        let indy_wallet = open_indy_wallet(config.clone(), creds.clone()).await;
+        let askar_wallet = open_askar_wallet().await;
+
+        let recipient_did_data =
+            DidWallet::create_and_store_my_did(&indy_wallet, Some(&random_seed()), None)
+                .await
+                .unwrap();
+
+        let msg = "pack me";
+
+        let data = indy_wallet
+            .pack_message(
+                None,
+                vec![recipient_did_data.get_verkey().to_owned()],
+                msg.as_bytes(),
+            )
+            .await
+            .unwrap();
+
+        let res = migrate_without_handle(indy_wallet.get_wallet_handle(), &askar_wallet)
+            .await
+            .unwrap();
+
+        teardown_indy_wallet(indy_wallet, config, creds).await;
 
         let res = askar_wallet.unpack_message(&data).await.unwrap();
 
