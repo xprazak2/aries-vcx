@@ -173,7 +173,7 @@ impl DidWallet for AskarWallet {
             packing.pack_anoncrypt(&enc_key, recipient_keys)?
         };
 
-        Ok(packing.pack_all(&base64_data, enc_key, msg)?)
+        Ok(packing.pack_all(base64_data, enc_key, msg)?)
     }
 
     async fn unpack_message(&self, msg: &[u8]) -> VcxCoreResult<UnpackMessageOutput> {

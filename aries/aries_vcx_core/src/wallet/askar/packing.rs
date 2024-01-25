@@ -5,7 +5,7 @@ use aries_askar::{
 
 use aries_askar::crypto::alg::Chacha20Types;
 use public_key::Key;
-use serde::{Deserialize, Serialize};
+use serde::{de::Unexpected, Deserialize, Serialize};
 
 use crate::{
     errors::error::{AriesVcxCoreError, AriesVcxCoreErrorKind, VcxCoreResult},
@@ -28,12 +28,100 @@ use aries_askar::kms::KeyAlg::Ed25519;
 pub const PROTECTED_HEADER_ENC: &str = "xchacha20poly1305_ietf";
 pub const PROTECTED_HEADER_TYP: &str = "JWM/1.0";
 
+#[derive(Debug)]
+pub enum ProtectedHeaderEnc {
+    XChaCha20Poly1305,
+}
+
+impl Serialize for ProtectedHeaderEnc {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        serializer.serialize_str(match self {
+            Self::XChaCha20Poly1305 => PROTECTED_HEADER_ENC,
+        })
+    }
+}
+
+impl<'de> Deserialize<'de> for ProtectedHeaderEnc {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        let value = String::deserialize(deserializer)?;
+
+        match value.as_str() {
+            PROTECTED_HEADER_ENC => Ok(Self::XChaCha20Poly1305),
+            _ => Err(serde::de::Error::invalid_value(
+                Unexpected::Str(value.as_str()),
+                &PROTECTED_HEADER_ENC,
+            )),
+        }
+    }
+}
+
+#[derive(Debug)]
+pub enum ProtectedHeaderTyp {
+    Jwm,
+}
+
+impl Serialize for ProtectedHeaderTyp {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        serializer.serialize_str(match self {
+            Self::Jwm => PROTECTED_HEADER_TYP,
+        })
+    }
+}
+
+impl<'de> Deserialize<'de> for ProtectedHeaderTyp {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        let value = String::deserialize(deserializer)?;
+
+        match value.as_str() {
+            PROTECTED_HEADER_TYP => Ok(Self::Jwm),
+            _ => Err(serde::de::Error::invalid_value(
+                Unexpected::Str(value.as_str()),
+                &PROTECTED_HEADER_TYP,
+            )),
+        }
+    }
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+#[serde(transparent)]
+pub struct Base64String(String);
+
+impl Base64String {
+    pub fn from_bytes(content: &[u8]) -> Self {
+        Self(encode_urlsafe(content))
+    }
+
+    pub fn decode(&self) -> VcxCoreResult<Vec<u8>> {
+        decode_urlsafe(&self.0)
+    }
+
+    pub fn decode_to_string(&self) -> VcxCoreResult<String> {
+        bytes_to_string(self.decode()?)
+    }
+
+    pub fn as_bytes(&self) -> Vec<u8> {
+        self.0.as_bytes().into()
+    }
+}
+
 #[derive(Serialize, Deserialize, Debug)]
 pub struct Jwe {
-    pub protected: String,
-    pub iv: String,
-    pub ciphertext: String,
-    pub tag: String,
+    pub protected: Base64String,
+    pub iv: Base64String,
+    pub ciphertext: Base64String,
+    pub tag: Base64String,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -44,8 +132,8 @@ pub enum JweAlg {
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct ProtectedData {
-    pub enc: String,
-    pub typ: String,
+    pub enc: ProtectedHeaderEnc,
+    pub typ: ProtectedHeaderTyp,
     pub alg: JweAlg,
     pub recipients: Vec<Recipient>,
 }
@@ -58,20 +146,25 @@ pub enum Recipient {
 }
 
 impl Recipient {
-    pub fn new_authcrypt(encrypted_key: &str, kid: &str, iv: &str, sender: &str) -> Self {
+    pub fn new_authcrypt(
+        encrypted_key: Base64String,
+        kid: &str,
+        iv: Base64String,
+        sender: Base64String,
+    ) -> Self {
         Self::Authcrypt(AuthcryptRecipient {
-            encrypted_key: encrypted_key.to_owned(),
+            encrypted_key: encrypted_key,
             header: AuthcryptHeader {
                 kid: kid.into(),
-                iv: iv.into(),
-                sender: sender.into(),
+                iv: iv,
+                sender: sender,
             },
         })
     }
 
-    pub fn new_anoncrypt(encrypted_key: &str, kid: &str) -> Self {
+    pub fn new_anoncrypt(encrypted_key: Base64String, kid: &str) -> Self {
         Self::Anoncrypt(AnoncryptRecipient {
-            encrypted_key: encrypted_key.to_owned(),
+            encrypted_key: encrypted_key,
             header: AnoncryptHeader { kid: kid.into() },
         })
     }
@@ -90,21 +183,21 @@ impl Recipient {
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct AuthcryptRecipient {
-    pub encrypted_key: String,
+    pub encrypted_key: Base64String,
     pub header: AuthcryptHeader,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct AnoncryptRecipient {
-    pub encrypted_key: String,
+    pub encrypted_key: Base64String,
     pub header: AnoncryptHeader,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct AuthcryptHeader {
     pub kid: String,
-    pub iv: String,
-    pub sender: String,
+    pub iv: Base64String,
+    pub sender: Base64String,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -128,8 +221,8 @@ impl Packing {
         jwe: Jwe,
         session: &mut Session,
     ) -> VcxCoreResult<UnpackMessageOutput> {
-        let protected_data_vec = decode_urlsafe(&jwe.protected)?;
-        let protected_data_str = bytes_to_string(protected_data_vec)?;
+        let protected_data_str = &jwe.protected.decode_to_string()?;
+        // let protected_data_str = bytes_to_string(protected_data_vec)?;
         let protected_data = from_json_str(&protected_data_str)?;
 
         let (recipient, key_entry) = self.find_recipient_key(&protected_data, session).await?;
@@ -137,9 +230,9 @@ impl Packing {
 
         let (enc_key, sender_verkey) = self.unpack_recipient(recipient, &local_key)?;
 
-        let nonce = decode_urlsafe(&jwe.iv)?;
-        let ciphertext = decode_urlsafe(&jwe.ciphertext)?;
-        let tag = decode_urlsafe(&jwe.tag)?;
+        let nonce = &jwe.iv.decode()?;
+        let ciphertext = &jwe.ciphertext.decode()?;
+        let tag = &jwe.tag.decode()?;
 
         let to_decrypt = ToDecrypt::from((ciphertext.as_ref(), tag.as_ref()));
 
@@ -176,10 +269,10 @@ impl Packing {
         local_key: &LocalKey,
         recipient: &AuthcryptRecipient,
     ) -> VcxCoreResult<(LocalKey, Option<String>)> {
-        let encrypted_key = decode_urlsafe(&recipient.encrypted_key)?;
-        let iv = decode_urlsafe(&recipient.header.iv)?;
+        let encrypted_key = &recipient.encrypted_key.decode()?;
+        let iv = &recipient.header.iv.decode()?;
 
-        let sender_vk_enc = decode_urlsafe(&recipient.header.sender)?;
+        let sender_vk_enc = &recipient.header.sender.decode()?;
 
         let (private_bytes, public_bytes) = ed25519_to_x25519_pair(local_key)?;
 
@@ -211,7 +304,7 @@ impl Packing {
         local_key: &LocalKey,
         recipient: &AnoncryptRecipient,
     ) -> VcxCoreResult<(LocalKey, Option<String>)> {
-        let encrypted_key = decode_urlsafe(&recipient.encrypted_key)?;
+        let encrypted_key = &recipient.encrypted_key.decode()?;
 
         let (private_bytes, public_bytes) = ed25519_to_x25519_pair(local_key)?;
 
@@ -242,18 +335,18 @@ impl Packing {
 
     pub fn pack_all(
         &self,
-        base64_data: &str,
+        base64_data: Base64String,
         enc_key: LocalKey,
         msg: &[u8],
     ) -> VcxCoreResult<Vec<u8>> {
         let nonce = enc_key.aead_random_nonce()?;
-        let enc = enc_key.aead_encrypt(msg, &nonce, base64_data.as_bytes())?;
+        let enc = enc_key.aead_encrypt(msg, &nonce, &base64_data.as_bytes())?;
 
         let jwe = Jwe {
-            protected: base64_data.to_string(),
-            iv: encode_urlsafe(enc.nonce()),
-            ciphertext: encode_urlsafe(enc.ciphertext()),
-            tag: encode_urlsafe(enc.tag()),
+            protected: base64_data,
+            iv: Base64String::from_bytes(enc.nonce()),
+            ciphertext: Base64String::from_bytes(enc.ciphertext()),
+            tag: Base64String::from_bytes(enc.tag()),
         };
 
         serde_json::to_vec(&jwe).map_err(|err| {
@@ -269,7 +362,7 @@ impl Packing {
         enc_key: &LocalKey,
         recipient_keys: Vec<Key>,
         sender_local_key: LocalKey,
-    ) -> VcxCoreResult<String> {
+    ) -> VcxCoreResult<Base64String> {
         self.check_supported_key_alg(&sender_local_key)?;
 
         let encrypted_recipients =
@@ -331,14 +424,14 @@ impl Packing {
             let kid = bytes_to_bs58(&recipient_pubkey);
             // ?could previous line be:
             // let kid = recipient_key.base58();
-            let sender = encode_urlsafe(&enc_sender);
-            let iv = encode_urlsafe(&nonce);
+            let sender = Base64String::from_bytes(&enc_sender);
+            let iv = Base64String::from_bytes(&nonce);
 
             encrypted_recipients.push(Recipient::new_authcrypt(
-                &encode_urlsafe(&enc_cek),
+                Base64String::from_bytes(&enc_cek),
                 &kid,
-                &iv,
-                &sender,
+                iv,
+                sender,
             ));
         }
 
@@ -349,7 +442,7 @@ impl Packing {
         &self,
         enc_key: &LocalKey,
         recipient_keys: Vec<Key>,
-    ) -> VcxCoreResult<String> {
+    ) -> VcxCoreResult<Base64String> {
         let encrypted_recipients = self.pack_anoncrypt_recipients(enc_key, recipient_keys)?;
 
         Ok(self.encode_protected_data(encrypted_recipients, JweAlg::Anoncrypt)?)
@@ -375,7 +468,10 @@ impl Packing {
 
             let kid = bytes_to_bs58(&recipient_pubkey);
 
-            encrypted_recipients.push(Recipient::new_anoncrypt(&encode_urlsafe(&enc_cek), &kid));
+            encrypted_recipients.push(Recipient::new_anoncrypt(
+                Base64String::from_bytes(&enc_cek),
+                &kid,
+            ));
         }
 
         Ok(encrypted_recipients)
@@ -385,10 +481,10 @@ impl Packing {
         &self,
         encrypted_recipients: Vec<Recipient>,
         jwe_alg: JweAlg,
-    ) -> VcxCoreResult<String> {
+    ) -> VcxCoreResult<Base64String> {
         let protected_data = ProtectedData {
-            enc: PROTECTED_HEADER_ENC.into(),
-            typ: PROTECTED_HEADER_TYP.into(),
+            enc: ProtectedHeaderEnc::XChaCha20Poly1305,
+            typ: ProtectedHeaderTyp::Jwm,
             alg: jwe_alg,
             recipients: encrypted_recipients,
         };
@@ -400,6 +496,6 @@ impl Packing {
             )
         })?;
 
-        Ok(encode_urlsafe(protected_encoded.as_bytes()))
+        Ok(Base64String::from_bytes(protected_encoded.as_bytes()))
     }
 }
