@@ -4,7 +4,7 @@ use aries_askar::{
 };
 
 use aries_askar::crypto::alg::Chacha20Types;
-use public_key::Key;
+use public_key::{Key, KeyType};
 use serde::{de::Unexpected, Deserialize, Serialize};
 
 use crate::{
@@ -221,37 +221,46 @@ impl Packing {
         jwe: Jwe,
         session: &mut Session,
     ) -> VcxCoreResult<UnpackMessageOutput> {
-        let protected_data_str = &jwe.protected.decode_to_string()?;
-        // let protected_data_str = bytes_to_string(protected_data_vec)?;
-        let protected_data = from_json_str(&protected_data_str)?;
+        let protected_data = self.unpack_protected_data(&jwe)?;
 
         let (recipient, key_entry) = self.find_recipient_key(&protected_data, session).await?;
         let local_key = key_entry.load_local_key()?;
 
         let (enc_key, sender_verkey) = self.unpack_recipient(recipient, &local_key)?;
 
+        let msg = self.unpack_msg(&jwe, enc_key)?;
+
+        Ok(UnpackMessageOutput {
+            message: msg,
+            recipient_verkey: recipient.unwrap_kid().to_owned(),
+            sender_verkey: sender_verkey.map(|key| key.base58()),
+        })
+    }
+
+    pub fn unpack_protected_data(&self, jwe: &Jwe) -> VcxCoreResult<ProtectedData> {
+        let protected_data_str = &jwe.protected.decode_to_string()?;
+        from_json_str(&protected_data_str)
+    }
+
+    pub fn unpack_msg(&self, jwe: &Jwe, enc_key: LocalKey) -> VcxCoreResult<String> {
         let nonce = &jwe.iv.decode()?;
         let ciphertext = &jwe.ciphertext.decode()?;
         let tag = &jwe.tag.decode()?;
 
         let to_decrypt = ToDecrypt::from((ciphertext.as_ref(), tag.as_ref()));
 
-        let msg = enc_key.aead_decrypt(to_decrypt, &nonce, &jwe.protected.as_bytes())?;
-
-        let unpacked = UnpackMessageOutput {
-            message: bytes_to_string(msg.to_vec())?,
-            recipient_verkey: recipient.unwrap_kid().to_owned(),
-            sender_verkey,
-        };
-
-        Ok(unpacked)
+        bytes_to_string(
+            enc_key
+                .aead_decrypt(to_decrypt, &nonce, &jwe.protected.as_bytes())?
+                .to_vec(),
+        )
     }
 
     fn unpack_recipient(
         &self,
         recipient: &Recipient,
         local_key: &LocalKey,
-    ) -> VcxCoreResult<(LocalKey, Option<String>)> {
+    ) -> VcxCoreResult<(LocalKey, Option<Key>)> {
         let res = match recipient {
             Recipient::Authcrypt(auth_recipient) => {
                 self.unpack_authcrypt(&local_key, auth_recipient)
@@ -268,7 +277,7 @@ impl Packing {
         &self,
         local_key: &LocalKey,
         recipient: &AuthcryptRecipient,
-    ) -> VcxCoreResult<(LocalKey, Option<String>)> {
+    ) -> VcxCoreResult<(LocalKey, Option<Key>)> {
         let encrypted_key = &recipient.encrypted_key.decode()?;
         let iv = &recipient.header.iv.decode()?;
 
@@ -280,7 +289,7 @@ impl Packing {
             self.crypto_box
                 .sealedbox_decrypt(&private_bytes, &public_bytes, &sender_vk_enc)?;
 
-        let sender_vk = bytes_to_string(sender_vk_vec)?;
+        let sender_vk = bytes_to_string(sender_vk_vec.clone())?;
 
         let sender_vk_local_key =
             LocalKey::from_public_bytes(Ed25519, &bs58_to_bytes(&sender_vk)?)?;
@@ -294,16 +303,18 @@ impl Packing {
             &iv,
         )?;
 
+        let sender_vk_key = Key::new(sender_vk_vec, KeyType::Ed25519)?;
+
         let enc_key = LocalKey::from_secret_bytes(KeyAlg::Chacha20(Chacha20Types::C20P), &cek_vec)?;
 
-        Ok((enc_key, Some(sender_vk)))
+        Ok((enc_key, Some(sender_vk_key)))
     }
 
     fn unpack_anoncrypt(
         &self,
         local_key: &LocalKey,
         recipient: &AnoncryptRecipient,
-    ) -> VcxCoreResult<(LocalKey, Option<String>)> {
+    ) -> VcxCoreResult<(LocalKey, Option<Key>)> {
         let encrypted_key = &recipient.encrypted_key.decode()?;
 
         let (private_bytes, public_bytes) = ed25519_to_x25519_pair(local_key)?;
@@ -405,8 +416,7 @@ impl Packing {
         let mut encrypted_recipients = Vec::with_capacity(recipient_keys.len());
 
         for recipient_key in recipient_keys {
-            // could it be &recipient_key.key()
-            let recipient_pubkey = bs58_to_bytes(&recipient_key.base58())?;
+            let recipient_pubkey = recipient_key.key();
             let recipient_local_key = LocalKey::from_public_bytes(Ed25519, &recipient_pubkey)?;
             let recipient_public_bytes = ed25519_to_x25519_public(&recipient_local_key)?;
 
@@ -421,9 +431,7 @@ impl Packing {
                 bytes_to_bs58(&my_original_public_bytes).as_bytes(),
             )?;
 
-            let kid = bytes_to_bs58(&recipient_pubkey);
-            // ?could previous line be:
-            // let kid = recipient_key.base58();
+            let kid = recipient_key.base58();
             let sender = Base64String::from_bytes(&enc_sender);
             let iv = Base64String::from_bytes(&nonce);
 
