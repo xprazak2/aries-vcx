@@ -21,8 +21,8 @@ use aries_vcx::{
     protocols::mediated_connection::pairwise_info::PairwiseInfo,
 };
 use aries_vcx_core::wallet::{
-    base_wallet::{DidWallet, Record, RecordWallet},
-    indy::{IndyTags, IndyWalletRecord},
+    base_wallet::{record::Record, DidWallet, RecordWallet},
+    indy::{indy_tag::IndyTags, IndyWalletRecord},
 };
 use futures::FutureExt;
 use public_key::{Key, KeyType};
