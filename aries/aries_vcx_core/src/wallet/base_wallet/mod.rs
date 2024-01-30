@@ -264,7 +264,7 @@ mod tests {
         let category = "my";
         let value1 = "xxx";
         let value2 = "yyy";
-        let tags1: EntryTags = vec![EntryTag::Plaintext("a".into(), "b".into())].into();
+        let tags1: EntryTags = vec![EntryTag::Tag("a".into(), "b".into())].into();
         let tags2 = EntryTags::default();
 
         let record = Record::builder()
@@ -297,7 +297,7 @@ mod tests {
         let category = "my";
         let value1 = "xxx";
         let value2 = "yyy";
-        let tags: EntryTags = vec![EntryTag::Plaintext("a".into(), "b".into())].into();
+        let tags: EntryTags = vec![EntryTag::Tag("a".into(), "b".into())].into();
 
         let record = Record::builder()
             .name(name.into())
@@ -324,8 +324,8 @@ mod tests {
         let name = "foo";
         let category = "my";
         let value = "xxx";
-        let tags1: EntryTags = vec![EntryTag::Plaintext("a".into(), "b".into())].into();
-        let tags2: EntryTags = vec![EntryTag::Plaintext("c".into(), "d".into())].into();
+        let tags1: EntryTags = vec![EntryTag::Tag("a".into(), "b".into())].into();
+        let tags2: EntryTags = vec![EntryTag::Tag("c".into(), "d".into())].into();
 
         let record = Record::builder()
             .name(name.into())
