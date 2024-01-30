@@ -1,22 +1,56 @@
 use async_trait::async_trait;
 use indy_api_types::domain::wallet::IndyRecord;
-use vdrtools::Locator;
+use vdrtools::{indy_wallet::iterator::WalletIterator, Locator};
 
 use super::{indy_tags::IndyTags, WALLET_OPTIONS};
 use crate::{
     errors::error::VcxCoreResult,
     wallet::{
         base_wallet::{
-            record::Record, record_category::RecordCategory, search_filter::SearchFilter,
-            RecordWallet,
+            record::{AllRecords, PartialRecord, Record},
+            record_category::RecordCategory,
+            record_wallet::RecordWallet,
+            search_filter::SearchFilter,
         },
         indy::IndySdkWallet,
         record_tags::RecordTags,
     },
 };
 
+pub struct AllIndyRecords {
+    iterator: WalletIterator,
+}
+
+impl AllIndyRecords {
+    pub fn new(iterator: WalletIterator) -> Self {
+        Self { iterator }
+    }
+}
+
+#[async_trait]
+impl AllRecords for AllIndyRecords {
+    fn total_count(&self) -> VcxCoreResult<Option<usize>> {
+        Ok(self.iterator.get_total_count()?)
+    }
+
+    async fn next(&mut self) -> VcxCoreResult<Option<PartialRecord>> {
+        let item = self.iterator.next().await?;
+
+        Ok(item.map(PartialRecord::from_wallet_record))
+    }
+}
+
 #[async_trait]
 impl RecordWallet for IndySdkWallet {
+    async fn all_records(&self) -> VcxCoreResult<Box<dyn AllRecords + Send>> {
+        let all = Locator::instance()
+            .wallet_controller
+            .get_all(self.get_wallet_handle())
+            .await?;
+
+        Ok(Box::new(AllIndyRecords::new(all)))
+    }
+
     async fn add_record(&self, record: Record) -> VcxCoreResult<()> {
         let tags_map = if record.tags().is_empty() {
             None

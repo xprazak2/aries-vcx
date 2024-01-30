@@ -6,8 +6,8 @@ use crate::{
     errors::error::{AriesVcxCoreError, AriesVcxCoreErrorKind, VcxCoreResult},
     wallet::{
         base_wallet::{
-            record::Record, record_category::RecordCategory, search_filter::SearchFilter,
-            RecordWallet,
+            record::Record, record_category::RecordCategory, record_wallet::RecordWallet,
+            search_filter::SearchFilter,
         },
         record_tags::RecordTags,
     },
