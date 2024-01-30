@@ -30,7 +30,7 @@ pub async fn endorse_transaction(transaction: &str, endorser_did: &str) -> Libvc
     let ledger = get_main_ledger_write()?;
     map_ariesvcx_core_result(
         ledger
-            .endorse_transaction(wallet.as_ref(), &endorser_did.parse()?, transaction)
+            .endorse_transaction(&wallet, &endorser_did.parse()?, transaction)
             .await,
     )
 }
@@ -52,7 +52,7 @@ pub async fn get_ledger_txn(seq_no: i32, submitter_did: Option<String>) -> Libvc
 
 pub async fn rotate_verkey(did: &str) -> LibvcxResult<()> {
     let result = aries_vcx::common::keys::rotate_verkey(
-        get_main_wallet()?.as_ref(),
+        &get_main_wallet()?,
         get_main_ledger_write()?.as_ref(),
         &did.to_owned().parse()?,
     )
@@ -82,7 +82,7 @@ pub async fn ledger_write_endpoint_legacy(
             .set_recipient_keys(recipient_keys)
             .set_routing_keys(routing_keys);
     write_endpoint_legacy(
-        wallet.as_ref(),
+        &wallet,
         get_main_ledger_write()?.as_ref(),
         &target_did.parse()?,
         &service,
@@ -108,7 +108,7 @@ pub async fn ledger_write_endpoint(
             ]))
             .set_routing_keys(Some(routing_keys));
     write_endpoint(
-        wallet.as_ref(),
+        &wallet,
         get_main_ledger_write()?.as_ref(),
         &target_did.parse()?,
         &service,
@@ -132,7 +132,7 @@ pub async fn ledger_clear_attr(target_did: &str, attr: &str) -> LibvcxResult<Str
     let wallet = get_main_wallet()?;
     map_ariesvcx_result(
         clear_attr(
-            wallet.as_ref(),
+            &wallet,
             get_main_ledger_write()?.as_ref(),
             &target_did.parse()?,
             attr,
@@ -150,7 +150,7 @@ pub async fn ledger_write_endorser_did(
     let wallet = get_main_wallet()?;
     map_ariesvcx_result(
         write_endorser_did(
-            wallet.as_ref(),
+            &wallet,
             get_main_ledger_write()?.as_ref(),
             &submitter_did.parse()?,
             &target_did.parse()?,

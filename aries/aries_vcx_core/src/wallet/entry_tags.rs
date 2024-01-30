@@ -2,7 +2,39 @@ use std::fmt;
 
 use serde::{de::Visitor, ser::SerializeMap, Deserialize, Serialize};
 
-pub(crate) type EntryTag = (String, String);
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
+pub struct EntryTag {
+    key: String,
+    value: String,
+}
+
+impl EntryTag {
+    pub fn new(key: &str, value: &str) -> Self {
+        Self {
+            key: key.to_owned(),
+            value: value.to_owned(),
+        }
+    }
+
+    pub fn key(&self) -> &str {
+        &self.key
+    }
+
+    pub fn value(&self) -> &str {
+        &self.value
+    }
+
+    pub fn into_pair(self) -> (String, String) {
+        (self.key, self.value)
+    }
+
+    pub fn from_pair(pair: (String, String)) -> Self {
+        Self {
+            key: pair.0,
+            value: pair.1,
+        }
+    }
+}
 
 #[derive(Debug, Default, Clone, PartialEq)]
 pub struct EntryTags {
@@ -16,7 +48,7 @@ impl Serialize for EntryTags {
     {
         let mut map = serializer.serialize_map(Some(self.inner.len()))?;
         for tag in self.inner.iter() {
-            map.serialize_entry(&tag.0, &tag.1)?
+            map.serialize_entry(tag.key(), tag.value())?
         }
         map.end()
     }
@@ -37,8 +69,8 @@ impl<'de> Visitor<'de> for EntryTagsVisitor {
     {
         let mut tags = EntryTags::new(vec![]);
 
-        while let Some(tag) = map.next_entry()? {
-            tags.add(tag);
+        while let Some((key, val)) = map.next_entry()? {
+            tags.add(EntryTag::new(key, val));
         }
 
         Ok(tags)
@@ -81,7 +113,8 @@ impl EntryTags {
     }
 
     pub fn remove(&mut self, tag: EntryTag) {
-        self.inner.retain(|existing_tag| existing_tag.0 != tag.0);
+        self.inner
+            .retain(|existing_tag| existing_tag.key() != tag.key());
         self.inner.sort();
     }
 }
@@ -126,11 +159,11 @@ impl From<EntryTags> for Vec<EntryTag> {
 mod tests {
     use serde_json::json;
 
-    use crate::wallet::entry_tags::EntryTags;
+    use crate::wallet::entry_tags::{EntryTag, EntryTags};
 
     #[test]
     fn test_entry_tags_serialize() {
-        let tags = EntryTags::new(vec![("~a".into(), "b".into()), ("c".into(), "d".into())]);
+        let tags = EntryTags::new(vec![EntryTag::new("~a", "b"), EntryTag::new("c", "d")]);
 
         let res = serde_json::to_string(&tags).unwrap();
 
@@ -141,7 +174,7 @@ mod tests {
     fn test_entry_tags_deserialize() {
         let json = json!({"a":"b", "~c":"d"});
 
-        let tags = EntryTags::new(vec![("a".into(), "b".into()), ("~c".into(), "d".into())]);
+        let tags = EntryTags::new(vec![EntryTag::new("a", "b"), EntryTag::new("~c", "d")]);
 
         let res = serde_json::from_str(&json.to_string()).unwrap();
 

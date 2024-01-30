@@ -15,13 +15,13 @@ impl IndyTags {
 
     pub fn from_entry_tags(tags: EntryTags) -> Self {
         let mut map = HashMap::new();
-        let tags_vec: Vec<_> = tags.into_iter().collect();
+        let tags_vec: Vec<_> = tags.into_iter().map(|tag| tag.into_pair()).collect();
         map.extend(tags_vec);
         Self(map)
     }
 
     pub fn into_entry_tags(self) -> EntryTags {
-        let mut items: Vec<EntryTag> = self.0.into_iter().collect();
+        let mut items: Vec<EntryTag> = self.0.into_iter().map(EntryTag::from_pair).collect();
         items.sort();
 
         EntryTags::new(items)
