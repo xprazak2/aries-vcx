@@ -1274,7 +1274,7 @@ impl BaseAnonCreds for Anoncreds {
 
             // add attribute name and marker (used for checking existent)
             let marker_tag_name = _format_attribute_as_marker_tag_name(&attr_name);
-            tags.add(EntryTag::new(&marker_tag_name, "1"))
+            tags.add(EntryTag::new(&marker_tag_name, "1"));
         }
 
         let credential_id = cred_id.map_or(Uuid::new_v4().to_string(), String::from);

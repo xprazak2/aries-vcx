@@ -1,6 +1,5 @@
 use std::fmt::Debug;
 
-use aries_vcx_core::wallet::base_wallet::BaseWallet;
 use axum::{body::Bytes, extract::State, Json};
 use messages::AriesMessage;
 use serde::{Deserialize, Serialize};
@@ -27,8 +26,8 @@ pub fn unhandled_aries_message(message: impl Debug) -> String {
     format!("Don't know how to handle this message type {:#?}", message)
 }
 
-pub async fn handle_aries<T: BaseWallet + 'static, P: MediatorPersistence>(
-    State(agent): State<ArcAgent<T, P>>,
+pub async fn handle_aries<P: MediatorPersistence>(
+    State(agent): State<ArcAgent<P>>,
     didcomm_msg: Bytes,
 ) -> Result<Json<Value>, String> {
     log::info!("processing message {:?}", &didcomm_msg);
