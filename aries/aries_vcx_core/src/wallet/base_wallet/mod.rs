@@ -1,6 +1,8 @@
 use async_trait::async_trait;
 use public_key::Key;
 
+use self::{issuer_config::IssuerConfig, record::AllRecords, wallet_config::WalletConfig};
+
 use super::entry_tag::EntryTags;
 use crate::{
     errors::error::VcxCoreResult,
@@ -11,10 +13,36 @@ use crate::{
 };
 
 pub mod did_data;
+pub mod issuer_config;
+pub mod migrate;
 pub mod record;
 pub mod search_filter;
+pub mod wallet_config;
 
-pub trait BaseWallet: RecordWallet + DidWallet + Send + Sync + std::fmt::Debug {}
+pub trait ToRecord {
+    fn to_record(&self) -> Record;
+}
+
+// pub type RecordIterator = Box<dyn Iterator<Item = Record>>;
+
+#[async_trait]
+pub trait BaseWallet: RecordWallet + DidWallet + Send + Sync + std::fmt::Debug {
+    async fn export_wallet(&self, path: &str, backup_key: &str) -> VcxCoreResult<()>;
+
+    async fn close_wallet(&self) -> VcxCoreResult<()>;
+
+    async fn configure_issuer(&self, key_seed: &str) -> VcxCoreResult<IssuerConfig>;
+
+    async fn create_wallet(wallet_config: WalletConfig) -> VcxCoreResult<Box<dyn BaseWallet>>
+    where
+        Self: Sized;
+
+    async fn open_wallet(wallet_config: &WalletConfig) -> VcxCoreResult<Box<dyn BaseWallet>>
+    where
+        Self: Sized;
+
+    async fn all(&self) -> VcxCoreResult<Box<dyn AllRecords>>;
+}
 
 #[async_trait]
 pub trait DidWallet {

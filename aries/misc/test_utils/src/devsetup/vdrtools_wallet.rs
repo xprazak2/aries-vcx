@@ -1,11 +1,8 @@
 use aries_vcx_core::{
     global::settings::{DEFAULT_WALLET_KEY, WALLET_KDF_RAW},
     wallet::{
-        base_wallet::BaseWallet,
-        indy::{
-            wallet::{create_and_open_wallet, create_and_store_my_did},
-            WalletConfig,
-        },
+        base_wallet::{wallet_config::WalletConfig, BaseWallet},
+        indy::wallet::{create_and_open_wallet, create_and_store_my_did},
     },
     WalletHandle,
 };

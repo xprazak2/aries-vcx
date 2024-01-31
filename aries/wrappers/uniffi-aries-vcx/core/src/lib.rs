@@ -6,7 +6,8 @@ pub mod handlers;
 pub mod runtime;
 
 use aries_vcx::{
-    aries_vcx_core::wallet::indy::WalletConfig, protocols::connection::pairwise_info::PairwiseInfo,
+    aries_vcx_core::wallet::base_wallet::wallet_config::WalletConfig,
+    protocols::connection::pairwise_info::PairwiseInfo,
 };
 use handlers::{connection::*, holder::*};
 

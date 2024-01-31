@@ -8,8 +8,23 @@ use vdrtools::{
 
 use crate::{
     errors::error::{AriesVcxCoreError, AriesVcxCoreErrorKind, VcxCoreResult},
-    wallet::indy::{IssuerConfig, RestoreWalletConfigs, WalletConfig},
+    wallet::{
+        base_wallet::wallet_config::WalletConfig,
+        indy::{IssuerConfig, RestoreWalletConfigs},
+    },
 };
+
+fn parse_key_derivation_method(method: &str) -> Result<KeyDerivationMethod, AriesVcxCoreError> {
+    match method {
+        "RAW" => Ok(KeyDerivationMethod::RAW),
+        "ARGON2I_MOD" => Ok(KeyDerivationMethod::ARGON2I_MOD),
+        "ARGON2I_INT" => Ok(KeyDerivationMethod::ARGON2I_INT),
+        _ => Err(AriesVcxCoreError::from_msg(
+            AriesVcxCoreErrorKind::InvalidOption,
+            format!("Unknown derivation method {method}"),
+        )),
+    }
+}
 
 pub async fn open_wallet(wallet_config: &WalletConfig) -> VcxCoreResult<WalletHandle> {
     trace!("open_as_main_wallet >>> {}", &wallet_config.wallet_name);
@@ -50,18 +65,6 @@ pub async fn open_wallet(wallet_config: &WalletConfig) -> VcxCoreResult<WalletHa
         )
         .await
         .map_err(From::from)
-}
-
-fn parse_key_derivation_method(method: &str) -> Result<KeyDerivationMethod, AriesVcxCoreError> {
-    match method {
-        "RAW" => Ok(KeyDerivationMethod::RAW),
-        "ARGON2I_MOD" => Ok(KeyDerivationMethod::ARGON2I_MOD),
-        "ARGON2I_INT" => Ok(KeyDerivationMethod::ARGON2I_INT),
-        _ => Err(AriesVcxCoreError::from_msg(
-            AriesVcxCoreErrorKind::InvalidOption,
-            format!("Unknown derivation method {method}"),
-        )),
-    }
 }
 
 pub async fn create_indy_wallet(wallet_config: &WalletConfig) -> VcxCoreResult<()> {

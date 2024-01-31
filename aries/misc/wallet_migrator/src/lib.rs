@@ -4,6 +4,7 @@ pub mod vdrtools2credx;
 
 use std::fmt::Display;
 
+use aries_vcx_core::wallet::base_wallet::migrate::migrate_records;
 use error::MigrationResult;
 use log::{error, info};
 pub use vdrtools::types::domain::wallet::IndyRecord;
@@ -14,17 +15,22 @@ use crate::error::MigrationError;
 /// Retrieves all records from the source wallet and migrates them
 /// by applying the `migrate_fn` argument. The records are then
 /// placed in the destination wallet.
+// pub async fn migrate_wallet<E>(
+//     src_wallet_handle: WalletHandle,
+//     dest_wallet_handle: WalletHandle,
+//     migrate_fn: impl FnMut(IndyRecord) -> Result<Option<IndyRecord>, E>,
+// ) -> MigrationResult<()>
 pub async fn migrate_wallet<E>(
-    src_wallet_handle: WalletHandle,
-    dest_wallet_handle: WalletHandle,
-    migrate_fn: impl FnMut(IndyRecord) -> Result<Option<IndyRecord>, E>,
+    src_wallet: impl BaseWallet,
+    dest_wallet: impl BaseWallet,
+    migrate_fn: impl FnMut(Record) -> Result<Option<Record>, E>,
 ) -> MigrationResult<()>
 where
     E: Display,
 {
     info!("Starting wallet migration");
 
-    if src_wallet_handle == dest_wallet_handle {
+    if src_wallet == dest_wallet {
         error!("Equal wallet handles: {src_wallet_handle:?} {dest_wallet_handle:?}");
         return Err(MigrationError::EqualWalletHandles);
     }
@@ -34,10 +40,7 @@ where
          {dest_wallet_handle:?}"
     );
 
-    Locator::instance()
-        .wallet_controller
-        .migrate_records(src_wallet_handle, dest_wallet_handle, migrate_fn)
-        .await?;
+    migrate_records(src_wallet, dest_wallet, migrate_fn).await?;
 
     info!(
         "Completed migration from wallet with handle {src_wallet_handle:?} to wallet with handle \

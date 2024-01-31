@@ -7,10 +7,10 @@ mod dbtests {
 
     use aries_vcx::global::settings;
     use aries_vcx_core::wallet::{
-        base_wallet::DidWallet,
+        base_wallet::{wallet_config::WalletConfig, DidWallet},
         indy::{
             wallet::{close_wallet, create_and_open_wallet, wallet_configure_issuer},
-            IndySdkWallet, WalletConfig,
+            IndySdkWallet,
         },
     };
     use libvcx_logger::LibvcxDefaultLogger;

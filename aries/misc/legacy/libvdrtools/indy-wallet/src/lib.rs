@@ -16,6 +16,7 @@ use indy_utils::{
     crypto::chacha20poly1305_ietf::{self, Key as MasterKey},
     secret,
 };
+use iterator::WalletIterator;
 use log::{error, info, trace, warn};
 use serde::{Deserialize, Serialize};
 use serde_json::Value as SValue;
@@ -707,6 +708,11 @@ impl WalletService {
     pub async fn check(&self, handle: WalletHandle) -> IndyResult<()> {
         self.get_wallet(handle).await?;
         Ok(())
+    }
+
+    pub async fn get_all(&self, handle: WalletHandle) -> IndyResult<WalletIterator> {
+        let wallet = self.get_wallet(handle).await?;
+        wallet.get_all().await
     }
 
     pub async fn migrate_records<E>(

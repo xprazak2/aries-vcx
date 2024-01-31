@@ -1,10 +1,22 @@
-use indy_api_types::domain::wallet::IndyRecord;
+use async_trait::async_trait;
+use indy_api_types::domain::wallet::{
+    default_key_derivation_method, IndyRecord, KeyDerivationMethod,
+};
 use serde::{Deserialize, Serialize};
 use typed_builder::TypedBuilder;
+use vdrtools::Locator;
 
 use self::indy_tag::IndyTags;
-use super::base_wallet::{record::Record, BaseWallet};
-use crate::{errors::error::VcxCoreResult, WalletHandle};
+use super::base_wallet::{
+    issuer_config::IssuerConfig,
+    record::{AllRecords, Record},
+    wallet_config::WalletConfig,
+    BaseWallet, DidWallet,
+};
+use crate::{
+    errors::error::{AriesVcxCoreError, AriesVcxCoreErrorKind, VcxCoreResult},
+    WalletHandle,
+};
 
 mod indy_did_wallet;
 mod indy_record_wallet;
@@ -25,35 +37,6 @@ impl IndySdkWallet {
     pub fn get_wallet_handle(&self) -> WalletHandle {
         self.wallet_handle
     }
-}
-
-#[derive(Clone, Debug, TypedBuilder, Serialize, Deserialize)]
-#[builder(field_defaults(default))]
-pub struct WalletConfig {
-    pub wallet_name: String,
-    pub wallet_key: String,
-    pub wallet_key_derivation: String,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    #[builder(setter(strip_option))]
-    pub wallet_type: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    #[builder(setter(strip_option))]
-    pub storage_config: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    #[builder(setter(strip_option))]
-    pub storage_credentials: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    #[builder(setter(strip_option))]
-    pub rekey: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    #[builder(setter(strip_option))]
-    pub rekey_derivation_method: Option<String>,
-}
-
-#[derive(Clone, Debug, TypedBuilder, Serialize, Deserialize)]
-#[builder(field_defaults(default))]
-pub struct IssuerConfig {
-    pub institution_did: String,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -131,14 +114,157 @@ const WALLET_OPTIONS: &str =
 
 const SEARCH_OPTIONS: &str = r#"{"retrieveType": true, "retrieveValue": true, "retrieveTags": true, "retrieveRecords": true}"#;
 
-impl BaseWallet for IndySdkWallet {}
+#[async_trait]
+impl BaseWallet for IndySdkWallet {
+    async fn export_wallet(&self, path: &str, backup_key: &str) -> VcxCoreResult<()> {
+        Locator::instance()
+            .wallet_controller
+            .export(
+                self.wallet_handle,
+                vdrtools::types::domain::wallet::ExportConfig {
+                    key: backup_key.into(),
+                    path: path.into(),
+
+                    key_derivation_method: default_key_derivation_method(),
+                },
+            )
+            .await?;
+
+        Ok(())
+    }
+
+    async fn close_wallet(&self) -> VcxCoreResult<()> {
+        Locator::instance()
+            .wallet_controller
+            .close(self.wallet_handle)
+            .await?;
+
+        Ok(())
+    }
+
+    async fn configure_issuer(&self, key_seed: &str) -> VcxCoreResult<IssuerConfig> {
+        let did_data = self.create_and_store_my_did(Some(key_seed), None).await?;
+
+        Ok(IssuerConfig {
+            institution_did: did_data.did().to_string(),
+        })
+    }
+
+    async fn create_wallet(wallet_config: WalletConfig) -> VcxCoreResult<Box<dyn BaseWallet>>
+    where
+        Self: Sized,
+    {
+        let handle = Locator::instance()
+            .wallet_controller
+            .open(
+                vdrtools::types::domain::wallet::Config {
+                    id: wallet_config.wallet_name.clone(),
+                    storage_type: wallet_config.wallet_type.clone(),
+                    storage_config: wallet_config
+                        .storage_config
+                        .as_deref()
+                        .map(serde_json::from_str)
+                        .transpose()?,
+                    cache: None,
+                },
+                vdrtools::types::domain::wallet::Credentials {
+                    key: wallet_config.wallet_key.clone(),
+                    key_derivation_method: parse_key_derivation_method(
+                        &wallet_config.wallet_key_derivation,
+                    )?,
+
+                    rekey: wallet_config.rekey.clone(),
+                    rekey_derivation_method: wallet_config
+                        .rekey_derivation_method
+                        .as_deref()
+                        .map(parse_key_derivation_method)
+                        .transpose()?
+                        .unwrap_or_else(default_key_derivation_method),
+
+                    storage_credentials: wallet_config
+                        .storage_credentials
+                        .as_deref()
+                        .map(serde_json::from_str)
+                        .transpose()?,
+                },
+            )
+            .await?;
+
+        Ok(Box::new(IndySdkWallet {
+            wallet_handle: handle,
+        }))
+    }
+
+    async fn open_wallet(wallet_config: &WalletConfig) -> VcxCoreResult<Box<dyn BaseWallet>>
+    where
+        Self: Sized,
+    {
+        let handle = Locator::instance()
+            .wallet_controller
+            .open(
+                vdrtools::types::domain::wallet::Config {
+                    id: wallet_config.wallet_name.clone(),
+                    storage_type: wallet_config.wallet_type.clone(),
+                    storage_config: wallet_config
+                        .storage_config
+                        .as_deref()
+                        .map(serde_json::from_str)
+                        .transpose()?,
+                    cache: None,
+                },
+                vdrtools::types::domain::wallet::Credentials {
+                    key: wallet_config.wallet_key.clone(),
+                    key_derivation_method: parse_key_derivation_method(
+                        &wallet_config.wallet_key_derivation,
+                    )?,
+
+                    rekey: wallet_config.rekey.clone(),
+                    rekey_derivation_method: wallet_config
+                        .rekey_derivation_method
+                        .as_deref()
+                        .map(parse_key_derivation_method)
+                        .transpose()?
+                        .unwrap_or_else(default_key_derivation_method),
+
+                    storage_credentials: wallet_config
+                        .storage_credentials
+                        .as_deref()
+                        .map(serde_json::from_str)
+                        .transpose()?,
+                },
+            )
+            .await?;
+
+        Ok(Box::new(IndySdkWallet {
+            wallet_handle: handle,
+        }))
+    }
+
+    async fn all(&self) -> VcxCoreResult<Box<dyn AllRecords>> {
+        Ok(Box::new(vec![].into_iter()))
+    }
+}
+
+fn parse_key_derivation_method(method: &str) -> Result<KeyDerivationMethod, AriesVcxCoreError> {
+    match method {
+        "RAW" => Ok(KeyDerivationMethod::RAW),
+        "ARGON2I_MOD" => Ok(KeyDerivationMethod::ARGON2I_MOD),
+        "ARGON2I_INT" => Ok(KeyDerivationMethod::ARGON2I_INT),
+        _ => Err(AriesVcxCoreError::from_msg(
+            AriesVcxCoreErrorKind::InvalidOption,
+            format!("Unknown derivation method {method}"),
+        )),
+    }
+}
 
 #[cfg(test)]
 pub mod tests {
+    use crate::wallet::base_wallet::wallet_config::WalletConfig;
+
     use super::IndySdkWallet;
 
     pub async fn dev_setup_indy_wallet() -> IndySdkWallet {
-        use crate::wallet::indy::{wallet::create_and_open_wallet, WalletConfig};
+        use crate::wallet::indy::wallet::create_and_open_wallet;
 
         let config_wallet = WalletConfig {
             wallet_name: format!("wallet_{}", uuid::Uuid::new_v4()),
