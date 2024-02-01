@@ -10,6 +10,7 @@ use self::{askar_utils::local_key_to_bs58_name, rng_method::RngMethod};
 
 use super::{
     base_wallet::{did_data::DidData, BaseWallet},
+    constants::DID_CATEGORY,
     utils::key_from_base58,
 };
 
@@ -32,9 +33,6 @@ pub struct AskarWallet {
 impl BaseWallet for AskarWallet {}
 
 impl AskarWallet {
-    const CURRENT_DID_CATEGORY: &str = "did";
-    const TMP_DID_CATEGORY: &str = "tmp";
-
     pub async fn create(
         db_url: &str,
         key_method: StoreKeyMethod,
@@ -123,8 +121,7 @@ impl AskarWallet {
         session: &mut Session,
         did: &str,
     ) -> VcxCoreResult<Option<DidData>> {
-        self.find_did(session, did, AskarWallet::CURRENT_DID_CATEGORY)
-            .await
+        self.find_did(session, did, DID_CATEGORY).await
     }
 
     async fn insert_did(

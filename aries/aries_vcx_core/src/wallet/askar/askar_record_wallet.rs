@@ -27,10 +27,10 @@ impl RecordWallet for AskarWallet {
             .await?)
     }
 
-    async fn get_record(&self, name: &str, category: &str) -> VcxCoreResult<Record> {
+    async fn get_record(&self, category: &str, name: &str) -> VcxCoreResult<Record> {
         let mut session = self.backend.session(self.profile.clone()).await?;
 
-        let res = session
+        Ok(session
             .fetch(category, &name, false)
             .await?
             .ok_or_else(|| {
@@ -39,15 +39,13 @@ impl RecordWallet for AskarWallet {
                     "record not found",
                 )
             })
-            .map(TryFrom::try_from)??;
-
-        Ok(res)
+            .map(TryFrom::try_from)??)
     }
 
     async fn update_record_tags(
         &self,
-        name: &str,
         category: &str,
+        name: &str,
         new_tags: EntryTags,
     ) -> VcxCoreResult<()> {
         let mut session = self.backend.session(self.profile.clone()).await?;
@@ -69,8 +67,8 @@ impl RecordWallet for AskarWallet {
 
     async fn update_record_value(
         &self,
-        name: &str,
         category: &str,
+        name: &str,
         new_value: &str,
     ) -> VcxCoreResult<()> {
         let mut session = self.backend.session(self.profile.clone()).await?;
@@ -94,7 +92,7 @@ impl RecordWallet for AskarWallet {
         }
     }
 
-    async fn delete_record(&self, name: &str, category: &str) -> VcxCoreResult<()> {
+    async fn delete_record(&self, category: &str, name: &str) -> VcxCoreResult<()> {
         let mut session = self.backend.session(self.profile.clone()).await?;
         Ok(session.remove(&category, &name).await?)
     }
