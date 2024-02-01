@@ -7,7 +7,7 @@ use serde_json::Value;
 use crate::errors::error::prelude::*;
 
 pub async fn rotate_verkey_apply(
-    wallet: &impl BaseWallet,
+    wallet: impl BaseWallet,
     indy_ledger_write: &impl IndyLedgerWrite,
     did: &str,
     temp_vk: &str,

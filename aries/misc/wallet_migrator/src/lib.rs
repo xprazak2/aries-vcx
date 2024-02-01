@@ -2,9 +2,9 @@ pub mod credx2anoncreds;
 pub mod error;
 pub mod vdrtools2credx;
 
-use std::fmt::Display;
+use std::{fmt::Display, sync::Arc};
 
-use aries_vcx_core::wallet::base_wallet::migrate::migrate_records;
+use aries_vcx_core::wallet::base_wallet::{migrate::migrate_records, record::Record, BaseWallet};
 use error::MigrationResult;
 use log::{error, info};
 pub use vdrtools::types::domain::wallet::IndyRecord;
@@ -21,8 +21,8 @@ use crate::error::MigrationError;
 //     migrate_fn: impl FnMut(IndyRecord) -> Result<Option<IndyRecord>, E>,
 // ) -> MigrationResult<()>
 pub async fn migrate_wallet<E>(
-    src_wallet: impl BaseWallet,
-    dest_wallet: impl BaseWallet,
+    src_wallet: Arc<dyn BaseWallet>,
+    dest_wallet: Box<dyn BaseWallet>,
     migrate_fn: impl FnMut(Record) -> Result<Option<Record>, E>,
 ) -> MigrationResult<()>
 where
@@ -30,22 +30,19 @@ where
 {
     info!("Starting wallet migration");
 
-    if src_wallet == dest_wallet {
-        error!("Equal wallet handles: {src_wallet_handle:?} {dest_wallet_handle:?}");
-        return Err(MigrationError::EqualWalletHandles);
-    }
-
     info!(
-        "Migrating records from wallet with handle {src_wallet_handle:?} to wallet with handle \
-         {dest_wallet_handle:?}"
+        "Migrating records from wallet with handle {src_wallet:?} to wallet with handle \
+         {dest_wallet:?}"
     );
 
     migrate_records(src_wallet, dest_wallet, migrate_fn).await?;
 
-    info!(
-        "Completed migration from wallet with handle {src_wallet_handle:?} to wallet with handle \
-         {dest_wallet_handle:?}"
-    );
+    // Locator::instance()
+    //     .wallet_controller
+    //     .migrate_records(src_wallet_handle, dest_wallet_handle, migrate_fn)
+    //     .await?;
+
+    info!("Migration completed");
 
     Ok(())
 }

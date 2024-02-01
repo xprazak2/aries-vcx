@@ -4,14 +4,17 @@ use indy_api_types::domain::wallet::{
 };
 use serde::{Deserialize, Serialize};
 use typed_builder::TypedBuilder;
-use vdrtools::Locator;
+use vdrtools::{indy_wallet::iterator::WalletIterator, Locator, WalletRecord};
 
 use self::indy_tag::IndyTags;
-use super::base_wallet::{
-    issuer_config::IssuerConfig,
-    record::{AllRecords, Record},
-    wallet_config::WalletConfig,
-    BaseWallet, DidWallet,
+use super::{
+    base_wallet::{
+        issuer_config::IssuerConfig,
+        record::{AllRecords, PartialRecord, Record},
+        wallet_config::WalletConfig,
+        BaseWallet, DidWallet,
+    },
+    entry_tag::EntryTags,
 };
 use crate::{
     errors::error::{AriesVcxCoreError, AriesVcxCoreErrorKind, VcxCoreResult},
@@ -20,7 +23,7 @@ use crate::{
 
 mod indy_did_wallet;
 mod indy_record_wallet;
-mod indy_tag;
+pub(crate) mod indy_tag;
 pub mod internal;
 pub mod wallet;
 
@@ -75,6 +78,38 @@ impl IndyWalletRecord {
             tags,
         })
     }
+
+    // pub fn into_record(self) -> VcxCoreResult<Record> {
+    //     let category = self.record_type.ok_or_else(|| {
+    //         AriesVcxCoreError::from_msg(
+    //             AriesVcxCoreErrorKind::InvalidInput,
+    //             "invalid record category",
+    //         )
+    //     })?;
+    //     let name = self.id.ok_or_else(|| {
+    //         AriesVcxCoreError::from_msg(AriesVcxCoreErrorKind::InvalidInput, "invalid record name")
+    //     })?;
+    //     let value = self.value.ok_or_else(|| {
+    //         AriesVcxCoreError::from_msg(AriesVcxCoreErrorKind::InvalidInput, "invalid record value")
+    //     })?;
+
+    //     if let Some(tags) = self.tags {
+    //         let parsed_tags: EntryTags = serde_json::from_str(&tags)?;
+
+    //         Ok(Record::builder()
+    //             .category(category)
+    //             .name(name)
+    //             .value(value)
+    //             .tags(parsed_tags)
+    //             .build())
+    //     } else {
+    //         Ok(Record::builder()
+    //             .category(category)
+    //             .name(name)
+    //             .value(value)
+    //             .build())
+    //     }
+    // }
 }
 
 impl From<IndyRecord> for Record {
@@ -241,11 +276,39 @@ impl BaseWallet for IndySdkWallet {
     }
 
     async fn all(&self) -> VcxCoreResult<Box<dyn AllRecords>> {
-        Ok(Box::new(vec![].into_iter()))
+        let all = Locator::instance()
+            .wallet_controller
+            .get_all(self.get_wallet_handle())
+            .await?;
+
+        Ok(Box::new(AllIndyRecords::new(all)))
     }
 }
 
-fn parse_key_derivation_method(method: &str) -> Result<KeyDerivationMethod, AriesVcxCoreError> {
+pub struct AllIndyRecords {
+    iterator: WalletIterator,
+}
+
+impl AllIndyRecords {
+    pub fn new(iterator: WalletIterator) -> Self {
+        Self { iterator }
+    }
+}
+
+#[async_trait]
+impl AllRecords for AllIndyRecords {
+    fn total_count(&self) -> VcxCoreResult<Option<usize>> {
+        Ok(self.iterator.get_total_count()?)
+    }
+
+    async fn next(&mut self) -> VcxCoreResult<Option<PartialRecord>> {
+        let item = self.iterator.next().await?;
+
+        Ok(item.map(PartialRecord::from_wallet_record))
+    }
+}
+
+fn parse_key_derivation_method(method: &str) -> VcxCoreResult<KeyDerivationMethod> {
     match method {
         "RAW" => Ok(KeyDerivationMethod::RAW),
         "ARGON2I_MOD" => Ok(KeyDerivationMethod::ARGON2I_MOD),

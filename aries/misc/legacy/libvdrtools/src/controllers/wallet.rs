@@ -9,7 +9,7 @@ use indy_api_types::{
 use indy_utils::crypto::{
     chacha20poly1305_ietf, chacha20poly1305_ietf::Key as MasterKey, randombytes,
 };
-use indy_wallet::{KeyDerivationData, MigrationResult, WalletService};
+use indy_wallet::{iterator::WalletIterator, KeyDerivationData, MigrationResult, WalletService};
 
 use crate::{services::CryptoService, utils::crypto::base58::ToBase58};
 
@@ -401,8 +401,8 @@ impl WalletController {
             .await
     }
 
-    pub async fn get_all(&self) -> IndyResult<WalletIterator> {
-        self.wallet_service.get_all()
+    pub async fn get_all(&self, handle: WalletHandle) -> IndyResult<WalletIterator> {
+        self.wallet_service.get_all(handle).await
     }
 
     /// Generate wallet master key.

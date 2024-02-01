@@ -1,8 +1,9 @@
-use std::collections::HashMap;
+use std::{collections::HashMap, sync::Arc};
 
-use indy_api_types::domain::wallet::IndyRecord;
-
-use crate::errors::error::VcxCoreResult;
+use crate::{
+    errors::error::{AriesVcxCoreErrorKind, VcxCoreResult},
+    wallet::entry_tag::EntryTags,
+};
 
 use super::{record::Record, BaseWallet};
 
@@ -15,8 +16,8 @@ pub struct MigrationStats {
 }
 
 pub async fn migrate_records<E>(
-    src_wallet: impl BaseWallet,
-    dest_wallet: impl BaseWallet,
+    src_wallet: Arc<dyn BaseWallet>,
+    dest_wallet: Box<dyn BaseWallet>,
     mut migrate_fn: impl FnMut(Record) -> Result<Option<Record>, E>,
 ) -> VcxCoreResult<MigrationStats>
 where
@@ -42,10 +43,10 @@ where
             );
         }
         trace!("Migrating record: {:?}", source_record);
-        let unwrapped_type_ = match &source_record.type_ {
+        let unwrapped_category = match &source_record.category() {
             None => {
                 warn!(
-                    "Skipping item missing 'type' field, record ({num_record}): \
+                    "Skipping item missing 'category' field, record ({num_record}): \
                      {source_record:?}"
                 );
                 migration_result.skipped += 1;
@@ -53,7 +54,7 @@ where
             }
             Some(type_) => type_.clone(),
         };
-        let unwrapped_value = match &source_record.value {
+        let unwrapped_value = match &source_record.value() {
             None => {
                 warn!(
                     "Skipping item missing 'value' field, record ({num_record}): \
@@ -64,17 +65,17 @@ where
             }
             Some(value) => value.clone(),
         };
-        let unwrapped_tags = match &source_record.tags {
-            None => HashMap::new(),
+        let unwrapped_tags = match &source_record.tags() {
+            None => EntryTags::default(),
             Some(tags) => tags.clone(),
         };
 
-        let record = IndyRecord {
-            type_: unwrapped_type_,
-            id: source_record.id.clone(),
-            value: unwrapped_value,
-            tags: unwrapped_tags,
-        };
+        let record = Record::builder()
+            .category(unwrapped_category)
+            .name(source_record.name().to_string())
+            .value(unwrapped_value)
+            .tags(unwrapped_tags)
+            .build();
 
         let migrated_record = match migrate_fn(record) {
             Ok(record) => match record {
@@ -95,18 +96,9 @@ where
             }
         };
 
-        match dest_wallet
-            .add(
-                &migrated_record.type_,
-                &migrated_record.id,
-                &migrated_record.value,
-                &migrated_record.tags,
-                false,
-            )
-            .await
-        {
+        match dest_wallet.add_record(migrated_record.clone()).await {
             Err(err) => match err.kind() {
-                IndyErrorKind::WalletItemAlreadyExists => {
+                AriesVcxCoreErrorKind::DuplicationWalletRecord => {
                     trace!(
                         "Record type: {migrated_record:?} already exists in destination \
                          wallet, skipping"

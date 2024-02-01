@@ -32,7 +32,7 @@ use crate::{
 };
 
 mod encryption;
-mod iterator;
+pub mod iterator;
 mod query_encryption;
 mod storage;
 

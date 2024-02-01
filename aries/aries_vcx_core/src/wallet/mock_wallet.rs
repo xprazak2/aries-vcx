@@ -5,9 +5,9 @@ use super::{
     base_wallet::{
         did_data::DidData,
         issuer_config::IssuerConfig,
-        record::{AllRecords, Record},
+        record::{AllRecords, PartialRecord, Record},
         search_filter::SearchFilter,
-        wallet_config::{self, WalletConfig},
+        wallet_config::WalletConfig,
         BaseWallet, DidWallet, RecordWallet,
     },
     structs_io::UnpackMessageOutput,
@@ -25,11 +25,11 @@ pub struct MockAllRecords;
 
 #[async_trait]
 impl AllRecords for MockAllRecords {
-    fn total_count(&self) -> usize {
-        0
+    fn total_count(&self) -> VcxCoreResult<Option<usize>> {
+        Ok(Some(0))
     }
 
-    async fn next(&self) -> VcxCoreResult<Option<Record>> {
+    async fn next(&mut self) -> VcxCoreResult<Option<PartialRecord>> {
         Ok(None)
     }
 }

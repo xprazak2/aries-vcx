@@ -19,12 +19,6 @@ pub mod record;
 pub mod search_filter;
 pub mod wallet_config;
 
-pub trait ToRecord {
-    fn to_record(&self) -> Record;
-}
-
-// pub type RecordIterator = Box<dyn Iterator<Item = Record>>;
-
 #[async_trait]
 pub trait BaseWallet: RecordWallet + DidWallet + Send + Sync + std::fmt::Debug {
     async fn export_wallet(&self, path: &str, backup_key: &str) -> VcxCoreResult<()>;
