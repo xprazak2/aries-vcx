@@ -5,7 +5,10 @@ use aries_askar::{
 use async_trait::async_trait;
 use public_key::Key;
 
-use super::{packing::Packing, AskarWallet, RngMethod};
+use super::{
+    askar_utils::local_key_to_bs58_public_key, packing::Packing, rng_method::RngMethod,
+    sig_type::SigType, AskarWallet,
+};
 use crate::{
     errors::error::{AriesVcxCoreError, AriesVcxCoreErrorKind, VcxCoreResult},
     wallet::{
@@ -14,43 +17,6 @@ use crate::{
         utils::{did_from_key, key_from_base58, seed_from_opt},
     },
 };
-
-pub enum SigType {
-    EdDSA,
-    ES256,
-    ES256K,
-    ES384,
-}
-
-impl From<SigType> for &str {
-    fn from(value: SigType) -> Self {
-        match value {
-            SigType::EdDSA => "eddsa",
-            SigType::ES256 => "es256",
-            SigType::ES256K => "es256k",
-            SigType::ES384 => "es384",
-        }
-    }
-}
-
-impl TryFrom<KeyAlg> for SigType {
-    type Error = AriesVcxCoreError;
-
-    fn try_from(value: KeyAlg) -> Result<Self, Self::Error> {
-        match value {
-            KeyAlg::Ed25519 => Ok(SigType::EdDSA),
-            KeyAlg::EcCurve(item) => match item {
-                EcCurves::Secp256r1 => Ok(SigType::ES256),
-                EcCurves::Secp256k1 => Ok(SigType::ES256K),
-                EcCurves::Secp384r1 => Ok(SigType::ES384),
-            },
-            _ => Err(AriesVcxCoreError::from_msg(
-                AriesVcxCoreErrorKind::InvalidInput,
-                "this key does not support signing",
-            )),
-        }
-    }
-}
 
 #[async_trait]
 impl DidWallet for AskarWallet {
@@ -70,7 +36,7 @@ impl DidWallet for AskarWallet {
             )
             .await?;
 
-        let verkey = self.local_key_to_bs58_pubkey(&local_key)?;
+        let verkey = local_key_to_bs58_public_key(&local_key)?;
 
         self.insert_did(
             &mut tx,
@@ -96,7 +62,7 @@ impl DidWallet for AskarWallet {
 
         Err(AriesVcxCoreError::from_msg(
             AriesVcxCoreErrorKind::WalletRecordNotFound,
-            "did not found",
+            format!("did not found in wallet: {}", did),
         ))
     }
 
@@ -115,7 +81,7 @@ impl DidWallet for AskarWallet {
                 )
                 .await?;
 
-            let verkey = self.local_key_to_bs58_pubkey(&local_key)?;
+            let verkey = local_key_to_bs58_public_key(&local_key)?;
 
             self.insert_did(&mut tx, did, AskarWallet::TMP_DID_CATEGORY, &verkey, None)
                 .await?;
@@ -168,9 +134,8 @@ impl DidWallet for AskarWallet {
 
         if let Some(key) = res {
             let local_key = key.load_local_key()?;
-            let key_alg: SigType = local_key.algorithm().try_into()?;
-            let res = local_key.sign_message(msg, Some(key_alg.into()))?;
-            return Ok(res);
+            let key_alg = SigType::try_from_key_alg(local_key.algorithm())?;
+            return Ok(local_key.sign_message(msg, Some(key_alg.into()))?);
         }
 
         Err(AriesVcxCoreError::from_msg(
@@ -187,9 +152,8 @@ impl DidWallet for AskarWallet {
             .await?
         {
             let local_key = key.load_local_key()?;
-            let key_alg: SigType = local_key.algorithm().try_into()?;
-            let res = local_key.verify_signature(msg, signature, Some(key_alg.into()))?;
-            return Ok(res);
+            let key_alg = SigType::try_from_key_alg(local_key.algorithm())?;
+            return Ok(local_key.verify_signature(msg, signature, Some(key_alg.into()))?);
         }
 
         Ok(false)

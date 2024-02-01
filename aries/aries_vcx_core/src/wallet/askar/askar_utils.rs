@@ -2,6 +2,15 @@ use aries_askar::kms::{KeyAlg, LocalKey};
 
 use crate::errors::error::VcxCoreResult;
 
+pub fn local_key_to_bs58_name(local_key: &LocalKey) -> VcxCoreResult<String> {
+    let res = local_key_to_bs58_public_key(local_key)?;
+    Ok(res[0..16].to_string())
+}
+
+pub fn local_key_to_bs58_public_key(local_key: &LocalKey) -> VcxCoreResult<String> {
+    Ok(bs58::encode(local_key.to_public_bytes()?).into_string())
+}
+
 pub fn local_key_to_private_key_bytes(local_key: &LocalKey) -> VcxCoreResult<Vec<u8>> {
     Ok(local_key.to_secret_bytes()?.to_vec())
 }

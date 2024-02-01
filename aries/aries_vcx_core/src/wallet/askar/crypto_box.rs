@@ -130,7 +130,7 @@ impl CryptoBox for SodiumCryptoBox {
 }
 
 #[cfg(test)]
-mod test {
+mod tests {
     use aries_askar::kms::{KeyAlg::X25519, LocalKey};
 
     use crate::wallet::{

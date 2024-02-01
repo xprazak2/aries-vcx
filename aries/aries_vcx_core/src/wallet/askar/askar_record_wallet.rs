@@ -14,8 +14,7 @@ use crate::{
 impl RecordWallet for AskarWallet {
     async fn add_record(&self, record: Record) -> VcxCoreResult<()> {
         let mut session = self.backend.session(self.profile.clone()).await?;
-        let tags: Option<Vec<AskarEntryTag>> =
-            Some(record.tags().clone().into_iter().map(From::from).collect());
+        let tags: Option<Vec<AskarEntryTag>> = Some(record.tags().clone().into());
 
         Ok(session
             .insert(

@@ -76,74 +76,28 @@ pub trait RecordWallet {
 
 #[cfg(test)]
 mod tests {
-    use rand::{distributions::Alphanumeric, Rng};
-
     use super::BaseWallet;
     use crate::{
         errors::error::AriesVcxCoreErrorKind,
         wallet::{
             base_wallet::Record,
             entry_tags::{EntryTag, EntryTags},
-            utils::did_from_key,
+            utils::{did_from_key, random_seed},
         },
     };
 
-    fn random_seed() -> String {
-        rand::thread_rng()
-            .sample_iter(Alphanumeric)
-            .take(32)
-            .map(char::from)
-            .collect()
-    }
-
     async fn build_test_wallet() -> Box<dyn BaseWallet> {
-        #[cfg(feature = "vdrtools_wallet")]
-        return dev_setup_indy_wallet().await;
+        // #[cfg(feature = "vdrtools_wallet")]
+        // {
+        //     use crate::wallet::indy::tests::dev_setup_indy_wallet;
+        // return dev_setup_indy_wallet().await;
+        // }
 
         #[cfg(feature = "askar_wallet")]
-        return dev_setup_askar_wallet().await;
-    }
-
-    #[cfg(feature = "vdrtools_wallet")]
-    async fn dev_setup_indy_wallet() -> Box<dyn BaseWallet> {
-        use crate::{
-            global::settings::{DEFAULT_WALLET_KEY, WALLET_KDF_RAW},
-            wallet::indy::{wallet::create_and_open_wallet, IndySdkWallet, WalletConfig},
-        };
-
-        let config_wallet = WalletConfig {
-            wallet_name: format!("wallet_{}", uuid::Uuid::new_v4()),
-            wallet_key: DEFAULT_WALLET_KEY.into(),
-            wallet_key_derivation: WALLET_KDF_RAW.into(),
-            wallet_type: None,
-            storage_config: None,
-            storage_credentials: None,
-            rekey: None,
-            rekey_derivation_method: None,
-        };
-        let wallet_handle = create_and_open_wallet(&config_wallet).await.unwrap();
-
-        Box::new(IndySdkWallet::new(wallet_handle))
-    }
-
-    #[cfg(feature = "askar_wallet")]
-    async fn dev_setup_askar_wallet() -> Box<dyn BaseWallet> {
-        use aries_askar::StoreKeyMethod;
-        use uuid::Uuid;
-
-        use crate::wallet::askar::AskarWallet;
-
-        Box::new(
-            AskarWallet::create(
-                "sqlite://:memory:",
-                StoreKeyMethod::Unprotected,
-                None.into(),
-                true,
-                Some(Uuid::new_v4().to_string()),
-            )
-            .await
-            .unwrap(),
-        )
+        {
+            use crate::wallet::askar::tests::dev_setup_askar_wallet;
+            return dev_setup_askar_wallet().await;
+        }
     }
 
     #[tokio::test]

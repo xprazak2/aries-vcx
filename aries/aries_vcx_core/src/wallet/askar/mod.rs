@@ -6,6 +6,8 @@ use aries_askar::{
 
 use crate::errors::error::{AriesVcxCoreError, AriesVcxCoreErrorKind, VcxCoreResult};
 
+use self::{askar_utils::local_key_to_bs58_name, rng_method::RngMethod};
+
 use super::{
     base_wallet::{did_data::DidData, BaseWallet},
     utils::key_from_base58,
@@ -18,26 +20,12 @@ pub mod askar_utils;
 mod crypto_box;
 pub mod entry;
 pub mod packing;
-
-#[derive(Clone, Default)]
-pub enum RngMethod {
-    #[default]
-    RandomDet,
-    Bls,
-}
-
-impl From<RngMethod> for Option<&str> {
-    fn from(value: RngMethod) -> Self {
-        match value {
-            RngMethod::RandomDet => None,
-            RngMethod::Bls => Some("bls_keygen"),
-        }
-    }
-}
+mod rng_method;
+mod sig_type;
 
 #[derive(Debug)]
 pub struct AskarWallet {
-    pub backend: Store,
+    backend: Store,
     profile: Option<String>,
 }
 
@@ -94,16 +82,6 @@ impl AskarWallet {
         })
     }
 
-    fn local_key_to_bs58_pubkey(&self, local_key: &LocalKey) -> VcxCoreResult<String> {
-        Ok(bs58::encode(local_key.to_public_bytes()?).into_string())
-    }
-
-    fn local_key_to_bs58_name(&self, local_key: &LocalKey) -> VcxCoreResult<String> {
-        let public_bytes = local_key.to_public_bytes()?;
-        let res = &bs58::encode(public_bytes).into_string()[0..16];
-        Ok(res.to_string())
-    }
-
     async fn insert_key(
         &self,
         session: &mut Session,
@@ -113,7 +91,7 @@ impl AskarWallet {
     ) -> Result<(String, LocalKey), AriesVcxCoreError> {
         let key = LocalKey::from_seed(alg, seed, rng_method.into())?;
 
-        let key_name = self.local_key_to_bs58_name(&key)?;
+        let key_name = local_key_to_bs58_name(&key)?;
 
         session
             .insert_key(&key_name, &key, None, None, None)
@@ -191,5 +169,29 @@ impl AskarWallet {
             .await?;
 
         Ok(())
+    }
+}
+
+#[cfg(test)]
+pub mod tests {
+    use crate::wallet::base_wallet::BaseWallet;
+
+    pub async fn dev_setup_askar_wallet() -> Box<dyn BaseWallet> {
+        use aries_askar::StoreKeyMethod;
+        use uuid::Uuid;
+
+        use crate::wallet::askar::AskarWallet;
+
+        Box::new(
+            AskarWallet::create(
+                "sqlite://:memory:",
+                StoreKeyMethod::Unprotected,
+                None.into(),
+                true,
+                Some(Uuid::new_v4().to_string()),
+            )
+            .await
+            .unwrap(),
+        )
     }
 }
