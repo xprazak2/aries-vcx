@@ -1,27 +1,8 @@
-use base64::{
-    alphabet,
-    engine::{general_purpose, DecodePaddingMode, GeneralPurpose, GeneralPurposeConfig},
-    Engine,
-};
 use public_key::Key;
 use rand::{distributions::Alphanumeric, Rng};
 use serde::Deserialize;
 
 use crate::errors::error::{AriesVcxCoreError, AriesVcxCoreErrorKind, VcxCoreResult};
-
-const ANY_PADDING: GeneralPurposeConfig =
-    GeneralPurposeConfig::new().with_decode_padding_mode(DecodePaddingMode::Indifferent);
-const URL_SAFE_ANY_PADDING: GeneralPurpose = GeneralPurpose::new(&alphabet::URL_SAFE, ANY_PADDING);
-
-pub fn encode_urlsafe(content: &[u8]) -> String {
-    general_purpose::URL_SAFE.encode(content)
-}
-
-pub fn decode_urlsafe(content: &str) -> VcxCoreResult<Vec<u8>> {
-    URL_SAFE_ANY_PADDING
-        .decode(content)
-        .map_err(|e| AriesVcxCoreError::from_msg(AriesVcxCoreErrorKind::InvalidJson, e))
-}
 
 pub fn bytes_to_string(vec: Vec<u8>) -> VcxCoreResult<String> {
     Ok(String::from_utf8(vec)

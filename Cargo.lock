@@ -467,7 +467,6 @@ dependencies = [
  "agency_client",
  "aries-askar",
  "async-trait",
- "base64",
  "bs58 0.5.0",
  "futures",
  "indy-api-types",

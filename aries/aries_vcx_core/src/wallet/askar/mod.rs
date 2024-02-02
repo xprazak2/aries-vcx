@@ -14,13 +14,14 @@ use super::{
     utils::key_from_base58,
 };
 
-pub mod askar_did_wallet;
-pub mod askar_record_wallet;
+mod askar_did_wallet;
+mod askar_record_wallet;
 mod askar_tags;
-pub mod askar_utils;
+mod askar_utils;
 mod crypto_box;
-pub mod entry;
-pub mod packing;
+mod entry;
+mod packing;
+mod packing_types;
 mod rng_method;
 mod sig_type;
 
