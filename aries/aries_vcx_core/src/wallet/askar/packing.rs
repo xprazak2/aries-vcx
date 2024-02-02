@@ -187,7 +187,11 @@ impl Packing {
             self.crypto_box
                 .sealedbox_decrypt(&private_bytes, &public_bytes, &sender_vk_enc)?;
 
-        let sender_vk_local_key = LocalKey::from_public_bytes(Ed25519, &sender_vk_vec)?;
+        let sender_vk = bytes_to_string(sender_vk_vec)?;
+
+        let sender_vk_local_key =
+            LocalKey::from_public_bytes(Ed25519, &bs58_to_bytes(&sender_vk)?)?;
+
         let sender_vk_public_bytes = ed25519_to_x25519_public(&sender_vk_local_key)?;
 
         let cek_vec = self.crypto_box.box_decrypt(
@@ -196,8 +200,6 @@ impl Packing {
             &encrypted_key,
             &iv,
         )?;
-
-        let sender_vk = bytes_to_bs58(&sender_vk_vec);
 
         let enc_key = LocalKey::from_secret_bytes(KeyAlg::Chacha20(Chacha20Types::C20P), &cek_vec)?;
 
@@ -321,9 +323,10 @@ impl Packing {
                 &enc_key_secret,
             )?;
 
-            let enc_sender = self
-                .crypto_box
-                .sealedbox_encrypt(&recipient_public_bytes, &my_original_public_bytes)?;
+            let enc_sender = self.crypto_box.sealedbox_encrypt(
+                &recipient_public_bytes,
+                bytes_to_bs58(&my_original_public_bytes).as_bytes(),
+            )?;
 
             let kid = bytes_to_bs58(&recipient_pubkey);
             // ?could previous line be:
