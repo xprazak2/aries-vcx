@@ -22,14 +22,14 @@ use crate::{
     errors::error::{LibvcxError, LibvcxErrorKind, LibvcxResult},
 };
 
-pub fn try_get_main_wallet() -> LibvcxResult<Option<Arc<impl BaseWallet>>> {
+pub fn try_get_main_wallet() -> LibvcxResult<Option<Arc<dyn BaseWallet>>> {
     let base_wallet = GLOBAL_BASE_WALLET.read()?;
     base_wallet.as_ref().cloned().map(Some).ok_or_else(|| {
         LibvcxError::from_msg(LibvcxErrorKind::NotReady, "Wallet is not initialized")
     })
 }
 
-pub fn get_main_wallet() -> LibvcxResult<Arc<impl BaseWallet>> {
+pub fn get_main_wallet() -> LibvcxResult<Arc<dyn BaseWallet>> {
     let base_wallet = GLOBAL_BASE_WALLET.read()?;
     base_wallet.as_ref().cloned().ok_or_else(|| {
         LibvcxError::from_msg(LibvcxErrorKind::NotReady, "Wallet is not initialized")

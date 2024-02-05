@@ -21,8 +21,8 @@ use crate::error::MigrationError;
 //     migrate_fn: impl FnMut(IndyRecord) -> Result<Option<IndyRecord>, E>,
 // ) -> MigrationResult<()>
 pub async fn migrate_wallet<E>(
-    src_wallet: Arc<dyn BaseWallet>,
-    dest_wallet: Box<dyn BaseWallet>,
+    src_wallet: impl BaseWallet,
+    dest_wallet: impl BaseWallet,
     migrate_fn: impl FnMut(Record) -> Result<Option<Record>, E>,
 ) -> MigrationResult<()>
 where

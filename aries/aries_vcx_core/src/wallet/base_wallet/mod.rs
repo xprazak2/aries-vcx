@@ -1,7 +1,12 @@
+use std::sync::Arc;
+
 use async_trait::async_trait;
 use public_key::Key;
 
-use self::{issuer_config::IssuerConfig, record::AllRecords, wallet_config::WalletConfig};
+use self::{
+    did_wallet::DidWallet, issuer_config::IssuerConfig, record::AllRecords,
+    record_wallet::RecordWallet, wallet_config::WalletConfig,
+};
 
 use super::entry_tag::EntryTags;
 use crate::{
@@ -13,14 +18,16 @@ use crate::{
 };
 
 pub mod did_data;
+pub mod did_wallet;
 pub mod issuer_config;
 pub mod migrate;
 pub mod record;
+pub mod record_wallet;
 pub mod search_filter;
 pub mod wallet_config;
 
 #[async_trait]
-pub trait BaseWallet: RecordWallet + DidWallet + Send + Sync + std::fmt::Debug {
+pub trait BaseWallet: RecordWallet + DidWallet + Send + Sync + std::fmt::Debug + 'static {
     async fn export_wallet(&self, path: &str, backup_key: &str) -> VcxCoreResult<()>;
 
     async fn close_wallet(&self) -> VcxCoreResult<()>;
@@ -39,60 +46,36 @@ pub trait BaseWallet: RecordWallet + DidWallet + Send + Sync + std::fmt::Debug {
 }
 
 #[async_trait]
-pub trait DidWallet {
-    async fn create_and_store_my_did(
-        &self,
-        seed: Option<&str>,
-        kdf_method_name: Option<&str>,
-    ) -> VcxCoreResult<DidData>;
+impl BaseWallet for Arc<dyn BaseWallet> {
+    async fn export_wallet(&self, path: &str, backup_key: &str) -> VcxCoreResult<()> {
+        self.as_ref().export_wallet(path, backup_key).await
+    }
 
-    async fn key_for_did(&self, did: &str) -> VcxCoreResult<Key>;
+    async fn close_wallet(&self) -> VcxCoreResult<()> {
+        self.as_ref().close_wallet().await
+    }
 
-    async fn replace_did_key_start(&self, did: &str, seed: Option<&str>) -> VcxCoreResult<Key>;
+    async fn configure_issuer(&self, key_seed: &str) -> VcxCoreResult<IssuerConfig> {
+        self.as_ref().configure_issuer(key_seed).await
+    }
 
-    async fn replace_did_key_apply(&self, did: &str) -> VcxCoreResult<()>;
+    async fn create_wallet(wallet_config: WalletConfig) -> VcxCoreResult<Box<dyn BaseWallet>>
+    where
+        Self: Sized,
+    {
+        Self::create_wallet(wallet_config).await
+    }
 
-    async fn sign(&self, key: &Key, msg: &[u8]) -> VcxCoreResult<Vec<u8>>;
+    async fn open_wallet(wallet_config: &WalletConfig) -> VcxCoreResult<Box<dyn BaseWallet>>
+    where
+        Self: Sized,
+    {
+        Self::open_wallet(wallet_config).await
+    }
 
-    async fn verify(&self, key: &Key, msg: &[u8], signature: &[u8]) -> VcxCoreResult<bool>;
-
-    async fn pack_message(
-        &self,
-        sender_vk: Option<Key>,
-        receiver_keys: Vec<Key>,
-        msg: &[u8],
-    ) -> VcxCoreResult<Vec<u8>>;
-
-    async fn unpack_message(&self, msg: &[u8]) -> VcxCoreResult<UnpackMessageOutput>;
-}
-
-#[async_trait]
-pub trait RecordWallet {
-    async fn add_record(&self, record: Record) -> VcxCoreResult<()>;
-
-    async fn get_record(&self, category: &str, name: &str) -> VcxCoreResult<Record>;
-
-    async fn update_record_tags(
-        &self,
-        category: &str,
-        name: &str,
-        new_tags: EntryTags,
-    ) -> VcxCoreResult<()>;
-
-    async fn update_record_value(
-        &self,
-        category: &str,
-        name: &str,
-        new_value: &str,
-    ) -> VcxCoreResult<()>;
-
-    async fn delete_record(&self, category: &str, name: &str) -> VcxCoreResult<()>;
-
-    async fn search_record(
-        &self,
-        category: &str,
-        search_filter: Option<SearchFilter>,
-    ) -> VcxCoreResult<Vec<Record>>;
+    async fn all(&self) -> VcxCoreResult<Box<dyn AllRecords>> {
+        self.as_ref().all().await
+    }
 }
 
 #[cfg(test)]

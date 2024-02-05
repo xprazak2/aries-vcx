@@ -1,4 +1,7 @@
-use std::sync::{Arc, RwLock};
+use std::{
+    borrow::Borrow,
+    sync::{Arc, RwLock},
+};
 
 use aries_vcx::{
     aries_vcx_core::{
@@ -47,10 +50,6 @@ use crate::{
 
 pub static GLOBAL_BASE_WALLET: RwLock<Option<Arc<dyn BaseWallet>>> = RwLock::new(None);
 pub static GLOBAL_BASE_ANONCREDS: RwLock<Option<Arc<IndyCredxAnonCreds>>> = RwLock::new(None);
-
-// pub fn get_main_wallet_handle() -> LibvcxResult<WalletHandle> {
-//     get_main_wallet().map(|wallet| wallet.get_wallet_handle())
-// }
 
 pub async fn export_main_wallet(path: &str, backup_key: &str) -> LibvcxResult<()> {
     let main_wallet = get_main_wallet()?;
@@ -156,7 +155,7 @@ pub async fn rotate_verkey_apply(did: &str, temp_vk: &str) -> LibvcxResult<()> {
     let wallet = get_main_wallet()?;
     map_ariesvcx_result(
         aries_vcx::common::keys::rotate_verkey_apply(
-            &wallet,
+            wallet.as_ref(),
             get_main_ledger_write()?.as_ref(),
             did,
             temp_vk,
@@ -323,36 +322,8 @@ pub async fn wallet_migrate<T: BaseWallet>(wallet_config: &WalletConfig) -> Libv
     )
     .await;
 
-    //     info!("Closing source and target wallets");
-    //     close_wallet(src_wallet_handle).await.ok();
-    //     close_wallet(dest_wallet_handle).await.ok();
-
     migration_res.map_err(|e| LibvcxError::from_msg(LibvcxErrorKind::WalletMigrationFailed, e))
-
-    // Ok(())
 }
-
-// pub async fn wallet_migrate(wallet_config: &WalletConfig) -> LibvcxResult<()> {
-//     let src_wallet_handle = get_main_wallet_handle()?;
-//     info!("Assuring target wallet exists.");
-//     create_indy_wallet(wallet_config).await?;
-//     info!("Opening target wallet.");
-//     let dest_wallet_handle = open_wallet(wallet_config).await?;
-//     info!("Target wallet is ready.");
-
-//     let migration_res = wallet_migrator::migrate_wallet(
-//         src_wallet_handle,
-//         dest_wallet_handle,
-//         wallet_migrator::vdrtools2credx::migrate_any_record,
-//     )
-//     .await;
-
-//     info!("Closing source and target wallets");
-//     close_wallet(src_wallet_handle).await.ok();
-//     close_wallet(dest_wallet_handle).await.ok();
-
-//     migration_res.map_err(|e| LibvcxError::from_msg(LibvcxErrorKind::WalletMigrationFailed, e))
-// }
 
 #[cfg(test)]
 pub mod test_utils {

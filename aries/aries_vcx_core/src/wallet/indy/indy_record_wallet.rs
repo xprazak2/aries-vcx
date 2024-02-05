@@ -1,3 +1,5 @@
+use std::{ops::Add, sync::Arc};
+
 use async_trait::async_trait;
 use indy_api_types::domain::wallet::IndyRecord;
 use serde::Deserialize;
@@ -8,7 +10,7 @@ use super::{indy_tag::IndyTags, SEARCH_OPTIONS, WALLET_OPTIONS};
 use crate::{
     errors::error::{AriesVcxCoreError, VcxCoreResult},
     wallet::{
-        base_wallet::{record::Record, search_filter::SearchFilter, RecordWallet},
+        base_wallet::{record::Record, record_wallet::RecordWallet, search_filter::SearchFilter},
         entry_tag::EntryTags,
         indy::IndySdkWallet,
     },

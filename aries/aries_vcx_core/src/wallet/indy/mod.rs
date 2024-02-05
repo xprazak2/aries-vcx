@@ -3,18 +3,15 @@ use indy_api_types::domain::wallet::{
     default_key_derivation_method, IndyRecord, KeyDerivationMethod,
 };
 use serde::{Deserialize, Serialize};
-use typed_builder::TypedBuilder;
-use vdrtools::{indy_wallet::iterator::WalletIterator, Locator, WalletRecord};
+use vdrtools::{indy_wallet::iterator::WalletIterator, Locator};
 
 use self::indy_tag::IndyTags;
-use super::{
-    base_wallet::{
-        issuer_config::IssuerConfig,
-        record::{AllRecords, PartialRecord, Record},
-        wallet_config::WalletConfig,
-        BaseWallet, DidWallet,
-    },
-    entry_tag::EntryTags,
+use super::base_wallet::{
+    did_wallet::DidWallet,
+    issuer_config::IssuerConfig,
+    record::{AllRecords, PartialRecord, Record},
+    wallet_config::WalletConfig,
+    BaseWallet,
 };
 use crate::{
     errors::error::{AriesVcxCoreError, AriesVcxCoreErrorKind, VcxCoreResult},
@@ -78,38 +75,6 @@ impl IndyWalletRecord {
             tags,
         })
     }
-
-    // pub fn into_record(self) -> VcxCoreResult<Record> {
-    //     let category = self.record_type.ok_or_else(|| {
-    //         AriesVcxCoreError::from_msg(
-    //             AriesVcxCoreErrorKind::InvalidInput,
-    //             "invalid record category",
-    //         )
-    //     })?;
-    //     let name = self.id.ok_or_else(|| {
-    //         AriesVcxCoreError::from_msg(AriesVcxCoreErrorKind::InvalidInput, "invalid record name")
-    //     })?;
-    //     let value = self.value.ok_or_else(|| {
-    //         AriesVcxCoreError::from_msg(AriesVcxCoreErrorKind::InvalidInput, "invalid record value")
-    //     })?;
-
-    //     if let Some(tags) = self.tags {
-    //         let parsed_tags: EntryTags = serde_json::from_str(&tags)?;
-
-    //         Ok(Record::builder()
-    //             .category(category)
-    //             .name(name)
-    //             .value(value)
-    //             .tags(parsed_tags)
-    //             .build())
-    //     } else {
-    //         Ok(Record::builder()
-    //             .category(category)
-    //             .name(name)
-    //             .value(value)
-    //             .build())
-    //     }
-    // }
 }
 
 impl From<IndyRecord> for Record {

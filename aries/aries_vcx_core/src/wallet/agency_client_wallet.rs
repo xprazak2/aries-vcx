@@ -10,11 +10,13 @@ use public_key::{Key, KeyType};
 use super::{
     base_wallet::{
         did_data::DidData,
+        did_wallet::DidWallet,
         issuer_config::IssuerConfig,
         record::{AllRecords, Record},
+        record_wallet::RecordWallet,
         search_filter::SearchFilter,
         wallet_config::WalletConfig,
-        BaseWallet, DidWallet, RecordWallet,
+        BaseWallet,
     },
     structs_io::UnpackMessageOutput,
 };

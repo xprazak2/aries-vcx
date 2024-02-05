@@ -266,8 +266,8 @@ mod tests {
             .await
             .unwrap();
 
-        let src_wallet = Arc::new(IndySdkWallet::new(src_wallet_handle));
-        let dest_wallet = Box::new(IndySdkWallet::new(dest_wallet_handle));
+        let src_wallet = IndySdkWallet::new(src_wallet_handle);
+        let dest_wallet = IndySdkWallet::new(dest_wallet_handle);
 
         // Migrate the records
         migrate_wallet(src_wallet, dest_wallet, migrate_any_record)
