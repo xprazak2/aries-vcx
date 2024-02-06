@@ -15,7 +15,7 @@ use aries_vcx::{
             },
             structs_io::UnpackMessageOutput,
         },
-        SearchHandle, WalletHandle,
+        WalletHandle,
     },
     global::settings::DEFAULT_LINK_SECRET_ALIAS,
     protocols::mediated_connection::pairwise_info::PairwiseInfo,
@@ -29,11 +29,10 @@ use aries_vcx_core::{
             record::Record,
             record_wallet::RecordWallet,
             search_filter::{self, SearchFilter},
-            wallet_config::WalletConfig,
             BaseWallet, ManageWallet,
         },
         entry_tag::EntryTags,
-        indy::IndyWalletRecord,
+        indy::{wallet_config::WalletConfig, IndyWalletRecord},
     },
 };
 use futures::FutureExt;
@@ -334,9 +333,9 @@ pub mod test_utils {
     use aries_vcx::global::settings::{
         DEFAULT_WALLET_BACKUP_KEY, DEFAULT_WALLET_KEY, WALLET_KDF_RAW,
     };
-    use aries_vcx_core::wallet::base_wallet::{
-        did_wallet::DidWallet, record::Record, record_wallet::RecordWallet,
-        wallet_config::WalletConfig,
+    use aries_vcx_core::wallet::{
+        base_wallet::{did_wallet::DidWallet, record::Record, record_wallet::RecordWallet},
+        indy::wallet_config::WalletConfig,
     };
 
     use crate::{
@@ -419,7 +418,7 @@ mod tests {
         },
         global::settings::{DEFAULT_WALLET_BACKUP_KEY, DEFAULT_WALLET_KEY, WALLET_KDF_RAW},
     };
-    use aries_vcx_core::wallet::{base_wallet::wallet_config::WalletConfig, indy::IndySdkWallet};
+    use aries_vcx_core::wallet::indy::wallet_config::WalletConfig;
     use test_utils::devsetup::{SetupMocks, TempFile};
 
     use crate::{

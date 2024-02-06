@@ -8,7 +8,8 @@ use aries_vcx::{
 use aries_vcx_core::{
     errors::error::AriesVcxCoreError,
     wallet::{
-        base_wallet::{wallet_config::WalletConfig, BaseWallet},
+        base_wallet::BaseWallet,
+        indy::wallet_config::WalletConfig,
         indy::{wallet::create_and_open_wallet, IndySdkWallet},
         structs_io::UnpackMessageOutput,
     },

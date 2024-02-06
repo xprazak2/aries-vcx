@@ -10,7 +10,6 @@ use super::base_wallet::{
     did_wallet::DidWallet,
     issuer_config::IssuerConfig,
     record::{AllRecords, PartialRecord, Record},
-    wallet_config::WalletConfig,
     BaseWallet,
 };
 use crate::{
@@ -23,6 +22,7 @@ mod indy_record_wallet;
 pub(crate) mod indy_tag;
 pub mod internal;
 pub mod wallet;
+pub mod wallet_config;
 
 #[derive(Debug)]
 pub struct IndySdkWallet {
@@ -185,7 +185,8 @@ impl AllRecords for AllIndyRecords {
 
 #[cfg(test)]
 pub mod tests {
-    use crate::wallet::base_wallet::wallet_config::WalletConfig;
+
+    use crate::wallet::indy::wallet_config::WalletConfig;
 
     use super::IndySdkWallet;
 

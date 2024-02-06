@@ -12,11 +12,8 @@ use aries_vcx_core::{
     anoncreds::{base_anoncreds::BaseAnonCreds, credx_anoncreds::IndyCredxAnonCreds},
     ledger::indy_vdr_ledger::DefaultIndyLedgerRead,
     wallet::{
-        base_wallet::wallet_config::WalletConfig,
-        indy::{
-            wallet::{create_and_open_wallet, wallet_configure_issuer},
-            IndySdkWallet,
-        },
+        base_wallet::ManageWallet,
+        indy::{wallet::create_and_open_wallet, wallet_config::WalletConfig, IndySdkWallet},
     },
 };
 use did_peer::resolver::PeerDidResolver;
@@ -24,7 +21,7 @@ use did_resolver_registry::ResolverRegistry;
 use did_resolver_sov::resolution::DidSovResolver;
 
 use crate::{
-    agent::{agent_config::AgentConfig, agent_struct::Agent},
+    agent::{agent_config::AgentConfig, agent_struct::Agent, init},
     error::AgentResult,
     services::{
         connection::{ServiceConnections, ServiceEndpoint},
@@ -71,12 +68,12 @@ impl Agent {
             rekey_derivation_method: None,
         };
 
-        let wallet_handle = create_and_open_wallet(&config_wallet).await.unwrap();
-        let config_issuer = wallet_configure_issuer(wallet_handle, &init_config.enterprise_seed)
+        config_wallet.create_wallet().await.unwrap();
+        let wallet = config_wallet.open_wallet().await.unwrap();
+        let config_issuer = wallet
+            .configure_issuer(&init_config.enterprise_seed)
             .await
             .unwrap();
-
-        let wallet = Arc::new(IndySdkWallet::new(wallet_handle));
 
         use aries_vcx_core::ledger::indy_vdr_ledger::{build_ledger_components, VcxPoolConfig};
 
@@ -94,14 +91,14 @@ impl Agent {
         let ledger_write = Arc::new(ledger_write);
 
         anoncreds
-            .prover_create_link_secret(wallet.as_ref(), DEFAULT_LINK_SECRET_ALIAS)
+            .prover_create_link_secret(&wallet, DEFAULT_LINK_SECRET_ALIAS)
             .await
             .unwrap();
 
         // TODO: This setup should be easier
         // The default issuer did can't be used - its verkey is not in base58 - TODO: double-check
         let (public_did, _verkey) = add_new_did(
-            wallet.as_ref(),
+            &wallet,
             ledger_write.as_ref(),
             &config_issuer.institution_did,
             None,
@@ -110,13 +107,7 @@ impl Agent {
         let endpoint = EndpointDidSov::create()
             .set_service_endpoint(init_config.service_endpoint.clone())
             .set_types(Some(vec![DidSovServiceType::DidCommunication]));
-        write_endpoint(
-            wallet.as_ref(),
-            ledger_write.as_ref(),
-            &public_did,
-            &endpoint,
-        )
-        .await?;
+        write_endpoint(&wallet, ledger_write.as_ref(), &public_did, &endpoint).await?;
 
         let did_peer_resolver = PeerDidResolver::new();
         let did_sov_resolver: DidSovResolver<Arc<DefaultIndyLedgerRead>, DefaultIndyLedgerRead> =

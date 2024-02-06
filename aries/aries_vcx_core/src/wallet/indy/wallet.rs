@@ -8,11 +8,10 @@ use vdrtools::{
 
 use crate::{
     errors::error::{AriesVcxCoreError, AriesVcxCoreErrorKind, VcxCoreResult},
-    wallet::{
-        base_wallet::wallet_config::WalletConfig,
-        indy::{IssuerConfig, RestoreWalletConfigs},
-    },
+    wallet::indy::{IssuerConfig, RestoreWalletConfigs},
 };
+
+use super::wallet_config::WalletConfig;
 
 fn parse_key_derivation_method(method: &str) -> Result<KeyDerivationMethod, AriesVcxCoreError> {
     match method {
@@ -231,15 +230,15 @@ pub async fn import(restore_config: &RestoreWalletConfigs) -> VcxCoreResult<()> 
 }
 
 // TODO - FUTURE - can this be moved externally - move to a generic setup util?
-pub async fn wallet_configure_issuer(
-    wallet_handle: WalletHandle,
-    key_seed: &str,
-) -> VcxCoreResult<IssuerConfig> {
-    let (institution_did, _vk) =
-        create_and_store_my_did(wallet_handle, Some(key_seed), None).await?;
+// pub async fn wallet_configure_issuer(
+//     wallet_handle: WalletHandle,
+//     key_seed: &str,
+// ) -> VcxCoreResult<IssuerConfig> {
+//     let (institution_did, _vk) =
+//         create_and_store_my_did(wallet_handle, Some(key_seed), None).await?;
 
-    Ok(IssuerConfig { institution_did })
-}
+//     Ok(IssuerConfig { institution_did })
+// }
 
 pub async fn export_wallet(
     wallet_handle: WalletHandle,

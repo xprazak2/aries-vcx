@@ -1,5 +1,5 @@
-use aries_vcx_core::wallet::base_wallet::{
-    issuer_config::IssuerConfig, wallet_config::WalletConfig,
+use aries_vcx_core::wallet::{
+    base_wallet::issuer_config::IssuerConfig, indy::wallet_config::WalletConfig,
 };
 
 #[derive(Clone)]

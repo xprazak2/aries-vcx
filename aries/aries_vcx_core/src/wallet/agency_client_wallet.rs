@@ -15,7 +15,6 @@ use super::{
         record::{AllRecords, Record},
         record_wallet::RecordWallet,
         search_filter::SearchFilter,
-        wallet_config::WalletConfig,
         BaseWallet,
     },
     structs_io::UnpackMessageOutput,

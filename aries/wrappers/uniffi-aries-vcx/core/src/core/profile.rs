@@ -9,9 +9,8 @@ use aries_vcx::{
             request_submitter::vdr_ledger::{IndyVdrLedgerPool, IndyVdrSubmitter},
             response_cacher::in_memory::{InMemoryResponseCacher, InMemoryResponseCacherConfig},
         },
-        wallet::{
-            base_wallet::wallet_config::WalletConfig,
-            indy::{wallet::create_and_open_wallet, IndySdkWallet},
+        wallet::indy::{
+            wallet::create_and_open_wallet, wallet_config::WalletConfig, IndySdkWallet,
         },
         PoolConfig,
     },

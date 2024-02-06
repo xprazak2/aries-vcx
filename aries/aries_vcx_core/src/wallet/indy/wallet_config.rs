@@ -1,3 +1,5 @@
+use std::sync::Arc;
+
 use async_trait::async_trait;
 use indy_api_types::domain::wallet::{default_key_derivation_method, KeyDerivationMethod};
 use serde::{Deserialize, Serialize};
@@ -6,10 +8,10 @@ use vdrtools::Locator;
 
 use crate::{
     errors::error::{AriesVcxCoreError, AriesVcxCoreErrorKind, VcxCoreResult},
-    wallet::indy::IndySdkWallet,
+    wallet::{base_wallet::ManageWallet, indy::IndySdkWallet},
 };
 
-use super::{BaseWallet, ManageWallet};
+use super::BaseWallet;
 
 #[derive(Clone, Debug, TypedBuilder, Serialize, Deserialize)]
 #[builder(field_defaults(default))]
@@ -38,7 +40,7 @@ pub struct WalletConfig {
 impl ManageWallet for WalletConfig {
     // type Wallet = AnyWallet;
 
-    async fn create_wallet(&self) -> VcxCoreResult<Box<dyn BaseWallet>> {
+    async fn create_wallet(&self) -> VcxCoreResult<Arc<dyn BaseWallet>> {
         let handle = Locator::instance()
             .wallet_controller
             .open(
@@ -75,10 +77,10 @@ impl ManageWallet for WalletConfig {
             )
             .await?;
 
-        Ok(Box::new(IndySdkWallet::new(handle)))
+        Ok(Arc::new(IndySdkWallet::new(handle)))
     }
 
-    async fn open_wallet(&self) -> VcxCoreResult<Box<dyn BaseWallet>> {
+    async fn open_wallet(&self) -> VcxCoreResult<Arc<dyn BaseWallet>> {
         let handle = Locator::instance()
             .wallet_controller
             .open(
@@ -115,7 +117,7 @@ impl ManageWallet for WalletConfig {
             )
             .await?;
 
-        Ok(Box::new(IndySdkWallet::new(handle)))
+        Ok(Arc::new(IndySdkWallet::new(handle)))
     }
 }
 

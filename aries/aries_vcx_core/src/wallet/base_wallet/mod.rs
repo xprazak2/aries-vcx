@@ -5,7 +5,7 @@ use public_key::Key;
 
 use self::{
     did_wallet::DidWallet, issuer_config::IssuerConfig, record::AllRecords,
-    record_wallet::RecordWallet, wallet_config::WalletConfig,
+    record_wallet::RecordWallet,
 };
 
 use super::entry_tag::EntryTags;
@@ -24,15 +24,14 @@ pub mod migrate;
 pub mod record;
 pub mod record_wallet;
 pub mod search_filter;
-pub mod wallet_config;
 
 #[async_trait]
 pub trait ManageWallet {
     // type Wallet: BaseWallet;
 
-    async fn create_wallet(&self) -> VcxCoreResult<Box<dyn BaseWallet>>;
+    async fn create_wallet(&self) -> VcxCoreResult<Arc<dyn BaseWallet>>;
 
-    async fn open_wallet(&self) -> VcxCoreResult<Box<dyn BaseWallet>>;
+    async fn open_wallet(&self) -> VcxCoreResult<Arc<dyn BaseWallet>>;
 }
 
 #[async_trait]
