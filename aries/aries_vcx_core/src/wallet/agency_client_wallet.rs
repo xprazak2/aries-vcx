@@ -47,19 +47,19 @@ impl BaseWallet for AgencyClientWallet {
         ))
     }
 
-    async fn create_wallet(wallet_config: WalletConfig) -> VcxCoreResult<Box<dyn BaseWallet>>
-    where
-        Self: Sized,
-    {
-        Err(unimplemented_agency_client_wallet_method("create_wallet"))
-    }
+    // async fn create_wallet(wallet_config: WalletConfig) -> VcxCoreResult<Box<dyn BaseWallet>>
+    // where
+    //     Self: Sized,
+    // {
+    //     Err(unimplemented_agency_client_wallet_method("create_wallet"))
+    // }
 
-    async fn open_wallet(wallet_config: &WalletConfig) -> VcxCoreResult<Box<dyn BaseWallet>>
-    where
-        Self: Sized,
-    {
-        Err(unimplemented_agency_client_wallet_method("open_wallet"))
-    }
+    // async fn open_wallet(wallet_config: &WalletConfig) -> VcxCoreResult<Box<dyn BaseWallet>>
+    // where
+    //     Self: Sized,
+    // {
+    //     Err(unimplemented_agency_client_wallet_method("open_wallet"))
+    // }
 
     async fn all(&self) -> VcxCoreResult<Box<dyn AllRecords>> {
         Err(unimplemented_agency_client_wallet_method("get_all"))
@@ -276,10 +276,7 @@ pub trait ToBaseAgencyClientWallet {
     fn to_base_agency_client_wallet(&self) -> Arc<dyn BaseAgencyClientWallet>;
 }
 
-impl<T> ToBaseAgencyClientWallet for Arc<T>
-where
-    T: BaseWallet + 'static,
-{
+impl ToBaseAgencyClientWallet for Arc<dyn BaseWallet> {
     fn to_base_agency_client_wallet(&self) -> Arc<dyn BaseAgencyClientWallet> {
         let x = self.clone();
         Arc::new(BaseWalletAgencyClientWallet { inner: x })

@@ -24,11 +24,13 @@ use aries_vcx_core::{
     errors::error::{AriesVcxCoreError, AriesVcxCoreErrorKind},
     wallet::{
         base_wallet::{
+            did_wallet::DidWallet,
             issuer_config::IssuerConfig,
             record::Record,
+            record_wallet::RecordWallet,
             search_filter::{self, SearchFilter},
             wallet_config::WalletConfig,
-            BaseWallet, DidWallet, RecordWallet,
+            BaseWallet, ManageWallet,
         },
         entry_tag::EntryTags,
         indy::IndyWalletRecord,
@@ -112,7 +114,7 @@ pub async fn create_main_wallet(config: &WalletConfig) -> LibvcxResult<()> {
 
     // If MS is already in wallet then just continue
     get_main_anoncreds()?
-        .prover_create_link_secret(wallet.as_ref(), DEFAULT_LINK_SECRET_ALIAS)
+        .prover_create_link_secret(&wallet, DEFAULT_LINK_SECRET_ALIAS)
         .await
         .ok();
 
@@ -155,7 +157,7 @@ pub async fn rotate_verkey_apply(did: &str, temp_vk: &str) -> LibvcxResult<()> {
     let wallet = get_main_wallet()?;
     map_ariesvcx_result(
         aries_vcx::common::keys::rotate_verkey_apply(
-            wallet.as_ref(),
+            &wallet,
             get_main_ledger_write()?.as_ref(),
             did,
             temp_vk,
@@ -309,12 +311,13 @@ pub async fn wallet_import(config: &RestoreWalletConfigs) -> LibvcxResult<()> {
     map_ariesvcx_core_result(import(config).await)
 }
 
-pub async fn wallet_migrate<T: BaseWallet>(wallet_config: &WalletConfig) -> LibvcxResult<()> {
+pub async fn wallet_migrate(wallet_config: &WalletConfig) -> LibvcxResult<()> {
     let src_wallet = get_main_wallet()?;
     info!("Assuring target wallet exists.");
-    let dest_wallet = <T as BaseWallet>::create_wallet(wallet_config.to_owned()).await?;
+    let dest_wallet = wallet_config.create_wallet().await?;
     info!("Opening target wallet.");
 
+    let dest_wallet: Arc<_> = dest_wallet.into();
     let migration_res = wallet_migrator::migrate_wallet(
         src_wallet,
         dest_wallet,
@@ -332,7 +335,8 @@ pub mod test_utils {
         DEFAULT_WALLET_BACKUP_KEY, DEFAULT_WALLET_KEY, WALLET_KDF_RAW,
     };
     use aries_vcx_core::wallet::base_wallet::{
-        record::Record, wallet_config::WalletConfig, DidWallet, RecordWallet,
+        did_wallet::DidWallet, record::Record, record_wallet::RecordWallet,
+        wallet_config::WalletConfig,
     };
 
     use crate::{
@@ -450,9 +454,7 @@ mod tests {
         .unwrap();
 
         // #[cfg(feature("vdrtools_wallet"))]
-        super::wallet_migrate::<IndySdkWallet>(&new_config)
-            .await
-            .unwrap();
+        super::wallet_migrate(&new_config).await.unwrap();
     }
 
     #[tokio::test]

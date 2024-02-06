@@ -150,96 +150,6 @@ impl BaseWallet for IndySdkWallet {
         })
     }
 
-    async fn create_wallet(wallet_config: WalletConfig) -> VcxCoreResult<Box<dyn BaseWallet>>
-    where
-        Self: Sized,
-    {
-        let handle = Locator::instance()
-            .wallet_controller
-            .open(
-                vdrtools::types::domain::wallet::Config {
-                    id: wallet_config.wallet_name.clone(),
-                    storage_type: wallet_config.wallet_type.clone(),
-                    storage_config: wallet_config
-                        .storage_config
-                        .as_deref()
-                        .map(serde_json::from_str)
-                        .transpose()?,
-                    cache: None,
-                },
-                vdrtools::types::domain::wallet::Credentials {
-                    key: wallet_config.wallet_key.clone(),
-                    key_derivation_method: parse_key_derivation_method(
-                        &wallet_config.wallet_key_derivation,
-                    )?,
-
-                    rekey: wallet_config.rekey.clone(),
-                    rekey_derivation_method: wallet_config
-                        .rekey_derivation_method
-                        .as_deref()
-                        .map(parse_key_derivation_method)
-                        .transpose()?
-                        .unwrap_or_else(default_key_derivation_method),
-
-                    storage_credentials: wallet_config
-                        .storage_credentials
-                        .as_deref()
-                        .map(serde_json::from_str)
-                        .transpose()?,
-                },
-            )
-            .await?;
-
-        Ok(Box::new(IndySdkWallet {
-            wallet_handle: handle,
-        }))
-    }
-
-    async fn open_wallet(wallet_config: &WalletConfig) -> VcxCoreResult<Box<dyn BaseWallet>>
-    where
-        Self: Sized,
-    {
-        let handle = Locator::instance()
-            .wallet_controller
-            .open(
-                vdrtools::types::domain::wallet::Config {
-                    id: wallet_config.wallet_name.clone(),
-                    storage_type: wallet_config.wallet_type.clone(),
-                    storage_config: wallet_config
-                        .storage_config
-                        .as_deref()
-                        .map(serde_json::from_str)
-                        .transpose()?,
-                    cache: None,
-                },
-                vdrtools::types::domain::wallet::Credentials {
-                    key: wallet_config.wallet_key.clone(),
-                    key_derivation_method: parse_key_derivation_method(
-                        &wallet_config.wallet_key_derivation,
-                    )?,
-
-                    rekey: wallet_config.rekey.clone(),
-                    rekey_derivation_method: wallet_config
-                        .rekey_derivation_method
-                        .as_deref()
-                        .map(parse_key_derivation_method)
-                        .transpose()?
-                        .unwrap_or_else(default_key_derivation_method),
-
-                    storage_credentials: wallet_config
-                        .storage_credentials
-                        .as_deref()
-                        .map(serde_json::from_str)
-                        .transpose()?,
-                },
-            )
-            .await?;
-
-        Ok(Box::new(IndySdkWallet {
-            wallet_handle: handle,
-        }))
-    }
-
     async fn all(&self) -> VcxCoreResult<Box<dyn AllRecords>> {
         let all = Locator::instance()
             .wallet_controller
@@ -270,18 +180,6 @@ impl AllRecords for AllIndyRecords {
         let item = self.iterator.next().await?;
 
         Ok(item.map(PartialRecord::from_wallet_record))
-    }
-}
-
-fn parse_key_derivation_method(method: &str) -> VcxCoreResult<KeyDerivationMethod> {
-    match method {
-        "RAW" => Ok(KeyDerivationMethod::RAW),
-        "ARGON2I_MOD" => Ok(KeyDerivationMethod::ARGON2I_MOD),
-        "ARGON2I_INT" => Ok(KeyDerivationMethod::ARGON2I_INT),
-        _ => Err(AriesVcxCoreError::from_msg(
-            AriesVcxCoreErrorKind::InvalidOption,
-            format!("Unknown derivation method {method}"),
-        )),
     }
 }
 

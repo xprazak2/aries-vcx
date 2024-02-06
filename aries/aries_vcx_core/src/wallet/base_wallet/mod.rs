@@ -27,6 +27,15 @@ pub mod search_filter;
 pub mod wallet_config;
 
 #[async_trait]
+pub trait ManageWallet {
+    // type Wallet: BaseWallet;
+
+    async fn create_wallet(&self) -> VcxCoreResult<Box<dyn BaseWallet>>;
+
+    async fn open_wallet(&self) -> VcxCoreResult<Box<dyn BaseWallet>>;
+}
+
+#[async_trait]
 pub trait BaseWallet: RecordWallet + DidWallet + Send + Sync + std::fmt::Debug + 'static {
     async fn export_wallet(&self, path: &str, backup_key: &str) -> VcxCoreResult<()>;
 
@@ -34,13 +43,13 @@ pub trait BaseWallet: RecordWallet + DidWallet + Send + Sync + std::fmt::Debug +
 
     async fn configure_issuer(&self, key_seed: &str) -> VcxCoreResult<IssuerConfig>;
 
-    async fn create_wallet(wallet_config: WalletConfig) -> VcxCoreResult<Box<dyn BaseWallet>>
-    where
-        Self: Sized;
+    // async fn create_wallet(wallet_config: WalletConfig) -> VcxCoreResult<Box<dyn BaseWallet>>
+    // where
+    //     Self: Sized;
 
-    async fn open_wallet(wallet_config: &WalletConfig) -> VcxCoreResult<Box<dyn BaseWallet>>
-    where
-        Self: Sized;
+    // async fn open_wallet(wallet_config: &WalletConfig) -> VcxCoreResult<Box<dyn BaseWallet>>
+    // where
+    //     Self: Sized;
 
     async fn all(&self) -> VcxCoreResult<Box<dyn AllRecords>>;
 }
@@ -59,19 +68,19 @@ impl BaseWallet for Arc<dyn BaseWallet> {
         self.as_ref().configure_issuer(key_seed).await
     }
 
-    async fn create_wallet(wallet_config: WalletConfig) -> VcxCoreResult<Box<dyn BaseWallet>>
-    where
-        Self: Sized,
-    {
-        Self::create_wallet(wallet_config).await
-    }
+    // async fn create_wallet(wallet_config: WalletConfig) -> VcxCoreResult<Box<dyn BaseWallet>>
+    // where
+    //     Self: Sized,
+    // {
+    //     Self::create_wallet(wallet_config).await
+    // }
 
-    async fn open_wallet(wallet_config: &WalletConfig) -> VcxCoreResult<Box<dyn BaseWallet>>
-    where
-        Self: Sized,
-    {
-        Self::open_wallet(wallet_config).await
-    }
+    // async fn open_wallet(wallet_config: &WalletConfig) -> VcxCoreResult<Box<dyn BaseWallet>>
+    // where
+    //     Self: Sized,
+    // {
+    //     Self::open_wallet(wallet_config).await
+    // }
 
     async fn all(&self) -> VcxCoreResult<Box<dyn AllRecords>> {
         self.as_ref().all().await

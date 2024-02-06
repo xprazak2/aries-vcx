@@ -51,19 +51,19 @@ impl BaseWallet for MockWallet {
         Ok(IssuerConfig::builder().build())
     }
 
-    async fn create_wallet(wallet_config: WalletConfig) -> VcxCoreResult<Box<dyn BaseWallet>>
-    where
-        Self: Sized,
-    {
-        Ok(Box::new(MockWallet {}))
-    }
+    // async fn create_wallet(wallet_config: WalletConfig) -> VcxCoreResult<Box<dyn BaseWallet>>
+    // where
+    //     Self: Sized,
+    // {
+    //     Ok(Box::new(MockWallet {}))
+    // }
 
-    async fn open_wallet(wallet_config: &WalletConfig) -> VcxCoreResult<Box<dyn BaseWallet>>
-    where
-        Self: Sized,
-    {
-        Ok(Box::new(MockWallet {}))
-    }
+    // async fn open_wallet(wallet_config: &WalletConfig) -> VcxCoreResult<Box<dyn BaseWallet>>
+    // where
+    //     Self: Sized,
+    // {
+    //     Ok(Box::new(MockWallet {}))
+    // }
 
     async fn all(&self) -> VcxCoreResult<Box<dyn AllRecords>> {
         Ok(Box::new(MockAllRecords {}))

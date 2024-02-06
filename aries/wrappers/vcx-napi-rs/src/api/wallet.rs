@@ -1,11 +1,11 @@
 use libvcx_core::{
     api_vcx::api_global::{ledger, wallet},
-    aries_vcx::aries_vcx_core::wallet::indy::{
-        wallet::delete_wallet, RestoreWalletConfigs, WalletConfig,
+    aries_vcx::aries_vcx_core::wallet::{
+        base_wallet::wallet_config::WalletConfig,
+        indy::{wallet::delete_wallet, RestoreWalletConfigs},
     },
     errors::error::{LibvcxError, LibvcxErrorKind},
-    serde_json,
-    serde_json::json,
+    serde_json::{self, json},
 };
 use napi::bindgen_prelude::Buffer;
 use napi_derive::napi;
