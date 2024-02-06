@@ -1,8 +1,7 @@
 pub mod conv;
 
-use aries_vcx_core::wallet::{base_wallet::record::Record, indy::IndyWalletRecord};
+use aries_vcx_core::wallet::base_wallet::record::Record;
 use log::trace;
-use vdrtools::types::domain::wallet::IndyRecord;
 
 use crate::error::MigrationResult;
 
@@ -83,7 +82,7 @@ mod tests {
     };
     use serde_json::json;
     use vdrtools::{
-        types::domain::wallet::{Config, Credentials, KeyDerivationMethod},
+        types::domain::wallet::{Config, Credentials, IndyRecord, KeyDerivationMethod},
         Locator, WalletHandle,
     };
 

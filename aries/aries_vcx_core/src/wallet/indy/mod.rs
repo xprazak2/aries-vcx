@@ -1,83 +1,24 @@
 use async_trait::async_trait;
-use indy_api_types::{
-    domain::wallet::{default_key_derivation_method, IndyRecord, KeyDerivationMethod},
-    errors::IndyErrorKind,
-};
-use serde::{Deserialize, Serialize};
+use indy_api_types::domain::wallet::{default_key_derivation_method, IndyRecord};
 use vdrtools::{indy_wallet::iterator::WalletIterator, Locator};
 
-use self::{indy_tag::IndyTags, wallet_config::parse_key_derivation_method};
+use self::indy_tag::IndyTags;
 use super::base_wallet::{
     did_wallet::DidWallet,
     issuer_config::IssuerConfig,
     record::{AllRecords, PartialRecord, Record},
     BaseWallet,
 };
-use crate::{
-    errors::error::{AriesVcxCoreError, AriesVcxCoreErrorKind, VcxCoreResult},
-    WalletHandle,
-};
+use crate::{errors::error::VcxCoreResult, WalletHandle};
 
 mod indy_did_wallet;
 mod indy_record_wallet;
 pub(crate) mod indy_tag;
-pub mod internal;
+mod indy_utils;
+pub mod indy_wallet_record;
 pub mod restore_wallet_configs;
-pub mod wallet;
 pub mod wallet_config;
-
-#[derive(Debug)]
-pub struct IndySdkWallet {
-    wallet_handle: WalletHandle,
-}
-
-impl IndySdkWallet {
-    pub fn new(wallet_handle: WalletHandle) -> Self {
-        IndySdkWallet { wallet_handle }
-    }
-
-    pub fn get_wallet_handle(&self) -> WalletHandle {
-        self.wallet_handle
-    }
-}
-
-#[derive(Clone, Debug, Serialize, Deserialize)]
-struct WalletCredentials {
-    key: String,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    rekey: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    storage_credentials: Option<serde_json::Value>,
-    key_derivation_method: String,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    rekey_derivation_method: Option<String>,
-}
-
-#[derive(Clone, Debug, Serialize, Deserialize)]
-pub struct IndyWalletRecord {
-    id: Option<String>,
-    #[serde(rename = "type")]
-    record_type: Option<String>,
-    pub value: Option<String>,
-    tags: Option<String>,
-}
-
-impl IndyWalletRecord {
-    pub fn from_record(record: Record) -> VcxCoreResult<Self> {
-        let tags = if record.tags().is_empty() {
-            None
-        } else {
-            Some(serde_json::to_string(&record.tags())?)
-        };
-
-        Ok(Self {
-            id: Some(record.name().into()),
-            record_type: Some(record.category().into()),
-            value: Some(record.value().into()),
-            tags,
-        })
-    }
-}
+pub mod wallet_credentials;
 
 impl From<IndyRecord> for Record {
     fn from(ir: IndyRecord) -> Self {
@@ -98,6 +39,21 @@ impl From<Record> for IndyRecord {
             value: record.value().into(),
             tags: IndyTags::from_entry_tags(record.tags().to_owned()).into_inner(),
         }
+    }
+}
+
+#[derive(Debug)]
+pub struct IndySdkWallet {
+    wallet_handle: WalletHandle,
+}
+
+impl IndySdkWallet {
+    pub fn new(wallet_handle: WalletHandle) -> Self {
+        IndySdkWallet { wallet_handle }
+    }
+
+    pub fn get_wallet_handle(&self) -> WalletHandle {
+        self.wallet_handle
     }
 }
 

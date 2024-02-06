@@ -1,10 +1,7 @@
 use std::sync::Arc;
 
 use async_trait::async_trait;
-use indy_api_types::{
-    domain::wallet::{default_key_derivation_method, KeyDerivationMethod},
-    errors::IndyErrorKind,
-};
+use indy_api_types::{domain::wallet::default_key_derivation_method, errors::IndyErrorKind};
 use serde::{Deserialize, Serialize};
 use typed_builder::TypedBuilder;
 use vdrtools::Locator;
@@ -14,7 +11,7 @@ use crate::{
     wallet::{base_wallet::ManageWallet, indy::IndySdkWallet},
 };
 
-use super::BaseWallet;
+use super::{indy_utils::parse_key_derivation_method, BaseWallet};
 
 #[derive(Clone, Debug, TypedBuilder, Serialize, Deserialize)]
 #[builder(field_defaults(default))]
@@ -177,17 +174,5 @@ impl ManageWallet for WalletConfig {
 
             Err(err) => Err(err.into()),
         }
-    }
-}
-
-pub(crate) fn parse_key_derivation_method(method: &str) -> VcxCoreResult<KeyDerivationMethod> {
-    match method {
-        "RAW" => Ok(KeyDerivationMethod::RAW),
-        "ARGON2I_MOD" => Ok(KeyDerivationMethod::ARGON2I_MOD),
-        "ARGON2I_INT" => Ok(KeyDerivationMethod::ARGON2I_INT),
-        _ => Err(AriesVcxCoreError::from_msg(
-            AriesVcxCoreErrorKind::InvalidOption,
-            format!("Unknown derivation method {method}"),
-        )),
     }
 }

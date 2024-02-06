@@ -6,7 +6,7 @@ use vdrtools::Locator;
 
 use crate::{errors::error::VcxCoreResult, wallet::base_wallet::ImportWallet};
 
-use super::wallet_config::parse_key_derivation_method;
+use super::indy_utils::parse_key_derivation_method;
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct RestoreWalletConfigs {

@@ -1,5 +1,3 @@
-use std::{ops::Add, sync::Arc};
-
 use async_trait::async_trait;
 use indy_api_types::domain::wallet::IndyRecord;
 use serde::Deserialize;

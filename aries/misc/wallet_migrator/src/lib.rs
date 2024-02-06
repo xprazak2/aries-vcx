@@ -15,11 +15,6 @@ use crate::error::MigrationError;
 /// Retrieves all records from the source wallet and migrates them
 /// by applying the `migrate_fn` argument. The records are then
 /// placed in the destination wallet.
-// pub async fn migrate_wallet<E>(
-//     src_wallet_handle: WalletHandle,
-//     dest_wallet_handle: WalletHandle,
-//     migrate_fn: impl FnMut(IndyRecord) -> Result<Option<IndyRecord>, E>,
-// ) -> MigrationResult<()>
 pub async fn migrate_wallet<E>(
     src_wallet: impl BaseWallet,
     dest_wallet: impl BaseWallet,
@@ -36,11 +31,6 @@ where
     );
 
     migrate_records(src_wallet, dest_wallet, migrate_fn).await?;
-
-    // Locator::instance()
-    //     .wallet_controller
-    //     .migrate_records(src_wallet_handle, dest_wallet_handle, migrate_fn)
-    //     .await?;
 
     info!("Migration completed");
 

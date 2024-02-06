@@ -1,21 +1,13 @@
 use std::sync::Arc;
 
 use async_trait::async_trait;
-use public_key::Key;
 
 use self::{
     did_wallet::DidWallet, issuer_config::IssuerConfig, record::AllRecords,
     record_wallet::RecordWallet,
 };
 
-use super::entry_tag::EntryTags;
-use crate::{
-    errors::error::VcxCoreResult,
-    wallet::{
-        base_wallet::{did_data::DidData, record::Record, search_filter::SearchFilter},
-        structs_io::UnpackMessageOutput,
-    },
-};
+use crate::errors::error::VcxCoreResult;
 
 pub mod did_data;
 pub mod did_wallet;
@@ -32,8 +24,6 @@ pub trait ImportWallet {
 
 #[async_trait]
 pub trait ManageWallet {
-    // type Wallet: BaseWallet;
-
     async fn create_wallet(&self) -> VcxCoreResult<Arc<dyn BaseWallet>>;
 
     async fn open_wallet(&self) -> VcxCoreResult<Arc<dyn BaseWallet>>;
@@ -42,22 +32,12 @@ pub trait ManageWallet {
 }
 
 #[async_trait]
-pub trait BaseWallet: RecordWallet + DidWallet + Send + Sync + std::fmt::Debug + 'static {
+pub trait BaseWallet: RecordWallet + DidWallet + Send + Sync + std::fmt::Debug {
     async fn export_wallet(&self, path: &str, backup_key: &str) -> VcxCoreResult<()>;
 
     async fn close_wallet(&self) -> VcxCoreResult<()>;
 
     async fn configure_issuer(&self, key_seed: &str) -> VcxCoreResult<IssuerConfig>;
-
-    // async fn create_wallet(wallet_config: WalletConfig) -> VcxCoreResult<Box<dyn BaseWallet>>
-    // where
-    //     Self: Sized;
-
-    // async fn open_wallet(wallet_config: &WalletConfig) -> VcxCoreResult<Box<dyn BaseWallet>>
-    // where
-    //     Self: Sized;
-
-    // async fn delete_wallet(&self) -> VcxCoreResult<()>;
 
     async fn all(&self) -> VcxCoreResult<Box<dyn AllRecords + Send>>;
 }
@@ -76,20 +56,6 @@ impl BaseWallet for Arc<dyn BaseWallet> {
         self.as_ref().configure_issuer(key_seed).await
     }
 
-    // async fn create_wallet(wallet_config: WalletConfig) -> VcxCoreResult<Box<dyn BaseWallet>>
-    // where
-    //     Self: Sized,
-    // {
-    //     Self::create_wallet(wallet_config).await
-    // }
-
-    // async fn open_wallet(wallet_config: &WalletConfig) -> VcxCoreResult<Box<dyn BaseWallet>>
-    // where
-    //     Self: Sized,
-    // {
-    //     Self::open_wallet(wallet_config).await
-    // }
-
     async fn all(&self) -> VcxCoreResult<Box<dyn AllRecords + Send>> {
         self.as_ref().all().await
     }
@@ -103,7 +69,7 @@ mod tests {
     use crate::{
         errors::error::AriesVcxCoreErrorKind,
         wallet::{
-            base_wallet::{DidWallet, Record, RecordWallet},
+            base_wallet::{record::Record, DidWallet, RecordWallet},
             entry_tag::{EntryTag, EntryTags},
         },
     };
