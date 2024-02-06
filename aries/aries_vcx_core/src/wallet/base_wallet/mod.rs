@@ -51,7 +51,7 @@ pub trait BaseWallet: RecordWallet + DidWallet + Send + Sync + std::fmt::Debug +
     // where
     //     Self: Sized;
 
-    async fn all(&self) -> VcxCoreResult<Box<dyn AllRecords>>;
+    async fn all(&self) -> VcxCoreResult<Box<dyn AllRecords + Send>>;
 }
 
 #[async_trait]
@@ -82,7 +82,7 @@ impl BaseWallet for Arc<dyn BaseWallet> {
     //     Self::open_wallet(wallet_config).await
     // }
 
-    async fn all(&self) -> VcxCoreResult<Box<dyn AllRecords>> {
+    async fn all(&self) -> VcxCoreResult<Box<dyn AllRecords + Send>> {
         self.as_ref().all().await
     }
 }

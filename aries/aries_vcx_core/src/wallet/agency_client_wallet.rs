@@ -61,7 +61,7 @@ impl BaseWallet for AgencyClientWallet {
     //     Err(unimplemented_agency_client_wallet_method("open_wallet"))
     // }
 
-    async fn all(&self) -> VcxCoreResult<Box<dyn AllRecords>> {
+    async fn all(&self) -> VcxCoreResult<Box<dyn AllRecords + Send>> {
         Err(unimplemented_agency_client_wallet_method("get_all"))
     }
 }

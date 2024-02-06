@@ -1,5 +1,3 @@
-use std::{collections::HashMap, sync::Arc};
-
 use crate::{
     errors::error::{AriesVcxCoreErrorKind, VcxCoreResult},
     wallet::entry_tag::EntryTags,

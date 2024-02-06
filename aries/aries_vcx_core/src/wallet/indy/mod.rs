@@ -150,7 +150,7 @@ impl BaseWallet for IndySdkWallet {
         })
     }
 
-    async fn all(&self) -> VcxCoreResult<Box<dyn AllRecords>> {
+    async fn all(&self) -> VcxCoreResult<Box<dyn AllRecords + Send>> {
         let all = Locator::instance()
             .wallet_controller
             .get_all(self.get_wallet_handle())

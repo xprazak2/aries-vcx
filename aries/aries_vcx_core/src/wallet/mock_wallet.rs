@@ -9,7 +9,6 @@ use super::{
         record::{AllRecords, PartialRecord, Record},
         record_wallet::RecordWallet,
         search_filter::SearchFilter,
-        wallet_config::WalletConfig,
         BaseWallet,
     },
     structs_io::UnpackMessageOutput,
@@ -65,7 +64,7 @@ impl BaseWallet for MockWallet {
     //     Ok(Box::new(MockWallet {}))
     // }
 
-    async fn all(&self) -> VcxCoreResult<Box<dyn AllRecords>> {
+    async fn all(&self) -> VcxCoreResult<Box<dyn AllRecords + Send>> {
         Ok(Box::new(MockAllRecords {}))
     }
 }
