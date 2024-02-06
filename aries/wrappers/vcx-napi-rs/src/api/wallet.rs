@@ -1,7 +1,10 @@
+use std::{ops::Deref, sync::Arc};
+
 use libvcx_core::{
     api_vcx::api_global::{ledger, wallet},
-    aries_vcx::aries_vcx_core::wallet::indy::{
-        wallet::delete_wallet, wallet_config::WalletConfig, RestoreWalletConfigs,
+    aries_vcx::aries_vcx_core::wallet::{
+        base_wallet::BaseWallet,
+        indy::{wallet::delete_wallet, wallet_config::WalletConfig, RestoreWalletConfigs},
     },
     errors::error::{LibvcxError, LibvcxErrorKind},
     serde_json::{self, json},
@@ -12,7 +15,18 @@ use napi_derive::napi;
 use crate::error::to_napi_err;
 
 #[napi]
-pub async fn wallet_open_as_main(wallet_config: String) -> napi::Result<i32> {
+pub struct NapiWallet(Arc<dyn BaseWallet>);
+
+impl Deref for NapiWallet {
+    type Target = Arc<dyn BaseWallet>;
+
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+
+#[napi]
+pub async fn wallet_open_as_main(wallet_config: String) -> napi::Result<NapiWallet> {
     let wallet_config = serde_json::from_str::<WalletConfig>(&wallet_config)
         .map_err(|err| {
             LibvcxError::from_msg(
@@ -21,10 +35,10 @@ pub async fn wallet_open_as_main(wallet_config: String) -> napi::Result<i32> {
             )
         })
         .map_err(to_napi_err)?;
-    let handle = wallet::open_as_main_wallet(&wallet_config)
+    let wallet = wallet::open_as_main_wallet(&wallet_config)
         .await
         .map_err(to_napi_err)?;
-    Ok(handle.0)
+    Ok(NapiWallet(wallet))
 }
 
 #[napi]

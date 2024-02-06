@@ -186,13 +186,14 @@ impl AllRecords for AllIndyRecords {
 #[cfg(test)]
 pub mod tests {
 
-    use crate::wallet::indy::wallet_config::WalletConfig;
+    use std::sync::Arc;
 
-    use super::IndySdkWallet;
+    use crate::wallet::{
+        base_wallet::{BaseWallet, ManageWallet},
+        indy::wallet_config::WalletConfig,
+    };
 
-    pub async fn dev_setup_indy_wallet() -> IndySdkWallet {
-        use crate::wallet::indy::wallet::create_and_open_wallet;
-
+    pub async fn dev_setup_indy_wallet() -> Arc<dyn BaseWallet> {
         let config_wallet = WalletConfig {
             wallet_name: format!("wallet_{}", uuid::Uuid::new_v4()),
             wallet_key: "8dvfYSt5d1taSd6yJdpjq4emkwsPDDLYxkNFysFD2cZY".into(),
@@ -203,8 +204,8 @@ pub mod tests {
             rekey: None,
             rekey_derivation_method: None,
         };
-        let wallet_handle = create_and_open_wallet(&config_wallet).await.unwrap();
 
-        IndySdkWallet::new(wallet_handle)
+        config_wallet.create_wallet().await.unwrap();
+        config_wallet.open_wallet().await.unwrap()
     }
 }

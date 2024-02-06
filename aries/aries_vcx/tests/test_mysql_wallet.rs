@@ -8,11 +8,7 @@ mod dbtests {
     use aries_vcx::global::settings;
     use aries_vcx_core::wallet::{
         base_wallet::{did_wallet::DidWallet, ManageWallet},
-        indy::{
-            wallet::{close_wallet, create_and_open_wallet},
-            wallet_config::WalletConfig,
-            IndySdkWallet,
-        },
+        indy::wallet_config::WalletConfig,
     };
     use libvcx_logger::LibvcxDefaultLogger;
 

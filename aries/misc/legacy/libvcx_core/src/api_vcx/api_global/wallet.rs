@@ -57,15 +57,9 @@ pub async fn export_main_wallet(path: &str, backup_key: &str) -> LibvcxResult<()
     map_ariesvcx_core_result(main_wallet.export_wallet(path, backup_key).await)
 }
 
-fn build_component_base_wallet(wallet_handle: WalletHandle) -> Arc<IndySdkWallet> {
-    Arc::new(IndySdkWallet::new(wallet_handle))
-}
-
-fn setup_global_wallet(wallet_handle: WalletHandle) -> LibvcxResult<()> {
-    // new way
-    let base_wallet_impl = build_component_base_wallet(wallet_handle);
+fn setup_global_wallet(wallet: Arc<dyn BaseWallet>) -> LibvcxResult<()> {
     let mut b_wallet = GLOBAL_BASE_WALLET.write()?;
-    *b_wallet = Some(base_wallet_impl);
+    *b_wallet = Some(wallet);
     // anoncreds
     let base_anoncreds_impl = Arc::new(IndyCredxAnonCreds);
     let mut b_anoncreds = GLOBAL_BASE_ANONCREDS.write()?;
@@ -73,22 +67,22 @@ fn setup_global_wallet(wallet_handle: WalletHandle) -> LibvcxResult<()> {
     Ok(())
 }
 
-pub fn setup_wallet(handle: WalletHandle) -> LibvcxResult<()> {
-    setup_global_wallet(handle)
-}
-
-pub async fn open_as_main_wallet(wallet_config: &WalletConfig) -> LibvcxResult<WalletHandle> {
-    let handle = wallet::indy::wallet::open_wallet(wallet_config).await?;
-    setup_wallet(handle)?;
-    Ok(handle)
+pub async fn open_as_main_wallet(
+    wallet_config: &WalletConfig,
+) -> LibvcxResult<Arc<dyn BaseWallet>> {
+    let wallet = wallet_config.open_wallet().await?;
+    setup_global_wallet(wallet.clone())?;
+    Ok(wallet)
 }
 
 pub async fn create_and_open_as_main_wallet(
     wallet_config: &WalletConfig,
-) -> LibvcxResult<WalletHandle> {
-    let handle = wallet::indy::wallet::create_and_open_wallet(wallet_config).await?;
-    setup_wallet(handle)?;
-    Ok(handle)
+) -> LibvcxResult<Arc<dyn BaseWallet>> {
+    wallet_config.create_wallet().await?;
+    let wallet = wallet_config.open_wallet().await?;
+
+    setup_global_wallet(wallet.clone())?;
+    Ok(wallet)
 }
 
 pub async fn close_main_wallet() -> LibvcxResult<()> {

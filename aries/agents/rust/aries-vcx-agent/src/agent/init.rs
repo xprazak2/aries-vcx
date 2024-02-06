@@ -13,7 +13,7 @@ use aries_vcx_core::{
     ledger::indy_vdr_ledger::DefaultIndyLedgerRead,
     wallet::{
         base_wallet::ManageWallet,
-        indy::{wallet::create_and_open_wallet, wallet_config::WalletConfig, IndySdkWallet},
+        indy::{wallet_config::WalletConfig},
     },
 };
 use did_peer::resolver::PeerDidResolver;

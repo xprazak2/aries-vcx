@@ -9,8 +9,9 @@ use aries_vcx::{
             request_submitter::vdr_ledger::{IndyVdrLedgerPool, IndyVdrSubmitter},
             response_cacher::in_memory::{InMemoryResponseCacher, InMemoryResponseCacherConfig},
         },
-        wallet::indy::{
-            wallet::create_and_open_wallet, wallet_config::WalletConfig, IndySdkWallet,
+        wallet::{
+            base_wallet::{BaseWallet, ManageWallet},
+            indy::{wallet_config::WalletConfig, IndySdkWallet},
         },
         PoolConfig,
     },
@@ -22,7 +23,7 @@ use crate::{errors::error::VcxUniFFIResult, runtime::block_on};
 
 #[derive(Debug)]
 pub struct UniffiProfile {
-    wallet: IndySdkWallet,
+    wallet: Arc<dyn BaseWallet>,
     anoncreds: IndyCredxAnonCreds,
     ledger_read: IndyVdrLedgerRead<IndyVdrSubmitter, InMemoryResponseCacher>,
 }
@@ -36,7 +37,7 @@ impl UniffiProfile {
         &self.anoncreds
     }
 
-    pub fn wallet(&self) -> &IndySdkWallet {
+    pub fn wallet(&self) -> &Arc<dyn BaseWallet> {
         &self.wallet
     }
 
@@ -60,8 +61,8 @@ pub fn new_indy_profile(
     enable_logging();
 
     block_on(async {
-        let wh = create_and_open_wallet(&wallet_config).await?;
-        let wallet = IndySdkWallet::new(wh);
+        wallet_config.create_wallet().await?;
+        let wallet = wallet_config.open_wallet().await?;
 
         let anoncreds = IndyCredxAnonCreds;
 

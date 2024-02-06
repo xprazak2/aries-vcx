@@ -267,13 +267,13 @@ pub async fn export_wallet(
     Ok(())
 }
 
-pub async fn create_and_open_wallet(wallet_config: &WalletConfig) -> VcxCoreResult<WalletHandle> {
-    create_indy_wallet(wallet_config).await?;
+// pub async fn create_and_open_wallet(wallet_config: &WalletConfig) -> VcxCoreResult<WalletHandle> {
+//     create_indy_wallet(wallet_config).await?;
 
-    let handle = open_wallet(wallet_config).await?;
+//     let handle = open_wallet(wallet_config).await?;
 
-    Ok(handle)
-}
+//     Ok(handle)
+// }
 
 pub async fn close_wallet(wallet_handle: WalletHandle) -> VcxCoreResult<()> {
     trace!("close_wallet >>>");
