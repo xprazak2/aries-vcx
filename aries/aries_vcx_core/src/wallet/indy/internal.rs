@@ -3,7 +3,7 @@ use vdrtools::{Locator, WalletHandle};
 
 use crate::errors::error::VcxCoreResult;
 
-pub async fn delete_wallet_record(
+async fn delete_wallet_record(
     wallet_handle: WalletHandle,
     xtype: &str,
     id: &str,
@@ -23,7 +23,7 @@ pub async fn delete_wallet_record(
 }
 
 // TODO - FUTURE - revert to pub(crate) after libvcx dependency is fixed
-pub async fn open_search_wallet(
+async fn open_search_wallet(
     wallet_handle: WalletHandle,
     xtype: &str,
     query: &str,
@@ -45,7 +45,7 @@ pub async fn open_search_wallet(
 }
 
 // TODO - FUTURE - revert to pub(crate) after libvcx dependency is fixed
-pub async fn fetch_next_records_wallet(
+async fn fetch_next_records_wallet(
     wallet_handle: WalletHandle,
     search_handle: SearchHandle,
     count: usize,
@@ -65,7 +65,7 @@ pub async fn fetch_next_records_wallet(
 }
 
 // TODO - FUTURE - revert to pub(crate) after libvcx dependency is fixed
-pub async fn close_search_wallet(search_handle: SearchHandle) -> VcxCoreResult<()> {
+async fn close_search_wallet(search_handle: SearchHandle) -> VcxCoreResult<()> {
     trace!("close_search >>> search_handle: {:?}", search_handle);
 
     Locator::instance()

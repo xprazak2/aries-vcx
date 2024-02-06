@@ -3,8 +3,8 @@ use std::{ops::Deref, sync::Arc};
 use libvcx_core::{
     api_vcx::api_global::{ledger, wallet},
     aries_vcx::aries_vcx_core::wallet::{
-        base_wallet::BaseWallet,
-        indy::{wallet::delete_wallet, wallet_config::WalletConfig, RestoreWalletConfigs},
+        base_wallet::{BaseWallet, ManageWallet},
+        indy::{restore_wallet_configs::RestoreWalletConfigs, wallet_config::WalletConfig},
     },
     errors::error::{LibvcxError, LibvcxErrorKind},
     serde_json::{self, json},
@@ -124,7 +124,7 @@ pub async fn wallet_migrate(wallet_config: String) -> napi::Result<()> {
 
 #[napi]
 pub async fn wallet_delete(wallet_config: String) -> napi::Result<()> {
-    let wallet_config = serde_json::from_str(&wallet_config)
+    let wallet_config: WalletConfig = serde_json::from_str(&wallet_config)
         .map_err(|err| {
             LibvcxError::from_msg(
                 LibvcxErrorKind::InvalidConfiguration,
@@ -133,7 +133,8 @@ pub async fn wallet_delete(wallet_config: String) -> napi::Result<()> {
         })
         .map_err(to_napi_err)?;
 
-    delete_wallet(&wallet_config)
+    wallet_config
+        .delete_wallet()
         .await
         .map_err(|e| napi::Error::from_reason(e.to_string()))
 }

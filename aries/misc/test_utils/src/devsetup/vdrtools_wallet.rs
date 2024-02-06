@@ -4,9 +4,8 @@ use aries_vcx_core::{
     global::settings::{DEFAULT_WALLET_KEY, WALLET_KDF_RAW},
     wallet::{
         base_wallet::{BaseWallet, ManageWallet},
-        indy::{wallet::create_and_store_my_did, wallet_config::WalletConfig},
+        indy::wallet_config::WalletConfig,
     },
-    WalletHandle,
 };
 use log::info;
 

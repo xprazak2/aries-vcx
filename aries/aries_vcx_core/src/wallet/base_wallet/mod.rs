@@ -26,12 +26,19 @@ pub mod record_wallet;
 pub mod search_filter;
 
 #[async_trait]
+pub trait ImportWallet {
+    async fn import_wallet(&self) -> VcxCoreResult<()>;
+}
+
+#[async_trait]
 pub trait ManageWallet {
     // type Wallet: BaseWallet;
 
     async fn create_wallet(&self) -> VcxCoreResult<Arc<dyn BaseWallet>>;
 
     async fn open_wallet(&self) -> VcxCoreResult<Arc<dyn BaseWallet>>;
+
+    async fn delete_wallet(&self) -> VcxCoreResult<()>;
 }
 
 #[async_trait]
@@ -49,6 +56,8 @@ pub trait BaseWallet: RecordWallet + DidWallet + Send + Sync + std::fmt::Debug +
     // async fn open_wallet(wallet_config: &WalletConfig) -> VcxCoreResult<Box<dyn BaseWallet>>
     // where
     //     Self: Sized;
+
+    // async fn delete_wallet(&self) -> VcxCoreResult<()>;
 
     async fn all(&self) -> VcxCoreResult<Box<dyn AllRecords + Send>>;
 }

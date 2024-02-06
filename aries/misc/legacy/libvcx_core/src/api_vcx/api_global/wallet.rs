@@ -7,14 +7,7 @@ use aries_vcx::{
     aries_vcx_core::{
         anoncreds::{base_anoncreds::BaseAnonCreds, credx_anoncreds::IndyCredxAnonCreds},
         wallet,
-        wallet::{
-            indy::{
-                internal::{close_search_wallet, fetch_next_records_wallet, open_search_wallet},
-                wallet::{close_wallet, create_indy_wallet, import, open_wallet},
-                IndySdkWallet, RestoreWalletConfigs,
-            },
-            structs_io::UnpackMessageOutput,
-        },
+        wallet::{indy::IndySdkWallet, structs_io::UnpackMessageOutput},
         WalletHandle,
     },
     global::settings::DEFAULT_LINK_SECRET_ALIAS,
@@ -29,10 +22,13 @@ use aries_vcx_core::{
             record::Record,
             record_wallet::RecordWallet,
             search_filter::{self, SearchFilter},
-            BaseWallet, ManageWallet,
+            BaseWallet, ImportWallet, ManageWallet,
         },
         entry_tag::EntryTags,
-        indy::{wallet_config::WalletConfig, IndyWalletRecord},
+        indy::{
+            restore_wallet_configs::RestoreWalletConfigs, wallet_config::WalletConfig,
+            IndyWalletRecord,
+        },
     },
 };
 use futures::FutureExt;
@@ -301,7 +297,7 @@ pub async fn wallet_search_records(xtype: &str, query_json: &str) -> LibvcxResul
 }
 
 pub async fn wallet_import(config: &RestoreWalletConfigs) -> LibvcxResult<()> {
-    map_ariesvcx_core_result(import(config).await)
+    map_ariesvcx_core_result(config.import_wallet().await)
 }
 
 pub async fn wallet_migrate(wallet_config: &WalletConfig) -> LibvcxResult<()> {
@@ -408,11 +404,11 @@ pub mod test_utils {
 mod tests {
     use aries_vcx::{
         aries_vcx_core::wallet::indy::{
-            wallet::delete_wallet, IndyWalletRecord, RestoreWalletConfigs,
+            restore_wallet_configs::RestoreWalletConfigs, IndyWalletRecord,
         },
         global::settings::{DEFAULT_WALLET_BACKUP_KEY, DEFAULT_WALLET_KEY, WALLET_KDF_RAW},
     };
-    use aries_vcx_core::wallet::indy::wallet_config::WalletConfig;
+    use aries_vcx_core::wallet::{base_wallet::ManageWallet, indy::wallet_config::WalletConfig};
     use test_utils::devsetup::{SetupMocks, TempFile};
 
     use crate::{
@@ -595,7 +591,7 @@ mod tests {
             .await
             .unwrap();
         close_main_wallet().await.unwrap();
-        delete_wallet(&wallet_config).await.unwrap();
+        wallet_config.delete_wallet().await.unwrap();
         let import_config: RestoreWalletConfigs = serde_json::from_value(json!({
             "wallet_name": wallet_config.wallet_name.clone(),
             "wallet_key": wallet_config.wallet_key.clone(),
@@ -605,7 +601,7 @@ mod tests {
         }))
         .unwrap();
         wallet_import(&import_config).await.unwrap();
-        delete_wallet(&wallet_config).await.unwrap();
+        wallet_config.delete_wallet().await.unwrap();
     }
 
     #[tokio::test]
@@ -659,7 +655,7 @@ mod tests {
         let (export_wallet_path, wallet_name, wallet_config) =
             _create_main_wallet_and_its_backup().await;
 
-        delete_wallet(&wallet_config).await.unwrap();
+        wallet_config.delete_wallet().await.unwrap();
 
         let import_config = RestoreWalletConfigs {
             wallet_name: wallet_name.clone(),

@@ -1,7 +1,10 @@
 use std::sync::Arc;
 
 use async_trait::async_trait;
-use indy_api_types::domain::wallet::{default_key_derivation_method, KeyDerivationMethod};
+use indy_api_types::{
+    domain::wallet::{default_key_derivation_method, KeyDerivationMethod},
+    errors::IndyErrorKind,
+};
 use serde::{Deserialize, Serialize};
 use typed_builder::TypedBuilder;
 use vdrtools::Locator;
@@ -119,9 +122,65 @@ impl ManageWallet for WalletConfig {
 
         Ok(Arc::new(IndySdkWallet::new(handle)))
     }
+
+    async fn delete_wallet(&self) -> VcxCoreResult<()> {
+        let credentials = vdrtools::types::domain::wallet::Credentials {
+            key: self.wallet_key.clone(),
+            key_derivation_method: parse_key_derivation_method(&self.wallet_key_derivation)?,
+
+            rekey: None,
+            rekey_derivation_method: default_key_derivation_method(),
+
+            storage_credentials: self
+                .storage_credentials
+                .as_deref()
+                .map(serde_json::from_str)
+                .transpose()?,
+        };
+
+        let res = Locator::instance()
+            .wallet_controller
+            .delete(
+                vdrtools::types::domain::wallet::Config {
+                    id: self.wallet_name.clone(),
+                    storage_type: self.wallet_type.clone(),
+                    storage_config: self
+                        .storage_config
+                        .as_deref()
+                        .map(serde_json::from_str)
+                        .transpose()?,
+                    cache: None,
+                },
+                credentials,
+            )
+            .await;
+
+        match res {
+            Ok(_) => Ok(()),
+
+            Err(err) if err.kind() == IndyErrorKind::WalletAccessFailed => {
+                Err(AriesVcxCoreError::from_msg(
+                    AriesVcxCoreErrorKind::WalletAccessFailed,
+                    format!(
+                        "Can not open wallet \"{}\". Invalid key has been provided.",
+                        &self.wallet_name
+                    ),
+                ))
+            }
+
+            Err(err) if err.kind() == IndyErrorKind::WalletNotFound => {
+                Err(AriesVcxCoreError::from_msg(
+                    AriesVcxCoreErrorKind::WalletNotFound,
+                    format!("Wallet \"{}\" not found or unavailable", &self.wallet_name,),
+                ))
+            }
+
+            Err(err) => Err(err.into()),
+        }
+    }
 }
 
-fn parse_key_derivation_method(method: &str) -> VcxCoreResult<KeyDerivationMethod> {
+pub(crate) fn parse_key_derivation_method(method: &str) -> VcxCoreResult<KeyDerivationMethod> {
     match method {
         "RAW" => Ok(KeyDerivationMethod::RAW),
         "ARGON2I_MOD" => Ok(KeyDerivationMethod::ARGON2I_MOD),

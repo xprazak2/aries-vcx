@@ -1,11 +1,12 @@
 use async_trait::async_trait;
-use indy_api_types::domain::wallet::{
-    default_key_derivation_method, IndyRecord, KeyDerivationMethod,
+use indy_api_types::{
+    domain::wallet::{default_key_derivation_method, IndyRecord, KeyDerivationMethod},
+    errors::IndyErrorKind,
 };
 use serde::{Deserialize, Serialize};
 use vdrtools::{indy_wallet::iterator::WalletIterator, Locator};
 
-use self::indy_tag::IndyTags;
+use self::{indy_tag::IndyTags, wallet_config::parse_key_derivation_method};
 use super::base_wallet::{
     did_wallet::DidWallet,
     issuer_config::IssuerConfig,
@@ -21,6 +22,7 @@ mod indy_did_wallet;
 mod indy_record_wallet;
 pub(crate) mod indy_tag;
 pub mod internal;
+pub mod restore_wallet_configs;
 pub mod wallet;
 pub mod wallet_config;
 
@@ -97,16 +99,6 @@ impl From<Record> for IndyRecord {
             tags: IndyTags::from_entry_tags(record.tags().to_owned()).into_inner(),
         }
     }
-}
-
-#[derive(Clone, Debug, Serialize, Deserialize)]
-pub struct RestoreWalletConfigs {
-    pub wallet_name: String,
-    pub wallet_key: String,
-    pub exported_wallet_path: String,
-    pub backup_key: String,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub wallet_key_derivation: Option<String>,
 }
 
 const WALLET_OPTIONS: &str =
