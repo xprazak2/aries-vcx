@@ -296,6 +296,9 @@ jobs:
   test-integration-aries-vcx:
     needs: workflow-setup
     runs-on: ubuntu-20.04
+    strategy:
+      matrix:
+        wallet: ["vdrtools_wallet,credx", "askar_wallet,credx"]
     steps:
       - name: "Git checkout"
         uses: actions/checkout@v3
@@ -305,7 +308,7 @@ jobs:
           rust-toolchain-version: ${{ env.RUST_TOOLCHAIN_VERSION }}
           default: true
       - name: "Run aries-vcx integration tests"
-        run: cargo test --manifest-path="aries/aries_vcx/Cargo.toml" -F vdrtools_wallet,credx -- --ignored;
+        run: cargo test --manifest-path="aries/aries_vcx/Cargo.toml" -F ${{ matrix.wallet }} -- --ignored;
 
   test-integration-aries-vcx-anoncreds-rs:
     needs: workflow-setup
