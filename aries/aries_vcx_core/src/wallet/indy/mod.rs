@@ -81,7 +81,7 @@ impl BaseWallet for IndySdkWallet {
         Ok(())
     }
 
-    async fn close_wallet(&self) -> VcxCoreResult<()> {
+    async fn close_wallet(self) -> VcxCoreResult<()> {
         Locator::instance()
             .wallet_controller
             .close(self.wallet_handle)

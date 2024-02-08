@@ -88,8 +88,9 @@ impl BaseWallet for AskarWallet {
         Ok(())
     }
 
-    async fn close_wallet(&self) -> VcxCoreResult<()> {
-        Ok(())
+    async fn close_wallet(self) -> VcxCoreResult<()> {
+        // should we clone?
+        Ok(self.backend.close().await?)
     }
 
     async fn all(&self) -> VcxCoreResult<Box<dyn AllRecords + Send>> {
@@ -109,23 +110,6 @@ impl BaseWallet for AskarWallet {
         let mut local_keys = keys
             .into_iter()
             .map(PartialRecord::from_askar_key_entry)
-            // .map(|key_entry| {
-            //     let local_key = key_entry.load_local_key()?;
-            //     let name = key_entry.name();
-            //     let tags = key_entry.tags_as_slice();
-            //     // check for private key length!!!!
-            //     let value = KeyValue {
-            //         signkey: local_key_to_bs58_private_key(&local_key)?,
-            //         verkey: local_key_to_bs58_public_key(&local_key)?,
-            //     };
-            //     let value = serde_json::to_string(&value)?;
-            //     Ok(PartialRecord::builder()
-            //         .name(name.into())
-            //         .category(Some(INDY_KEY.into()))
-            //         .value(Some(value))
-            //         .tags(Some(tags.to_vec().into()))
-            //         .build())
-            // })
             .collect::<Result<Vec<_>, _>>()?;
 
         recs.append(&mut local_keys);

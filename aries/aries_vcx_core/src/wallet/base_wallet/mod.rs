@@ -34,7 +34,7 @@ pub trait ManageWallet {
 pub trait BaseWallet: RecordWallet + DidWallet + Send + Sync + std::fmt::Debug {
     async fn export_wallet(&self, path: &str, backup_key: &str) -> VcxCoreResult<()>;
 
-    async fn close_wallet(&self) -> VcxCoreResult<()>;
+    async fn close_wallet(self) -> VcxCoreResult<()>;
 
     async fn configure_issuer(&self, key_seed: &str) -> VcxCoreResult<IssuerConfig> {
         Ok(IssuerConfig {
@@ -55,8 +55,8 @@ impl BaseWallet for Arc<dyn BaseWallet> {
         self.as_ref().export_wallet(path, backup_key).await
     }
 
-    async fn close_wallet(&self) -> VcxCoreResult<()> {
-        self.as_ref().close_wallet().await
+    async fn close_wallet(self) -> VcxCoreResult<()> {
+        self.close_wallet().await
     }
 
     async fn configure_issuer(&self, key_seed: &str) -> VcxCoreResult<IssuerConfig> {

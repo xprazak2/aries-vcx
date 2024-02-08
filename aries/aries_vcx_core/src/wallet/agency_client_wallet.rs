@@ -36,7 +36,7 @@ impl BaseWallet for AgencyClientWallet {
         Err(unimplemented_agency_client_wallet_method("export_wallet"))
     }
 
-    async fn close_wallet(&self) -> VcxCoreResult<()> {
+    async fn close_wallet(self) -> VcxCoreResult<()> {
         Err(unimplemented_agency_client_wallet_method("close_wallet"))
     }
 
