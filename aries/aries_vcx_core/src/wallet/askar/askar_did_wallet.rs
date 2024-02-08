@@ -15,7 +15,7 @@ use super::{
 use crate::{
     errors::error::{AriesVcxCoreError, AriesVcxCoreErrorKind, VcxCoreResult},
     wallet::{
-        base_wallet::{did_data::DidData, DidWallet},
+        base_wallet::{did_data::DidData, did_wallet::DidWallet},
         constants::{DID_CATEGORY, TMP_DID_CATEGORY},
         structs_io::UnpackMessageOutput,
         utils::did_from_key,

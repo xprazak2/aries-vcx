@@ -36,7 +36,15 @@ pub trait BaseWallet: RecordWallet + DidWallet + Send + Sync + std::fmt::Debug {
 
     async fn close_wallet(&self) -> VcxCoreResult<()>;
 
-    async fn configure_issuer(&self, key_seed: &str) -> VcxCoreResult<IssuerConfig>;
+    async fn configure_issuer(&self, key_seed: &str) -> VcxCoreResult<IssuerConfig> {
+        Ok(IssuerConfig {
+            institution_did: self
+                .create_and_store_my_did(Some(key_seed), None)
+                .await?
+                .did()
+                .to_string(),
+        })
+    }
 
     async fn all(&self) -> VcxCoreResult<Box<dyn AllRecords + Send>>;
 }

@@ -90,13 +90,13 @@ impl BaseWallet for IndySdkWallet {
         Ok(())
     }
 
-    async fn configure_issuer(&self, key_seed: &str) -> VcxCoreResult<IssuerConfig> {
-        let did_data = self.create_and_store_my_did(Some(key_seed), None).await?;
+    // async fn configure_issuer(&self, key_seed: &str) -> VcxCoreResult<IssuerConfig> {
+    //     let did_data = self.create_and_store_my_did(Some(key_seed), None).await?;
 
-        Ok(IssuerConfig {
-            institution_did: did_data.did().to_string(),
-        })
-    }
+    //     Ok(IssuerConfig {
+    //         institution_did: did_data.did().to_string(),
+    //     })
+    // }
 
     async fn all(&self) -> VcxCoreResult<Box<dyn AllRecords + Send>> {
         let all = Locator::instance()

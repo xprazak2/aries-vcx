@@ -3,21 +3,32 @@ use aries_askar::{
     kms::{KeyAlg, KeyEntry, LocalKey},
     PassKey, Session, Store, StoreKeyMethod,
 };
+use serde::{Deserialize, Serialize};
 
 use self::{
-    askar_utils::{key_from_base58, local_key_to_bs58_name},
+    askar_utils::{
+        key_from_base58, local_key_to_bs58_name, local_key_to_bs58_private_key,
+        local_key_to_bs58_public_key, value_from_entry,
+    },
     rng_method::RngMethod,
 };
 use super::{
-    base_wallet::{did_data::DidData, BaseWallet},
-    constants::DID_CATEGORY,
+    base_wallet::{
+        did_data::DidData,
+        record::{AllRecords, PartialRecord, Record},
+        BaseWallet,
+    },
+    constants::{DID_CATEGORY, INDY_KEY},
+    utils::did_from_key,
 };
 use crate::errors::error::{AriesVcxCoreError, AriesVcxCoreErrorKind, VcxCoreResult};
+
+use async_trait::async_trait;
 
 mod askar_did_wallet;
 mod askar_record_wallet;
 mod askar_tags;
-mod askar_utils;
+pub mod askar_utils;
 mod crypto_box;
 mod entry;
 mod packing;
@@ -31,7 +42,102 @@ pub struct AskarWallet {
     profile: Option<String>,
 }
 
-impl BaseWallet for AskarWallet {}
+#[derive(Debug, Deserialize, Serialize)]
+pub struct KeyValue {
+    verkey: String,
+    signkey: String,
+}
+
+impl KeyValue {
+    pub fn new(signkey: String, verkey: String) -> Self {
+        Self { signkey, verkey }
+    }
+}
+
+// struct KeyRecord {
+//     name: String,
+//     category: String,
+//     value: KeyValue,
+//     tags: EntryTags
+// }
+
+// enum WalletRecord {
+//     Record(Record),
+//     Key(KeyRecord)
+// }
+
+pub struct AllAskarRecords {
+    iterator: std::vec::IntoIter<PartialRecord>,
+    total_count: Option<usize>,
+}
+
+#[async_trait]
+impl AllRecords for AllAskarRecords {
+    fn total_count(&self) -> VcxCoreResult<Option<usize>> {
+        Ok(self.total_count)
+    }
+
+    async fn next(&mut self) -> VcxCoreResult<Option<PartialRecord>> {
+        Ok(self.iterator.next())
+    }
+}
+
+#[async_trait]
+impl BaseWallet for AskarWallet {
+    async fn export_wallet(&self, path: &str, backup_key: &str) -> VcxCoreResult<()> {
+        Ok(())
+    }
+
+    async fn close_wallet(&self) -> VcxCoreResult<()> {
+        Ok(())
+    }
+
+    async fn all(&self) -> VcxCoreResult<Box<dyn AllRecords + Send>> {
+        let mut session = self.backend.session(self.profile.clone()).await?;
+
+        let recs = session.fetch_all(None, None, None, false).await?;
+
+        let mut recs = recs
+            .into_iter()
+            .map(PartialRecord::from_askar_entry)
+            .collect::<Result<Vec<_>, _>>()?;
+
+        let keys = session
+            .fetch_all_keys(None, None, None, None, false)
+            .await?;
+
+        let mut local_keys = keys
+            .into_iter()
+            .map(PartialRecord::from_askar_key_entry)
+            // .map(|key_entry| {
+            //     let local_key = key_entry.load_local_key()?;
+            //     let name = key_entry.name();
+            //     let tags = key_entry.tags_as_slice();
+            //     // check for private key length!!!!
+            //     let value = KeyValue {
+            //         signkey: local_key_to_bs58_private_key(&local_key)?,
+            //         verkey: local_key_to_bs58_public_key(&local_key)?,
+            //     };
+            //     let value = serde_json::to_string(&value)?;
+            //     Ok(PartialRecord::builder()
+            //         .name(name.into())
+            //         .category(Some(INDY_KEY.into()))
+            //         .value(Some(value))
+            //         .tags(Some(tags.to_vec().into()))
+            //         .build())
+            // })
+            .collect::<Result<Vec<_>, _>>()?;
+
+        recs.append(&mut local_keys);
+
+        let total_count = recs.len();
+
+        Ok(Box::new(AllAskarRecords {
+            iterator: recs.into_iter(),
+            total_count: Some(total_count),
+        }))
+    }
+}
 
 impl AskarWallet {
     pub async fn create(
