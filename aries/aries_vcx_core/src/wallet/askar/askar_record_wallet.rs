@@ -13,10 +13,11 @@ use crate::{
 #[async_trait]
 impl RecordWallet for AskarWallet {
     async fn add_record(&self, record: Record) -> VcxCoreResult<()> {
-        let mut session = self.backend.session(self.profile.clone()).await?;
         let tags: Option<Vec<AskarEntryTag>> = Some(record.tags().clone().into());
-
-        Ok(session
+        Ok(self
+            .backend
+            .session(self.profile.clone())
+            .await?
             .insert(
                 record.category(),
                 record.name(),
@@ -28,9 +29,10 @@ impl RecordWallet for AskarWallet {
     }
 
     async fn get_record(&self, category: &str, name: &str) -> VcxCoreResult<Record> {
-        let mut session = self.backend.session(self.profile.clone()).await?;
-
-        Ok(session
+        Ok(self
+            .backend
+            .session(self.profile.clone())
+            .await?
             .fetch(category, name, false)
             .await?
             .ok_or_else(|| {
@@ -49,12 +51,8 @@ impl RecordWallet for AskarWallet {
         new_tags: EntryTags,
     ) -> VcxCoreResult<()> {
         let mut session = self.backend.session(self.profile.clone()).await?;
-
-        let found = session.fetch(category, name, true).await?;
-
         let askar_tags: Vec<AskarEntryTag> = new_tags.into();
-
-        match found {
+        match session.fetch(category, name, true).await? {
             Some(record) => Ok(session
                 .replace(category, name, &record.value, Some(&askar_tags), None)
                 .await?),
@@ -72,10 +70,7 @@ impl RecordWallet for AskarWallet {
         new_value: &str,
     ) -> VcxCoreResult<()> {
         let mut session = self.backend.session(self.profile.clone()).await?;
-
-        let found = session.fetch(category, name, true).await?;
-
-        match found {
+        match session.fetch(category, name, true).await? {
             Some(record) => Ok(session
                 .replace(
                     category,
@@ -93,8 +88,12 @@ impl RecordWallet for AskarWallet {
     }
 
     async fn delete_record(&self, category: &str, name: &str) -> VcxCoreResult<()> {
-        let mut session = self.backend.session(self.profile.clone()).await?;
-        Ok(session.remove(category, name).await?)
+        Ok(self
+            .backend
+            .session(self.profile.clone())
+            .await?
+            .remove(category, name)
+            .await?)
     }
 
     #[allow(unreachable_patterns)]
@@ -103,27 +102,29 @@ impl RecordWallet for AskarWallet {
         category: &str,
         search_filter: Option<SearchFilter>,
     ) -> VcxCoreResult<Vec<Record>> {
-        let tag_filter = search_filter
-            .map(|filter| match filter {
-                SearchFilter::TagFilter(inner) => Ok(inner),
-                _ => Err(AriesVcxCoreError::from_msg(
-                    AriesVcxCoreErrorKind::WalletError,
-                    "unsupported search filter",
-                )),
-            })
-            .transpose()?;
-
-        let mut session = self.backend.session(self.profile.clone()).await?;
-        let res = session
-            .fetch_all(Some(category), tag_filter, None, false)
-            .await?;
-
-        let rs: Vec<_> = res
+        Ok(self
+            .backend
+            .session(self.profile.clone())
+            .await?
+            .fetch_all(
+                Some(category),
+                search_filter
+                    .map(|filter| match filter {
+                        SearchFilter::TagFilter(inner) => Ok(inner),
+                        _ => Err(AriesVcxCoreError::from_msg(
+                            AriesVcxCoreErrorKind::WalletError,
+                            "unsupported search filter",
+                        )),
+                    })
+                    .transpose()?,
+                None,
+                false,
+            )
+            .await?
             .into_iter()
             .map(TryFrom::try_from)
             .collect::<Vec<Result<Record, _>>>()
             .into_iter()
-            .collect::<Result<_, _>>()?;
-        Ok(rs)
+            .collect::<Result<_, _>>()?)
     }
 }

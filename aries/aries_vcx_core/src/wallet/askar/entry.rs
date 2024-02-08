@@ -9,16 +9,17 @@ impl TryFrom<Entry> for Record {
     type Error = AriesVcxCoreError;
 
     fn try_from(entry: Entry) -> Result<Self, Self::Error> {
-        let string_value = std::str::from_utf8(&entry.value)
-            .map_err(|err| AriesVcxCoreError::from_msg(AriesVcxCoreErrorKind::WalletError, err))?;
-
-        let tags = entry.tags.into();
-
         Ok(Self::builder()
             .category(entry.category)
             .name(entry.name)
-            .value(string_value.into())
-            .tags(tags)
+            .value(
+                std::str::from_utf8(&entry.value)
+                    .map_err(|err| {
+                        AriesVcxCoreError::from_msg(AriesVcxCoreErrorKind::WalletError, err)
+                    })?
+                    .into(),
+            )
+            .tags(entry.tags.into())
             .build())
     }
 }

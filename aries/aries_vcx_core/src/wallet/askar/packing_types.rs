@@ -3,7 +3,7 @@ use serde::{de::Unexpected, Deserialize, Serialize};
 
 use crate::{
     errors::error::{AriesVcxCoreError, AriesVcxCoreErrorKind, VcxCoreResult},
-    wallet::utils::bytes_to_string,
+    wallet::askar::askar_utils::bytes_to_string,
 };
 
 pub const PROTECTED_HEADER_ENC: &str = "xchacha20poly1305_ietf";

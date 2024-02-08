@@ -85,19 +85,21 @@ mod tests {
         },
     };
 
-    #[allow(unreachable_code)]
+    #[allow(unused_variables)]
     async fn build_test_wallet() -> Box<dyn BaseWallet> {
         #[cfg(feature = "vdrtools_wallet")]
-        {
+        let wallet = {
             use crate::wallet::indy::tests::dev_setup_indy_wallet;
-            return dev_setup_indy_wallet().await;
-        }
+            dev_setup_indy_wallet().await
+        };
 
         #[cfg(feature = "askar_wallet")]
-        {
+        let wallet = {
             use crate::wallet::askar::tests::dev_setup_askar_wallet;
             dev_setup_askar_wallet().await
-        }
+        };
+
+        wallet
     }
 
     #[tokio::test]

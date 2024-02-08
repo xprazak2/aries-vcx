@@ -4,11 +4,13 @@ use aries_askar::{
     PassKey, Session, Store, StoreKeyMethod,
 };
 
-use self::{askar_utils::local_key_to_bs58_name, rng_method::RngMethod};
+use self::{
+    askar_utils::{key_from_base58, local_key_to_bs58_name},
+    rng_method::RngMethod,
+};
 use super::{
     base_wallet::{did_data::DidData, BaseWallet},
     constants::DID_CATEGORY,
-    utils::key_from_base58,
 };
 use crate::errors::error::{AriesVcxCoreError, AriesVcxCoreErrorKind, VcxCoreResult};
 
@@ -51,9 +53,10 @@ impl AskarWallet {
         pass_key: PassKey<'_>,
         profile: Option<String>,
     ) -> Result<Self, AriesVcxCoreError> {
-        let backend = Store::open(db_url, key_method, pass_key, profile.clone()).await?;
-
-        Ok(Self { backend, profile })
+        Ok(Self {
+            backend: Store::open(db_url, key_method, pass_key, profile.clone()).await?,
+            profile,
+        })
     }
 
     async fn fetch_local_key(
@@ -61,9 +64,10 @@ impl AskarWallet {
         session: &mut Session,
         key_name: &str,
     ) -> VcxCoreResult<LocalKey> {
-        let key_entry = self.fetch_key_entry(session, key_name).await?;
-
-        Ok(key_entry.load_local_key()?)
+        Ok(self
+            .fetch_key_entry(session, key_name)
+            .await?
+            .load_local_key()?)
     }
 
     async fn fetch_key_entry(
@@ -87,13 +91,10 @@ impl AskarWallet {
         rng_method: RngMethod,
     ) -> Result<(String, LocalKey), AriesVcxCoreError> {
         let key = LocalKey::from_seed(alg, seed, rng_method.into())?;
-
         let key_name = local_key_to_bs58_name(&key)?;
-
         session
             .insert_key(&key_name, &key, None, None, None)
             .await?;
-
         Ok((key_name, key))
     }
 
@@ -103,12 +104,9 @@ impl AskarWallet {
         did: &str,
         category: &str,
     ) -> VcxCoreResult<Option<DidData>> {
-        let maybe_entry = session.fetch(category, did, false).await?;
-
-        if let Some(entry) = maybe_entry {
+        if let Some(entry) = session.fetch(category, did, false).await? {
             if let Some(val) = entry.value.as_opt_str() {
-                let res: DidData = serde_json::from_str(val)?;
-                return Ok(Some(res));
+                return Ok(Some(serde_json::from_str(val)?));
             }
         }
 
@@ -132,19 +130,21 @@ impl AskarWallet {
         tags: Option<&[EntryTag]>,
     ) -> VcxCoreResult<()> {
         if (session.fetch(did, category, false).await?).is_some() {
-            return Err(AriesVcxCoreError::from_msg(
+            Err(AriesVcxCoreError::from_msg(
                 AriesVcxCoreErrorKind::DuplicationDid,
                 "did with given verkey already exists",
-            ));
+            ))
+        } else {
+            Ok(session
+                .insert(
+                    category,
+                    did,
+                    serde_json::to_string(&DidData::new(did, key_from_base58(verkey)?))?.as_bytes(),
+                    tags,
+                    None,
+                )
+                .await?)
         }
-
-        let did_data = DidData::new(did, key_from_base58(verkey)?);
-
-        let did_data = serde_json::to_string(&did_data)?;
-
-        Ok(session
-            .insert(category, did, did_data.as_bytes(), tags, None)
-            .await?)
     }
 
     async fn update_did(
@@ -155,11 +155,14 @@ impl AskarWallet {
         verkey: &str,
         tags: Option<&[EntryTag]>,
     ) -> VcxCoreResult<()> {
-        let did_data = DidData::new(did, key_from_base58(verkey)?);
-
-        let did_data = serde_json::to_string(&did_data)?;
         session
-            .replace(category, did, did_data.as_bytes(), tags, None)
+            .replace(
+                category,
+                did,
+                serde_json::to_string(&DidData::new(did, key_from_base58(verkey)?))?.as_bytes(),
+                tags,
+                None,
+            )
             .await?;
 
         Ok(())

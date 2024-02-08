@@ -8,4 +8,4 @@ pub mod entry_tags;
 pub mod indy;
 pub mod mock_wallet;
 pub mod structs_io;
-pub mod utils;
+mod utils;
