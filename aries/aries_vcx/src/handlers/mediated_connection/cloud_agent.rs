@@ -7,6 +7,7 @@ use agency_client::{
 };
 use aries_vcx_core::wallet::agency_client_wallet::ToBaseWallet;
 use messages::AriesMessage;
+use tokio::sync::RwLock;
 use url::Url;
 
 use crate::{
@@ -233,7 +234,7 @@ impl CloudAgentInfo {
 
     async fn decrypt_decode_messages(
         &self,
-        wallet: &Arc<dyn BaseAgencyClientWallet>,
+        wallet: &Arc<RwLock<dyn BaseAgencyClientWallet>>,
         messages: &Vec<DownloadedMessageEncrypted>,
         expected_sender_vk: &str,
     ) -> VcxResult<HashMap<String, AriesMessage>> {
@@ -250,7 +251,7 @@ impl CloudAgentInfo {
 
     async fn decrypt_decode_messages_noauth(
         &self,
-        wallet: &Arc<dyn BaseAgencyClientWallet>,
+        wallet: &Arc<RwLock<dyn BaseAgencyClientWallet>>,
         messages: &Vec<DownloadedMessageEncrypted>,
     ) -> VcxResult<HashMap<String, AriesMessage>> {
         let mut a2a_messages: HashMap<String, AriesMessage> = HashMap::new();
@@ -265,7 +266,7 @@ impl CloudAgentInfo {
 
     async fn decrypt_decode_message(
         &self,
-        wallet: &Arc<dyn BaseAgencyClientWallet>,
+        wallet: &Arc<RwLock<dyn BaseAgencyClientWallet>>,
         message: &DownloadedMessageEncrypted,
         expected_sender_vk: &str,
     ) -> VcxResult<AriesMessage> {
@@ -279,7 +280,7 @@ impl CloudAgentInfo {
 
     async fn decrypt_decode_message_noauth(
         &self,
-        wallet: &Arc<dyn BaseAgencyClientWallet>,
+        wallet: &Arc<RwLock<dyn BaseAgencyClientWallet>>,
         message: &DownloadedMessageEncrypted,
     ) -> VcxResult<AriesMessage> {
         Ok(

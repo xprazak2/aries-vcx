@@ -9,7 +9,9 @@ use aries_vcx::agency_client::{
     messages::update_message::UIDsByConn,
     MessageStatusCode,
 };
-use aries_vcx_core::wallet::agency_client_wallet::ToBaseAgencyClientWallet;
+use aries_vcx_core::wallet::{
+    agency_client_wallet::ToBaseAgencyClientWallet, base_wallet::did_wallet::DidWallet,
+};
 
 use super::profile::get_main_wallet;
 use crate::errors::error::{LibvcxError, LibvcxErrorKind, LibvcxResult};

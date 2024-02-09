@@ -21,3 +21,4 @@ uuid = { version = "0.8", default-features = false, features = ["v4"]}
 thiserror = "1.0.37"
 async-trait = "0.1.73"
 shared = { path = "../../shared" }
+tokio = { version = "1.20", features = ["sync"] }

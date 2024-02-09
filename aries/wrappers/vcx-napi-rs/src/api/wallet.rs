@@ -1,9 +1,9 @@
-use std::{ops::Deref, sync::Arc};
+use std::ops::Deref;
 
 use libvcx_core::{
     api_vcx::api_global::{ledger, wallet},
     aries_vcx::aries_vcx_core::wallet::{
-        base_wallet::{BaseWallet, ManageWallet},
+        base_wallet::{CoreWallet, ManageWallet},
         indy::{restore_wallet_configs::RestoreWalletConfigs, wallet_config::WalletConfig},
     },
     errors::error::{LibvcxError, LibvcxErrorKind},
@@ -15,10 +15,10 @@ use napi_derive::napi;
 use crate::error::to_napi_err;
 
 #[napi]
-pub struct NapiWallet(Arc<dyn BaseWallet>);
+pub struct NapiWallet(CoreWallet);
 
 impl Deref for NapiWallet {
-    type Target = Arc<dyn BaseWallet>;
+    type Target = CoreWallet;
 
     fn deref(&self) -> &Self::Target {
         &self.0

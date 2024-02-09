@@ -19,7 +19,7 @@ use aries_vcx_core::{
             GetTxnAuthorAgreementData, VcxPoolConfig,
         },
     },
-    wallet::base_wallet::BaseWallet,
+    wallet::base_wallet::{BaseWallet, CoreWallet},
 };
 use chrono::{DateTime, Duration, Utc};
 use did_parser::Did;
@@ -205,7 +205,7 @@ pub async fn dev_build_featured_anoncreds() -> impl BaseAnonCreds {
 }
 
 #[allow(unused_variables)]
-pub async fn dev_build_featured_wallet(key_seed: &str) -> (String, impl BaseWallet) {
+pub async fn dev_build_featured_wallet(key_seed: &str) -> (String, CoreWallet) {
     #[cfg(feature = "vdrtools_wallet")]
     return {
         info!("SetupProfile >> using indy wallet");
@@ -228,7 +228,7 @@ pub async fn build_setup_profile() -> SetupProfile<
     impl IndyLedgerRead + AnoncredsLedgerRead,
     impl IndyLedgerWrite + AnoncredsLedgerWrite,
     impl BaseAnonCreds,
-    impl BaseWallet,
+    CoreWallet,
 > {
     init_test_logging();
 

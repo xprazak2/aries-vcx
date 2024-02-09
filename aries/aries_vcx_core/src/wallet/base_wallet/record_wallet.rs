@@ -2,7 +2,7 @@ use std::sync::Arc;
 
 use async_trait::async_trait;
 
-use super::{record::Record, search_filter::SearchFilter, BaseWallet};
+use super::{record::Record, search_filter::SearchFilter, BaseWallet, CoreWallet};
 use crate::{errors::error::VcxCoreResult, wallet::entry_tags::EntryTags};
 
 #[async_trait]
@@ -35,13 +35,13 @@ pub trait RecordWallet {
 }
 
 #[async_trait]
-impl RecordWallet for Arc<dyn BaseWallet> {
+impl RecordWallet for CoreWallet {
     async fn add_record(&self, record: Record) -> VcxCoreResult<()> {
-        self.as_ref().add_record(record).await
+        self.read().await.add_record(record).await
     }
 
     async fn get_record(&self, category: &str, name: &str) -> VcxCoreResult<Record> {
-        self.as_ref().get_record(category, name).await
+        self.read().await.get_record(category, name).await
     }
 
     async fn update_record_tags(
@@ -50,7 +50,8 @@ impl RecordWallet for Arc<dyn BaseWallet> {
         name: &str,
         new_tags: EntryTags,
     ) -> VcxCoreResult<()> {
-        self.as_ref()
+        self.read()
+            .await
             .update_record_tags(category, name, new_tags)
             .await
     }
@@ -61,13 +62,14 @@ impl RecordWallet for Arc<dyn BaseWallet> {
         name: &str,
         new_value: &str,
     ) -> VcxCoreResult<()> {
-        self.as_ref()
+        self.read()
+            .await
             .update_record_value(category, name, new_value)
             .await
     }
 
     async fn delete_record(&self, category: &str, name: &str) -> VcxCoreResult<()> {
-        self.as_ref().delete_record(category, name).await
+        self.read().await.delete_record(category, name).await
     }
 
     async fn search_record(
@@ -75,6 +77,9 @@ impl RecordWallet for Arc<dyn BaseWallet> {
         category: &str,
         search_filter: Option<SearchFilter>,
     ) -> VcxCoreResult<Vec<Record>> {
-        self.as_ref().search_record(category, search_filter).await
+        self.read()
+            .await
+            .search_record(category, search_filter)
+            .await
     }
 }

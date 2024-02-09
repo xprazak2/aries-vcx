@@ -12,8 +12,9 @@ use aries_vcx::{
     protocols::{issuance::holder::state_machine::HolderState, SendClosure},
 };
 use aries_vcx_core::{
-    anoncreds::credx_anoncreds::IndyCredxAnonCreds, ledger::indy_vdr_ledger::DefaultIndyLedgerRead,
-    wallet::base_wallet::BaseWallet,
+    anoncreds::credx_anoncreds::IndyCredxAnonCreds,
+    ledger::indy_vdr_ledger::DefaultIndyLedgerRead,
+    wallet::base_wallet::{BaseWallet, CoreWallet},
 };
 
 use crate::{
@@ -41,7 +42,7 @@ impl HolderWrapper {
 pub struct ServiceCredentialsHolder {
     ledger_read: Arc<DefaultIndyLedgerRead>,
     anoncreds: IndyCredxAnonCreds,
-    wallet: Arc<dyn BaseWallet>,
+    wallet: CoreWallet,
     creds_holder: ObjectCache<HolderWrapper>,
     service_connections: Arc<ServiceConnections>,
 }
@@ -50,7 +51,7 @@ impl ServiceCredentialsHolder {
     pub fn new(
         ledger_read: Arc<DefaultIndyLedgerRead>,
         anoncreds: IndyCredxAnonCreds,
-        wallet: Arc<dyn BaseWallet>,
+        wallet: CoreWallet,
         service_connections: Arc<ServiceConnections>,
     ) -> Self {
         Self {

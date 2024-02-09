@@ -4,7 +4,7 @@ use aries_vcx::common::primitives::credential_definition::{CredentialDef, Creden
 use aries_vcx_core::{
     anoncreds::credx_anoncreds::IndyCredxAnonCreds,
     ledger::indy_vdr_ledger::{DefaultIndyLedgerRead, DefaultIndyLedgerWrite},
-    wallet::base_wallet::BaseWallet,
+    wallet::base_wallet::CoreWallet,
 };
 
 use crate::{
@@ -16,7 +16,7 @@ pub struct ServiceCredentialDefinitions {
     ledger_read: Arc<DefaultIndyLedgerRead>,
     ledger_write: Arc<DefaultIndyLedgerWrite>,
     anoncreds: IndyCredxAnonCreds,
-    wallet: Arc<dyn BaseWallet>,
+    wallet: CoreWallet,
     cred_defs: ObjectCache<CredentialDef>,
 }
 
@@ -25,7 +25,7 @@ impl ServiceCredentialDefinitions {
         ledger_read: Arc<DefaultIndyLedgerRead>,
         ledger_write: Arc<DefaultIndyLedgerWrite>,
         anoncreds: IndyCredxAnonCreds,
-        wallet: Arc<dyn BaseWallet>,
+        wallet: CoreWallet,
     ) -> Self {
         Self {
             cred_defs: ObjectCache::new("cred-defs"),

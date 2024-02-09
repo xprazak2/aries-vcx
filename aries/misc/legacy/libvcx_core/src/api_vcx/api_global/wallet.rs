@@ -13,8 +13,8 @@ use aries_vcx_core::{
     wallet::{
         base_wallet::{
             did_wallet::DidWallet, issuer_config::IssuerConfig, record::Record,
-            record_wallet::RecordWallet, search_filter::SearchFilter, BaseWallet, ImportWallet,
-            ManageWallet,
+            record_wallet::RecordWallet, search_filter::SearchFilter, BaseWallet, CoreWallet,
+            ImportWallet, ManageWallet,
         },
         entry_tags::EntryTags,
         indy::{
@@ -37,7 +37,7 @@ use crate::{
     },
 };
 
-pub static GLOBAL_BASE_WALLET: RwLock<Option<Arc<dyn BaseWallet>>> = RwLock::new(None);
+pub static GLOBAL_BASE_WALLET: RwLock<Option<CoreWallet>> = RwLock::new(None);
 pub static GLOBAL_BASE_ANONCREDS: RwLock<Option<Arc<IndyCredxAnonCreds>>> = RwLock::new(None);
 
 pub async fn export_main_wallet(path: &str, backup_key: &str) -> LibvcxResult<()> {
@@ -45,7 +45,7 @@ pub async fn export_main_wallet(path: &str, backup_key: &str) -> LibvcxResult<()
     map_ariesvcx_core_result(main_wallet.export_wallet(path, backup_key).await)
 }
 
-fn setup_global_wallet(wallet: Arc<dyn BaseWallet>) -> LibvcxResult<()> {
+fn setup_global_wallet(wallet: CoreWallet) -> LibvcxResult<()> {
     let mut b_wallet = GLOBAL_BASE_WALLET.write()?;
     *b_wallet = Some(wallet);
     // anoncreds
@@ -55,9 +55,7 @@ fn setup_global_wallet(wallet: Arc<dyn BaseWallet>) -> LibvcxResult<()> {
     Ok(())
 }
 
-pub async fn open_as_main_wallet(
-    wallet_config: &WalletConfig,
-) -> LibvcxResult<Arc<dyn BaseWallet>> {
+pub async fn open_as_main_wallet(wallet_config: &WalletConfig) -> LibvcxResult<CoreWallet> {
     let wallet = wallet_config.open_wallet().await?;
     setup_global_wallet(wallet.clone())?;
     Ok(wallet)
@@ -65,7 +63,7 @@ pub async fn open_as_main_wallet(
 
 pub async fn create_and_open_as_main_wallet(
     wallet_config: &WalletConfig,
-) -> LibvcxResult<Arc<dyn BaseWallet>> {
+) -> LibvcxResult<CoreWallet> {
     wallet_config.create_wallet().await?;
     let wallet = wallet_config.open_wallet().await?;
 
@@ -79,7 +77,7 @@ pub async fn close_main_wallet() -> LibvcxResult<()> {
         None => {
             warn!("Skipping wallet close, no global wallet component available.")
         }
-        Some(wallet) => {
+        Some(mut wallet) => {
             wallet.close_wallet().await?;
             let mut b_wallet = GLOBAL_BASE_WALLET.write()?;
             *b_wallet = None;

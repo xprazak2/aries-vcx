@@ -81,7 +81,7 @@ impl BaseWallet for IndySdkWallet {
         Ok(())
     }
 
-    async fn close_wallet(self) -> VcxCoreResult<()> {
+    async fn close_wallet(&mut self) -> VcxCoreResult<()> {
         Locator::instance()
             .wallet_controller
             .close(self.wallet_handle)
@@ -136,11 +136,11 @@ pub mod tests {
     use std::sync::Arc;
 
     use crate::wallet::{
-        base_wallet::{BaseWallet, ManageWallet},
+        base_wallet::{BaseWallet, CoreWallet, ManageWallet},
         indy::wallet_config::WalletConfig,
     };
 
-    pub async fn dev_setup_indy_wallet() -> Arc<dyn BaseWallet> {
+    pub async fn dev_setup_indy_wallet() -> CoreWallet {
         let config_wallet = WalletConfig {
             wallet_name: format!("wallet_{}", uuid::Uuid::new_v4()),
             wallet_key: "8dvfYSt5d1taSd6yJdpjq4emkwsPDDLYxkNFysFD2cZY".into(),

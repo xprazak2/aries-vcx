@@ -245,6 +245,7 @@ dependencies = [
  "serde_json",
  "shared",
  "thiserror",
+ "tokio",
  "url",
  "uuid 0.8.2",
 ]

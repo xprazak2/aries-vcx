@@ -18,7 +18,7 @@ use aries_vcx::{
     },
     protocols::did_exchange::state_machine::generate_keypair,
 };
-use aries_vcx_core::wallet::base_wallet::BaseWallet;
+use aries_vcx_core::wallet::base_wallet::{BaseWallet, CoreWallet};
 use public_key::KeyType;
 use uuid::Uuid;
 
@@ -29,13 +29,13 @@ use crate::{
 };
 
 pub struct ServiceOutOfBand {
-    wallet: Arc<dyn BaseWallet>,
+    wallet: CoreWallet,
     service_endpoint: ServiceEndpoint,
     out_of_band: Arc<ObjectCache<GenericOutOfBand>>,
 }
 
 impl ServiceOutOfBand {
-    pub fn new(wallet: Arc<dyn BaseWallet>, service_endpoint: ServiceEndpoint) -> Self {
+    pub fn new(wallet: CoreWallet, service_endpoint: ServiceEndpoint) -> Self {
         Self {
             wallet,
             service_endpoint,

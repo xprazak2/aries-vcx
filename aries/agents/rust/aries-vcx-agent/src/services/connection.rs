@@ -11,7 +11,7 @@ use aries_vcx::{
     },
 };
 use aries_vcx_core::{
-    ledger::indy_vdr_ledger::DefaultIndyLedgerRead, wallet::base_wallet::BaseWallet,
+    ledger::indy_vdr_ledger::DefaultIndyLedgerRead, wallet::base_wallet::CoreWallet,
 };
 use url::Url;
 
@@ -25,7 +25,7 @@ pub type ServiceEndpoint = Url;
 
 pub struct ServiceConnections {
     ledger_read: Arc<DefaultIndyLedgerRead>,
-    wallet: Arc<dyn BaseWallet>,
+    wallet: CoreWallet,
     service_endpoint: ServiceEndpoint,
     connections: Arc<ObjectCache<GenericConnection>>,
 }
@@ -33,7 +33,7 @@ pub struct ServiceConnections {
 impl ServiceConnections {
     pub fn new(
         ledger_read: Arc<DefaultIndyLedgerRead>,
-        wallet: Arc<dyn BaseWallet>,
+        wallet: CoreWallet,
         service_endpoint: ServiceEndpoint,
     ) -> Self {
         Self {

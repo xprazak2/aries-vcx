@@ -1,5 +1,7 @@
 use std::sync::Arc;
 
+use tokio::sync::RwLock;
+
 use crate::{
     errors::error::{AgencyClientError, AgencyClientErrorKind, AgencyClientResult},
     testing::mocking::AgencyMockDecrypted,
@@ -11,7 +13,7 @@ pub struct EncryptionEnvelope(pub Vec<u8>);
 
 impl EncryptionEnvelope {
     async fn _unpack_a2a_message(
-        wallet: Arc<dyn BaseAgencyClientWallet>,
+        wallet: Arc<RwLock<dyn BaseAgencyClientWallet>>,
         payload: Vec<u8>,
     ) -> AgencyClientResult<(String, Option<String>)> {
         trace!(
@@ -19,7 +21,7 @@ impl EncryptionEnvelope {
             payload.len()
         );
 
-        let unpacked_msg = wallet.unpack_message(&payload).await?;
+        let unpacked_msg = wallet.read().await.unpack_message(&payload).await?;
 
         let msg_value: ::serde_json::Value = ::serde_json::from_slice(unpacked_msg.as_slice())
             .map_err(|err| {
@@ -56,7 +58,7 @@ impl EncryptionEnvelope {
     }
 
     pub async fn anon_unpack(
-        wallet: Arc<dyn BaseAgencyClientWallet>,
+        wallet: Arc<RwLock<dyn BaseAgencyClientWallet>>,
         payload: Vec<u8>,
     ) -> AgencyClientResult<String> {
         trace!(
@@ -77,7 +79,7 @@ impl EncryptionEnvelope {
     }
 
     pub async fn auth_unpack(
-        wallet: Arc<dyn BaseAgencyClientWallet>,
+        wallet: Arc<RwLock<dyn BaseAgencyClientWallet>>,
         payload: Vec<u8>,
         expected_vk: &str,
     ) -> AgencyClientResult<String> {

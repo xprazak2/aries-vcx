@@ -7,7 +7,7 @@ use aries_vcx_core::{
         base_ledger::AnoncredsLedgerRead,
         indy_vdr_ledger::{DefaultIndyLedgerRead, DefaultIndyLedgerWrite},
     },
-    wallet::base_wallet::BaseWallet,
+    wallet::base_wallet::{BaseWallet, CoreWallet},
 };
 
 use crate::{
@@ -19,7 +19,7 @@ pub struct ServiceSchemas {
     ledger_read: Arc<DefaultIndyLedgerRead>,
     ledger_write: Arc<DefaultIndyLedgerWrite>,
     anoncreds: IndyCredxAnonCreds,
-    wallet: Arc<dyn BaseWallet>,
+    wallet: CoreWallet,
     issuer_did: Did,
     schemas: ObjectCache<Schema>,
 }
@@ -29,7 +29,7 @@ impl ServiceSchemas {
         ledger_read: Arc<DefaultIndyLedgerRead>,
         ledger_write: Arc<DefaultIndyLedgerWrite>,
         anoncreds: IndyCredxAnonCreds,
-        wallet: Arc<dyn BaseWallet>,
+        wallet: CoreWallet,
         issuer_did: String,
     ) -> Self {
         Self {

@@ -12,7 +12,8 @@ use aries_vcx::{
     protocols::{issuance::issuer::state_machine::IssuerState, SendClosure},
 };
 use aries_vcx_core::{
-    anoncreds::credx_anoncreds::IndyCredxAnonCreds, wallet::base_wallet::BaseWallet,
+    anoncreds::credx_anoncreds::IndyCredxAnonCreds,
+    wallet::base_wallet::{BaseWallet, CoreWallet},
 };
 
 use crate::{
@@ -39,7 +40,7 @@ impl IssuerWrapper {
 
 pub struct ServiceCredentialsIssuer {
     anoncreds: IndyCredxAnonCreds,
-    wallet: Arc<dyn BaseWallet>,
+    wallet: CoreWallet,
     creds_issuer: ObjectCache<IssuerWrapper>,
     service_connections: Arc<ServiceConnections>,
 }
@@ -47,7 +48,7 @@ pub struct ServiceCredentialsIssuer {
 impl ServiceCredentialsIssuer {
     pub fn new(
         anoncreds: IndyCredxAnonCreds,
-        wallet: Arc<dyn BaseWallet>,
+        wallet: CoreWallet,
         service_connections: Arc<ServiceConnections>,
     ) -> Self {
         Self {

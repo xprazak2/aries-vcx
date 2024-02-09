@@ -42,7 +42,7 @@ impl BaseWallet for MockWallet {
         Ok(())
     }
 
-    async fn close_wallet(self) -> VcxCoreResult<()> {
+    async fn close_wallet(&mut self) -> VcxCoreResult<()> {
         Ok(())
     }
 

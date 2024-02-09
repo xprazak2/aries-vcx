@@ -14,7 +14,8 @@ use aries_vcx::{
     transport::Transport,
 };
 use aries_vcx_core::{
-    ledger::indy_vdr_ledger::DefaultIndyLedgerRead, wallet::base_wallet::BaseWallet,
+    ledger::indy_vdr_ledger::DefaultIndyLedgerRead,
+    wallet::base_wallet::{BaseWallet, CoreWallet},
 };
 use did_resolver_registry::ResolverRegistry;
 
@@ -28,7 +29,7 @@ use crate::{
 
 pub struct ServiceDidExchange {
     ledger_read: Arc<DefaultIndyLedgerRead>,
-    wallet: Arc<dyn BaseWallet>,
+    wallet: CoreWallet,
     resolver_registry: Arc<ResolverRegistry>,
     service_endpoint: ServiceEndpoint,
     did_exchange: Arc<ObjectCache<GenericDidExchange>>,
@@ -38,7 +39,7 @@ pub struct ServiceDidExchange {
 impl ServiceDidExchange {
     pub fn new(
         ledger_read: Arc<DefaultIndyLedgerRead>,
-        wallet: Arc<dyn BaseWallet>,
+        wallet: CoreWallet,
         resolver_registry: Arc<ResolverRegistry>,
         service_endpoint: ServiceEndpoint,
         public_did: String,

@@ -9,7 +9,10 @@ use vdrtools::Locator;
 use super::{indy_utils::parse_key_derivation_method, BaseWallet};
 use crate::{
     errors::error::{AriesVcxCoreError, AriesVcxCoreErrorKind, VcxCoreResult},
-    wallet::{base_wallet::ManageWallet, indy::IndySdkWallet},
+    wallet::{
+        base_wallet::{CoreWallet, ManageWallet},
+        indy::IndySdkWallet,
+    },
 };
 
 #[derive(Clone, Debug, TypedBuilder, Serialize, Deserialize)]
@@ -87,7 +90,7 @@ impl ManageWallet for WalletConfig {
         }
     }
 
-    async fn open_wallet(&self) -> VcxCoreResult<Arc<dyn BaseWallet>> {
+    async fn open_wallet(&self) -> VcxCoreResult<CoreWallet> {
         let handle = Locator::instance()
             .wallet_controller
             .open(
@@ -124,7 +127,7 @@ impl ManageWallet for WalletConfig {
             )
             .await?;
 
-        Ok(Arc::new(IndySdkWallet::new(handle)))
+        Ok(CoreWallet::new(IndySdkWallet::new(handle)))
     }
 
     async fn delete_wallet(&self) -> VcxCoreResult<()> {

@@ -1,5 +1,6 @@
 use std::sync::Arc;
 
+use tokio::sync::RwLock;
 use url::Url;
 
 use crate::{
@@ -105,7 +106,7 @@ impl AgencyClient {
 
     pub async fn provision_cloud_agent(
         &mut self,
-        wallet: Arc<dyn BaseAgencyClientWallet>,
+        wallet: Arc<RwLock<dyn BaseAgencyClientWallet>>,
         my_did: &str,
         my_vk: &str,
         agency_did: &str,

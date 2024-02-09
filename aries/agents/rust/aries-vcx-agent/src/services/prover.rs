@@ -14,8 +14,9 @@ use aries_vcx::{
     protocols::{proof_presentation::prover::state_machine::ProverState, SendClosure},
 };
 use aries_vcx_core::{
-    anoncreds::credx_anoncreds::IndyCredxAnonCreds, ledger::indy_vdr_ledger::DefaultIndyLedgerRead,
-    wallet::base_wallet::BaseWallet,
+    anoncreds::credx_anoncreds::IndyCredxAnonCreds,
+    ledger::indy_vdr_ledger::DefaultIndyLedgerRead,
+    wallet::base_wallet::{BaseWallet, CoreWallet},
 };
 use serde_json::Value;
 
@@ -44,7 +45,7 @@ impl ProverWrapper {
 pub struct ServiceProver {
     ledger_read: Arc<DefaultIndyLedgerRead>,
     anoncreds: IndyCredxAnonCreds,
-    wallet: Arc<dyn BaseWallet>,
+    wallet: CoreWallet,
     provers: ObjectCache<ProverWrapper>,
     service_connections: Arc<ServiceConnections>,
 }
@@ -53,7 +54,7 @@ impl ServiceProver {
     pub fn new(
         ledger_read: Arc<DefaultIndyLedgerRead>,
         anoncreds: IndyCredxAnonCreds,
-        wallet: Arc<dyn BaseWallet>,
+        wallet: CoreWallet,
         service_connections: Arc<ServiceConnections>,
     ) -> Self {
         Self {

@@ -69,6 +69,8 @@ impl AgencyClient {
         })?;
         let message = self
             .get_wallet()
+            .read()
+            .await
             .pack_message(Some(&my_vk), &receiver_keys, message.as_bytes())
             .await?;
 
@@ -97,6 +99,8 @@ impl AgencyClient {
         })?;
         let message = self
             .get_wallet()
+            .read()
+            .await
             .pack_message(Some(&my_vk), &receiver_keys, message.as_bytes())
             .await?;
 
@@ -104,7 +108,12 @@ impl AgencyClient {
     }
 
     pub async fn parse_message_from_response(&self, response: &[u8]) -> AgencyClientResult<String> {
-        let unpacked_msg = self.get_wallet().unpack_message(response).await?;
+        let unpacked_msg = self
+            .get_wallet()
+            .read()
+            .await
+            .unpack_message(response)
+            .await?;
         let message: Value = ::serde_json::from_slice(unpacked_msg.as_slice()).map_err(|err| {
             AgencyClientError::from_msg(
                 AgencyClientErrorKind::InvalidJson,
@@ -191,6 +200,8 @@ impl AgencyClient {
         })?;
 
         self.get_wallet()
+            .read()
+            .await
             .pack_message(None, &receiver_keys, message.as_bytes())
             .await
     }
@@ -222,6 +233,8 @@ impl AgencyClient {
 
         let message = self
             .get_wallet()
+            .read()
+            .await
             .pack_message(Some(pw_vk), &receiver_keys, message.as_bytes())
             .await?;
 

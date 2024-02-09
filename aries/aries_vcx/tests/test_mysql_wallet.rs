@@ -7,7 +7,7 @@ mod dbtests {
 
     use aries_vcx::global::settings;
     use aries_vcx_core::wallet::{
-        base_wallet::{did_wallet::DidWallet, ManageWallet},
+        base_wallet::{did_wallet::DidWallet, BaseWallet, ManageWallet},
         indy::wallet_config::WalletConfig,
     };
     use libvcx_logger::LibvcxDefaultLogger;
@@ -41,12 +41,14 @@ mod dbtests {
             .build();
 
         config_wallet.create_wallet().await?;
-        let wallet = config_wallet.open_wallet().await?;
+        let mut wallet = config_wallet.open_wallet().await?;
         wallet.configure_issuer(enterprise_seed).await?;
 
         wallet.create_and_store_my_did(None, None).await?;
 
-        wallet.close_wallet().await?;
+        let res = wallet.close_wallet().await?;
+
+        // wallet.close_wallet().await?;
         Ok(())
     }
 }

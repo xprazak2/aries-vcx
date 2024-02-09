@@ -1,4 +1,4 @@
-use std::sync::Arc;
+use std::{ops::Deref, sync::Arc};
 
 use agency_client::{
     errors::error::{AgencyClientError, AgencyClientErrorKind, AgencyClientResult},
@@ -6,6 +6,7 @@ use agency_client::{
 };
 use async_trait::async_trait;
 use public_key::{Key, KeyType};
+use tokio::sync::RwLock;
 
 use super::{
     base_wallet::{
@@ -15,7 +16,7 @@ use super::{
         record::{AllRecords, Record},
         record_wallet::RecordWallet,
         search_filter::SearchFilter,
-        BaseWallet,
+        BaseWallet, CoreWallet,
     },
     structs_io::UnpackMessageOutput,
 };
@@ -26,7 +27,15 @@ use crate::{
 
 #[derive(Debug)]
 pub struct AgencyClientWallet {
-    inner: Arc<dyn BaseAgencyClientWallet>,
+    inner: Arc<RwLock<dyn BaseAgencyClientWallet>>,
+}
+
+impl Deref for AgencyClientWallet {
+    type Target = Arc<RwLock<dyn BaseAgencyClientWallet>>;
+
+    fn deref(&self) -> &Self::Target {
+        &self.inner
+    }
 }
 
 #[allow(unused_variables)]
@@ -36,7 +45,7 @@ impl BaseWallet for AgencyClientWallet {
         Err(unimplemented_agency_client_wallet_method("export_wallet"))
     }
 
-    async fn close_wallet(self) -> VcxCoreResult<()> {
+    async fn close_wallet(&mut self) -> VcxCoreResult<()> {
         Err(unimplemented_agency_client_wallet_method("close_wallet"))
     }
 
@@ -147,6 +156,8 @@ impl DidWallet for AgencyClientWallet {
 
         let res = self
             .inner
+            .read()
+            .await
             .pack_message(
                 sender_vk.map(|key| key.base58()).as_deref(),
                 &list_json,
@@ -158,7 +169,7 @@ impl DidWallet for AgencyClientWallet {
     }
 
     async fn unpack_message(&self, msg: &[u8]) -> VcxCoreResult<UnpackMessageOutput> {
-        let unpack_json_bytes = self.inner.unpack_message(msg).await?;
+        let unpack_json_bytes = self.inner.read().await.unpack_message(msg).await?;
         serde_json::from_slice(&unpack_json_bytes[..]).map_err(|err| {
             AriesVcxCoreError::from_msg(AriesVcxCoreErrorKind::ParsingError, err.to_string())
         })
@@ -169,7 +180,7 @@ pub trait ToBaseWallet {
     fn to_base_wallet(&self) -> AgencyClientWallet;
 }
 
-impl ToBaseWallet for Arc<dyn BaseAgencyClientWallet> {
+impl ToBaseWallet for Arc<RwLock<dyn BaseAgencyClientWallet>> {
     fn to_base_wallet(&self) -> AgencyClientWallet {
         AgencyClientWallet {
             inner: Arc::clone(self),
@@ -187,7 +198,7 @@ fn unimplemented_agency_client_wallet_method(method_name: &str) -> AriesVcxCoreE
 
 #[derive(Debug)]
 pub(crate) struct BaseWalletAgencyClientWallet {
-    inner: Arc<dyn BaseWallet>,
+    inner: Arc<RwLock<dyn BaseWallet>>,
 }
 
 /// Implementation of [BaseAgencyClientWallet] which wraps over an [BaseWallet] implementation
@@ -231,6 +242,8 @@ impl BaseAgencyClientWallet for BaseWalletAgencyClientWallet {
             .transpose()?;
 
         self.inner
+            .read()
+            .await
             .pack_message(sender_key, keys, msg)
             .await
             .map_err(|e| {
@@ -242,12 +255,18 @@ impl BaseAgencyClientWallet for BaseWalletAgencyClientWallet {
     }
 
     async fn unpack_message(&self, msg: &[u8]) -> AgencyClientResult<Vec<u8>> {
-        let unpack = self.inner.unpack_message(msg).await.map_err(|e| {
-            AgencyClientError::from_msg(
-                AgencyClientErrorKind::UnknownError,
-                format!("A VCXError occured while calling unpack_message: {e:?}"),
-            )
-        })?;
+        let unpack = self
+            .inner
+            .read()
+            .await
+            .unpack_message(msg)
+            .await
+            .map_err(|e| {
+                AgencyClientError::from_msg(
+                    AgencyClientErrorKind::UnknownError,
+                    format!("A VCXError occured while calling unpack_message: {e:?}"),
+                )
+            })?;
         serde_json::to_vec(&unpack).map_err(|err| {
             AgencyClientError::from_msg(
                 AgencyClientErrorKind::UnknownError,
@@ -258,12 +277,12 @@ impl BaseAgencyClientWallet for BaseWalletAgencyClientWallet {
 }
 
 pub trait ToBaseAgencyClientWallet {
-    fn to_base_agency_client_wallet(&self) -> Arc<dyn BaseAgencyClientWallet>;
+    fn to_base_agency_client_wallet(&self) -> Arc<RwLock<dyn BaseAgencyClientWallet>>;
 }
 
-impl ToBaseAgencyClientWallet for Arc<dyn BaseWallet> {
-    fn to_base_agency_client_wallet(&self) -> Arc<dyn BaseAgencyClientWallet> {
-        let x = self.clone();
-        Arc::new(BaseWalletAgencyClientWallet { inner: x })
+impl ToBaseAgencyClientWallet for CoreWallet {
+    fn to_base_agency_client_wallet(&self) -> Arc<RwLock<dyn BaseAgencyClientWallet>> {
+        let x = self.clone().into_inner();
+        Arc::new(RwLock::new(BaseWalletAgencyClientWallet { inner: x }))
     }
 }

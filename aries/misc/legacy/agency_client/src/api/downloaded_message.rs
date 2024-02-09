@@ -1,5 +1,7 @@
 use std::sync::Arc;
 
+use tokio::sync::RwLock;
+
 use crate::{
     errors::error::{AgencyClientError, AgencyClientErrorKind, AgencyClientResult},
     utils::encryption_envelope::EncryptionEnvelope,
@@ -46,7 +48,7 @@ impl DownloadedMessageEncrypted {
 
     pub async fn decrypt_noauth(
         self,
-        wallet: Arc<dyn BaseAgencyClientWallet>,
+        wallet: Arc<RwLock<dyn BaseAgencyClientWallet>>,
     ) -> AgencyClientResult<DownloadedMessage> {
         let decrypted_payload = self._noauth_decrypt_v3_message(wallet).await?;
         Ok(DownloadedMessage {
@@ -58,7 +60,7 @@ impl DownloadedMessageEncrypted {
 
     pub async fn decrypt_auth(
         self,
-        wallet: Arc<dyn BaseAgencyClientWallet>,
+        wallet: Arc<RwLock<dyn BaseAgencyClientWallet>>,
         expected_sender_vk: &str,
     ) -> AgencyClientResult<DownloadedMessage> {
         let decrypted_payload = self
@@ -73,14 +75,14 @@ impl DownloadedMessageEncrypted {
 
     async fn _noauth_decrypt_v3_message(
         &self,
-        wallet: Arc<dyn BaseAgencyClientWallet>,
+        wallet: Arc<RwLock<dyn BaseAgencyClientWallet>>,
     ) -> AgencyClientResult<String> {
         EncryptionEnvelope::anon_unpack(wallet, self.payload()?).await
     }
 
     async fn _auth_decrypt_v3_message(
         &self,
-        wallet: Arc<dyn BaseAgencyClientWallet>,
+        wallet: Arc<RwLock<dyn BaseAgencyClientWallet>>,
         expected_sender_vk: &str,
     ) -> AgencyClientResult<String> {
         EncryptionEnvelope::auth_unpack(wallet, self.payload()?, expected_sender_vk).await

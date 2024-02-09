@@ -1,6 +1,7 @@
-use std::sync::Arc;
+use std::{ops::Deref, sync::Arc};
 
 use async_trait::async_trait;
+use tokio::sync::RwLock;
 
 use self::{
     did_wallet::DidWallet, issuer_config::IssuerConfig, record::AllRecords,
@@ -16,6 +17,31 @@ pub mod record;
 pub mod record_wallet;
 pub mod search_filter;
 
+#[derive(Debug, Clone)]
+pub struct CoreWallet {
+    inner: Arc<RwLock<dyn BaseWallet>>,
+}
+
+impl Deref for CoreWallet {
+    type Target = Arc<RwLock<dyn BaseWallet>>;
+
+    fn deref(&self) -> &Self::Target {
+        &self.inner
+    }
+}
+
+impl CoreWallet {
+    pub fn new(inner: impl BaseWallet + 'static) -> Self {
+        Self {
+            inner: Arc::new(RwLock::new(inner)),
+        }
+    }
+
+    pub fn into_inner(self) -> Arc<RwLock<dyn BaseWallet>> {
+        self.inner
+    }
+}
+
 #[async_trait]
 pub trait ImportWallet {
     async fn import_wallet(&self) -> VcxCoreResult<()>;
@@ -25,7 +51,7 @@ pub trait ImportWallet {
 pub trait ManageWallet {
     async fn create_wallet(&self) -> VcxCoreResult<()>;
 
-    async fn open_wallet(&self) -> VcxCoreResult<Arc<dyn BaseWallet>>;
+    async fn open_wallet(&self) -> VcxCoreResult<CoreWallet>;
 
     async fn delete_wallet(&self) -> VcxCoreResult<()>;
 }
@@ -34,7 +60,7 @@ pub trait ManageWallet {
 pub trait BaseWallet: RecordWallet + DidWallet + Send + Sync + std::fmt::Debug {
     async fn export_wallet(&self, path: &str, backup_key: &str) -> VcxCoreResult<()>;
 
-    async fn close_wallet(self) -> VcxCoreResult<()>;
+    async fn close_wallet(&mut self) -> VcxCoreResult<()>;
 
     async fn configure_issuer(&self, key_seed: &str) -> VcxCoreResult<IssuerConfig> {
         Ok(IssuerConfig {
@@ -50,21 +76,21 @@ pub trait BaseWallet: RecordWallet + DidWallet + Send + Sync + std::fmt::Debug {
 }
 
 #[async_trait]
-impl BaseWallet for Arc<dyn BaseWallet> {
+impl BaseWallet for CoreWallet {
     async fn export_wallet(&self, path: &str, backup_key: &str) -> VcxCoreResult<()> {
-        self.as_ref().export_wallet(path, backup_key).await
+        self.read().await.export_wallet(path, backup_key).await
     }
 
-    async fn close_wallet(self) -> VcxCoreResult<()> {
-        self.close_wallet().await
+    async fn close_wallet(&mut self) -> VcxCoreResult<()> {
+        self.write().await.close_wallet().await
     }
 
     async fn configure_issuer(&self, key_seed: &str) -> VcxCoreResult<IssuerConfig> {
-        self.as_ref().configure_issuer(key_seed).await
+        self.read().await.configure_issuer(key_seed).await
     }
 
     async fn all(&self) -> VcxCoreResult<Box<dyn AllRecords + Send>> {
-        self.as_ref().all().await
+        self.read().await.all().await
     }
 }
 

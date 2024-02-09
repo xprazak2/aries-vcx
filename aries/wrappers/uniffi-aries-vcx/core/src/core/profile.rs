@@ -10,7 +10,7 @@ use aries_vcx::{
             response_cacher::in_memory::{InMemoryResponseCacher, InMemoryResponseCacherConfig},
         },
         wallet::{
-            base_wallet::{BaseWallet, ManageWallet},
+            base_wallet::{BaseWallet, CoreWallet, ManageWallet},
             indy::wallet_config::WalletConfig,
         },
         PoolConfig,
@@ -23,7 +23,7 @@ use crate::{errors::error::VcxUniFFIResult, runtime::block_on};
 
 #[derive(Debug)]
 pub struct UniffiProfile {
-    wallet: Arc<dyn BaseWallet>,
+    wallet: CoreWallet,
     anoncreds: IndyCredxAnonCreds,
     ledger_read: IndyVdrLedgerRead<IndyVdrSubmitter, InMemoryResponseCacher>,
 }
@@ -37,7 +37,7 @@ impl UniffiProfile {
         &self.anoncreds
     }
 
-    pub fn wallet(&self) -> &Arc<dyn BaseWallet> {
+    pub fn wallet(&self) -> &CoreWallet {
         &self.wallet
     }
 

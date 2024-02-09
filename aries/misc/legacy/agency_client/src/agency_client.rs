@@ -1,6 +1,7 @@
 use std::sync::Arc;
 
 use shared::validation::{did::validate_did, verkey::validate_verkey};
+use tokio::sync::RwLock;
 use url::Url;
 
 use crate::{
@@ -11,7 +12,7 @@ use crate::{
 
 #[derive(Clone, Debug)]
 pub struct AgencyClient {
-    pub wallet: Arc<dyn BaseAgencyClientWallet>,
+    pub wallet: Arc<RwLock<dyn BaseAgencyClientWallet>>,
     pub agency_url: Url,
     pub agency_did: String,
     pub agency_vk: String,
@@ -22,7 +23,7 @@ pub struct AgencyClient {
 }
 
 impl AgencyClient {
-    pub fn get_wallet(&self) -> Arc<dyn BaseAgencyClientWallet> {
+    pub fn get_wallet(&self) -> Arc<RwLock<dyn BaseAgencyClientWallet>> {
         Arc::clone(&self.wallet)
     }
 
@@ -56,7 +57,7 @@ impl AgencyClient {
         self.my_vk.clone()
     }
 
-    pub fn set_wallet(&mut self, wallet: Arc<dyn BaseAgencyClientWallet>) {
+    pub fn set_wallet(&mut self, wallet: Arc<RwLock<dyn BaseAgencyClientWallet>>) {
         self.wallet = wallet
     }
 
@@ -84,7 +85,7 @@ impl AgencyClient {
 
     pub fn configure(
         mut self,
-        wallet: Arc<dyn BaseAgencyClientWallet>,
+        wallet: Arc<RwLock<dyn BaseAgencyClientWallet>>,
         config: &AgencyClientConfig,
     ) -> AgencyClientResult<Self> {
         info!("AgencyClient::configure >>> config {:?}", config);
@@ -141,7 +142,7 @@ impl AgencyClient {
 impl Default for AgencyClient {
     fn default() -> Self {
         Self {
-            wallet: Arc::new(StubAgencyClientWallet {}),
+            wallet: Arc::new(RwLock::new(StubAgencyClientWallet {})),
             agency_url: "http://127.0.0.1:8080"
                 .parse()
                 .expect("should be valid url"),

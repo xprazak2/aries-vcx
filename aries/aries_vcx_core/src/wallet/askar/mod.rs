@@ -1,3 +1,5 @@
+use std::{mem, ops::Deref};
+
 use aries_askar::{
     entry::EntryTag,
     kms::{KeyAlg, KeyEntry, LocalKey},
@@ -37,8 +39,51 @@ mod rng_method;
 mod sig_type;
 
 #[derive(Debug)]
+pub struct BackendStore(Option<Store>);
+
+impl BackendStore {
+    async fn session(&self, profile: Option<String>) -> VcxCoreResult<Session> {
+        match &self.0 {
+            Some(backend) => Ok(backend.session(profile).await?),
+            None => Err(AriesVcxCoreError::from_msg(
+                AriesVcxCoreErrorKind::WalletAccessFailed,
+                "wallet is closed",
+            )),
+        }
+    }
+
+    async fn transaction(&self, profile: Option<String>) -> VcxCoreResult<Session> {
+        match &self.0 {
+            Some(backend) => Ok(backend.transaction(profile).await?),
+            None => Err(AriesVcxCoreError::from_msg(
+                AriesVcxCoreErrorKind::WalletAccessFailed,
+                "wallet is closed",
+            )),
+        }
+    }
+
+    async fn close(self) -> VcxCoreResult<()> {
+        match self.0 {
+            Some(backend) => Ok(backend.close().await?),
+            None => Err(AriesVcxCoreError::from_msg(
+                AriesVcxCoreErrorKind::WalletAccessFailed,
+                "wallet is closed",
+            )),
+        }
+    }
+
+    fn opened(backend: Store) -> Self {
+        Self(Some(backend))
+    }
+
+    fn closed() -> Self {
+        Self(None)
+    }
+}
+
+#[derive(Debug)]
 pub struct AskarWallet {
-    backend: Store,
+    backend: BackendStore,
     profile: Option<String>,
 }
 
@@ -53,18 +98,6 @@ impl KeyValue {
         Self { signkey, verkey }
     }
 }
-
-// struct KeyRecord {
-//     name: String,
-//     category: String,
-//     value: KeyValue,
-//     tags: EntryTags
-// }
-
-// enum WalletRecord {
-//     Record(Record),
-//     Key(KeyRecord)
-// }
 
 pub struct AllAskarRecords {
     iterator: std::vec::IntoIter<PartialRecord>,
@@ -88,9 +121,9 @@ impl BaseWallet for AskarWallet {
         Ok(())
     }
 
-    async fn close_wallet(self) -> VcxCoreResult<()> {
-        // should we clone?
-        Ok(self.backend.close().await?)
+    async fn close_wallet(&mut self) -> VcxCoreResult<()> {
+        let orig = mem::replace(&mut self.backend, BackendStore::closed());
+        orig.close().await
     }
 
     async fn all(&self) -> VcxCoreResult<Box<dyn AllRecords + Send>> {
@@ -134,7 +167,10 @@ impl AskarWallet {
         let backend =
             Store::provision(db_url, key_method, pass_key, profile.clone(), recreate).await?;
 
-        Ok(Self { backend, profile })
+        Ok(Self {
+            backend: BackendStore(Some(backend)),
+            profile,
+        })
     }
 
     pub async fn open(
@@ -144,7 +180,9 @@ impl AskarWallet {
         profile: Option<String>,
     ) -> Result<Self, AriesVcxCoreError> {
         Ok(Self {
-            backend: Store::open(db_url, key_method, pass_key, profile.clone()).await?,
+            backend: BackendStore(Some(
+                Store::open(db_url, key_method, pass_key, profile.clone()).await?,
+            )),
             profile,
         })
     }

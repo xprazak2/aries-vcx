@@ -13,6 +13,7 @@ use aries_vcx::{
     },
     utils::encryption_envelope::EncryptionEnvelope,
 };
+use aries_vcx_core::wallet::base_wallet::did_wallet::DidWallet;
 use messages::{
     msg_fields::protocols::{
         connection::{response::Response, Connection},

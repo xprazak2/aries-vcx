@@ -8,7 +8,7 @@ use aries_vcx::{
 use aries_vcx_core::{
     errors::error::AriesVcxCoreError,
     wallet::{
-        base_wallet::{BaseWallet, ManageWallet},
+        base_wallet::{did_wallet::DidWallet, BaseWallet, CoreWallet, ManageWallet},
         indy::wallet_config::WalletConfig,
         structs_io::UnpackMessageOutput,
     },
@@ -32,9 +32,9 @@ use crate::{
 pub mod client;
 pub mod utils;
 
-#[derive(Clone)]
+// #[derive(Clone)]
 pub struct Agent<P: MediatorPersistence> {
-    wallet: Arc<dyn BaseWallet>,
+    wallet: CoreWallet,
     persistence: Arc<P>,
     service: Option<AriesService>,
 }
@@ -45,7 +45,7 @@ pub struct AgentBuilder<T: BaseWallet> {
     _type_wallet: PhantomData<T>,
 }
 /// Constructors
-impl AgentBuilder<Arc<dyn BaseWallet>> {
+impl AgentBuilder<CoreWallet> {
     pub async fn new_from_wallet_config(
         config: WalletConfig,
     ) -> Result<Agent<sqlx::MySqlPool>, AriesVcxCoreError> {
@@ -77,8 +77,8 @@ impl AgentBuilder<Arc<dyn BaseWallet>> {
 
 // Utils
 impl<P: MediatorPersistence> Agent<P> {
-    pub fn get_wallet_ref(&self) -> Arc<dyn BaseWallet> {
-        self.wallet.clone()
+    pub fn get_wallet_ref(&self) -> &CoreWallet {
+        &self.wallet
     }
     pub fn get_persistence_ref(&self) -> Arc<impl MediatorPersistence> {
         self.persistence.clone()
