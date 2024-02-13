@@ -19,6 +19,7 @@ askar_wallet = ["dep:aries-askar", "dep:bs58", "dep:sodiumoxide"]
 agency_client = { path = "../misc/legacy/agency_client" }
 aries-askar = { git = "https://github.com/hyperledger/aries-askar.git", tag = "v0.3.0", optional = true }
 bs58 = { version = "0.5", optional = true }
+byteorder = "1"
 indy-vdr = { git = "https://github.com/hyperledger/indy-vdr.git", rev = "c143268", default-features = false, features = ["log"] }
 indy-credx = { git = "https://github.com/hyperledger/indy-shared-rs", tag = "v1.1.0", optional = true }
 # anoncreds = { git = "https://github.com/hyperledger/anoncreds-rs", tag = "v0.2.0-dev.5", optional = true }
@@ -32,6 +33,7 @@ futures = { version = "0.3", default-features = false }
 serde_json = "1.0.95"
 time = "0.3.20"
 serde = { version = "1.0.159", features = ["derive"] }
+rmp-serde = "1"
 rand = "0.8.5"
 log = "0.4.17"
 thiserror = "1.0.40"
