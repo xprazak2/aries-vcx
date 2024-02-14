@@ -1,6 +1,7 @@
 use std::sync::PoisonError;
 
 use did_parser::ParseError;
+use openssl::error::ErrorStack;
 use public_key::PublicKeyError;
 
 use crate::errors::error::{AriesVcxCoreError, AriesVcxCoreErrorKind};
@@ -47,5 +48,11 @@ impl From<std::io::Error> for AriesVcxCoreError {
 impl From<rmp_serde::encode::Error> for AriesVcxCoreError {
     fn from(value: rmp_serde::encode::Error) -> Self {
         AriesVcxCoreError::from_msg(AriesVcxCoreErrorKind::EncodeError, value)
+    }
+}
+
+impl From<ErrorStack> for AriesVcxCoreError {
+    fn from(value: ErrorStack) -> Self {
+        AriesVcxCoreError::from_msg(AriesVcxCoreErrorKind::InvalidInput, value)
     }
 }

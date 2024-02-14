@@ -5,14 +5,11 @@ use aries_askar::{
     kms::{KeyAlg, KeyEntry, LocalKey},
     PassKey, Session, Store, StoreKeyMethod,
 };
-use indy_api_types::domain::wallet::default_key_derivation_method;
 use serde::{Deserialize, Serialize};
 
 use self::{
-    askar_utils::{
-        key_from_base58, local_key_to_bs58_name, local_key_to_bs58_private_key,
-        local_key_to_bs58_public_key, value_from_entry,
-    },
+    askar_utils::{key_from_base58, local_key_to_bs58_name},
+    export_crypto::key_derivation_method::KeyDerivationMethod,
     rng_method::RngMethod,
 };
 use super::{
@@ -22,21 +19,19 @@ use super::{
         BaseWallet,
     },
     constants::{DID_CATEGORY, INDY_KEY},
-    utils::did_from_key,
 };
 use crate::errors::error::{AriesVcxCoreError, AriesVcxCoreErrorKind, VcxCoreResult};
 
-use crate::wallet::askar::export::export;
 use async_trait::async_trait;
 
 mod askar_did_wallet;
 mod askar_record_wallet;
 mod askar_tags;
 pub mod askar_utils;
-mod chacha20poly1305ietf;
 mod crypto_box;
 mod entry;
 mod export;
+mod export_crypto;
 mod packing;
 mod packing_types;
 mod rng_method;
@@ -122,7 +117,15 @@ impl AllRecords for AllAskarRecords {
 #[async_trait]
 impl BaseWallet for AskarWallet {
     async fn export_wallet(&self, path: &str, backup_key: &str) -> VcxCoreResult<()> {
-        export::export(path, backup_key, default_key_derivation_method()).await?;
+        let mut records = self.all().await?;
+
+        export::export(
+            path,
+            backup_key,
+            KeyDerivationMethod::default(),
+            &mut records,
+        )
+        .await?;
         Ok(())
     }
 

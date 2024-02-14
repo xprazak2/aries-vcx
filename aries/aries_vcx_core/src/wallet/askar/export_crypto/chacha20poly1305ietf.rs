@@ -1,14 +1,42 @@
 use std::io::{self, Write};
 
 use sodiumoxide::{
-    crypto::aead::chacha20poly1305_ietf::{self, Key, Nonce},
+    crypto::{
+        aead::{
+            chacha20poly1305::KEYBYTES,
+            chacha20poly1305_ietf::{self, Key, Nonce},
+        },
+        pwhash::Salt,
+    },
     utils,
 };
+
+use crate::errors::error::VcxCoreResult;
+
+use super::{key_derivation_method::KeyDerivationMethod, pwhash::pwhash};
+
+pub fn derive_key(
+    passphrase: &str,
+    salt: &Salt,
+    key_derivation_method: &KeyDerivationMethod,
+) -> VcxCoreResult<chacha20poly1305_ietf::Key> {
+    let mut key_bytes = [0u8; KEYBYTES];
+
+    pwhash(
+        &mut key_bytes,
+        passphrase.as_bytes(),
+        salt,
+        key_derivation_method,
+    )
+    .map_err(|err| err.extend("Can't derive key"))?;
+
+    Ok(chacha20poly1305_ietf::Key(key_bytes))
+}
 
 pub struct Writer<W: Write> {
     buffer: Vec<u8>,
     chunk_size: usize,
-    key: Key,
+    key: chacha20poly1305_ietf::Key,
     nonce: Nonce,
     inner: W,
 }
@@ -18,7 +46,7 @@ fn increment_nonce(nonce: &mut Nonce) {
 }
 
 impl<W: Write> Writer<W> {
-    pub fn new(inner: W, key: Key, nonce: Nonce, chunk_size: usize) -> Self {
+    pub fn new(inner: W, key: chacha20poly1305_ietf::Key, nonce: Nonce, chunk_size: usize) -> Self {
         Writer {
             buffer: Vec::new(),
             chunk_size,

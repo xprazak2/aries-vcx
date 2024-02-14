@@ -1,9 +1,13 @@
 use async_trait::async_trait;
+use serde::{Deserialize, Serialize};
 use typed_builder::TypedBuilder;
 
-use crate::{errors::error::VcxCoreResult, wallet::entry_tags::EntryTags};
+use crate::{
+    errors::error::{AriesVcxCoreError, AriesVcxCoreErrorKind, VcxCoreResult},
+    wallet::entry_tags::EntryTags,
+};
 
-#[derive(Debug, Default, Clone, TypedBuilder)]
+#[derive(Debug, Default, Clone, TypedBuilder, Serialize, Deserialize)]
 pub struct Record {
     category: String,
     name: String,
@@ -54,6 +58,38 @@ impl PartialRecord {
 
     pub fn tags(&self) -> &Option<EntryTags> {
         &self.tags
+    }
+
+    pub fn try_into_record(self) -> VcxCoreResult<Record> {
+        let unwrapped_category = match &self.category() {
+            None => {
+                return Err(AriesVcxCoreError::from_msg(
+                    AriesVcxCoreErrorKind::InvalidInput,
+                    "record is missing 'category'",
+                ))
+            }
+            Some(category) => category.clone(),
+        };
+        let unwrapped_value = match &self.value() {
+            None => {
+                return Err(AriesVcxCoreError::from_msg(
+                    AriesVcxCoreErrorKind::InvalidInput,
+                    "record is missing 'category'",
+                ))
+            }
+            Some(value) => value.clone(),
+        };
+        let unwrapped_tags = match &self.tags() {
+            None => EntryTags::default(),
+            Some(tags) => tags.clone(),
+        };
+
+        Ok(Record::builder()
+            .category(unwrapped_category)
+            .name(self.name().to_string())
+            .value(unwrapped_value)
+            .tags(unwrapped_tags)
+            .build())
     }
 
     #[cfg(feature = "vdrtools_wallet")]

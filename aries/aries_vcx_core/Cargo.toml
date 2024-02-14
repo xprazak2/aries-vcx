@@ -22,6 +22,8 @@ bs58 = { version = "0.5", optional = true }
 byteorder = "1"
 indy-vdr = { git = "https://github.com/hyperledger/indy-vdr.git", rev = "c143268", default-features = false, features = ["log"] }
 indy-credx = { git = "https://github.com/hyperledger/indy-shared-rs", tag = "v1.1.0", optional = true }
+openssl = { version = "0.10" }
+libc = "0.2"
 # anoncreds = { git = "https://github.com/hyperledger/anoncreds-rs", tag = "v0.2.0-dev.5", optional = true }
 anoncreds = { git = "https://github.com/mirgee/anoncreds-rs.git", rev = "9a7539c", optional = true }
 anoncreds_types = { path = "../misc/anoncreds_types" }
