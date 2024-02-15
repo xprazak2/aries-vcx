@@ -32,6 +32,7 @@ mod crypto_box;
 mod entry;
 mod export;
 mod export_crypto;
+mod import;
 mod packing;
 mod packing_types;
 mod rng_method;
@@ -162,6 +163,13 @@ impl BaseWallet for AskarWallet {
             total_count: Some(total_count),
         }))
     }
+}
+
+pub struct AskarWalletConfig {
+    db_url: String,
+    key_method: StoreKeyMethod,
+    pass_key: PassKey,
+    profile: Option<String>
 }
 
 impl AskarWallet {
