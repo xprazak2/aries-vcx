@@ -51,6 +51,12 @@ impl From<rmp_serde::encode::Error> for AriesVcxCoreError {
     }
 }
 
+impl From<rmp_serde::decode::Error> for AriesVcxCoreError {
+    fn from(value: rmp_serde::decode::Error) -> Self {
+        AriesVcxCoreError::from_msg(AriesVcxCoreErrorKind::InvalidInput, value)
+    }
+}
+
 impl From<ErrorStack> for AriesVcxCoreError {
     fn from(value: ErrorStack) -> Self {
         AriesVcxCoreError::from_msg(AriesVcxCoreErrorKind::InvalidInput, value)

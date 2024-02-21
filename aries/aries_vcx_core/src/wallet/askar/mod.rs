@@ -165,11 +165,11 @@ impl BaseWallet for AskarWallet {
     }
 }
 
-pub struct AskarWalletConfig {
+pub struct AskarWalletConfig<'a> {
     db_url: String,
     key_method: StoreKeyMethod,
-    pass_key: PassKey,
-    profile: Option<String>
+    pass_key: PassKey<'a>,
+    profile: Option<String>,
 }
 
 impl AskarWallet {
@@ -189,17 +189,24 @@ impl AskarWallet {
         })
     }
 
-    pub async fn open(
-        db_url: &str,
-        key_method: Option<StoreKeyMethod>,
-        pass_key: PassKey<'_>,
-        profile: Option<String>,
+    pub async fn open<'a>(
+        // db_url: &str,
+        // key_method: Option<StoreKeyMethod>,
+        // pass_key: PassKey<'_>,
+        // profile: Option<String>,
+        wallet_config: &AskarWalletConfig<'a>,
     ) -> Result<Self, AriesVcxCoreError> {
         Ok(Self {
             backend: BackendStore(Some(
-                Store::open(db_url, key_method, pass_key, profile.clone()).await?,
+                Store::open(
+                    &wallet_config.db_url,
+                    Some(wallet_config.key_method.clone()),
+                    wallet_config.pass_key.clone(),
+                    wallet_config.profile.clone(),
+                )
+                .await?,
             )),
-            profile,
+            profile: wallet_config.profile.clone(),
         })
     }
 

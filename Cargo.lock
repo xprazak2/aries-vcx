@@ -557,6 +557,7 @@ dependencies = [
  "tokio",
  "typed-builder 0.18.1",
  "uuid 1.5.0",
+ "zeroize",
 ]
 
 [[package]]
