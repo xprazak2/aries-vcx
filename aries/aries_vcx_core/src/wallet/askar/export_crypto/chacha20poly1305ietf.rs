@@ -1,4 +1,7 @@
-use std::io::{self, Write};
+use std::{
+    cmp,
+    io::{self, Read, Write},
+};
 
 use sodiumoxide::{
     crypto::{
@@ -11,9 +14,11 @@ use sodiumoxide::{
     utils,
 };
 
-use crate::errors::error::VcxCoreResult;
-
 use super::{key_derivation_method::KeyDerivationMethod, pwhash::pwhash};
+use crate::{
+    errors::error::VcxCoreResult,
+    wallet::askar::{AriesVcxCoreError, AriesVcxCoreErrorKind},
+};
 
 pub fn derive_key(
     passphrase: &str,
@@ -96,4 +101,93 @@ impl<W: Write> Write for Writer<W> {
 
 pub fn encrypt(data: &[u8], key: &Key, nonce: &Nonce) -> Vec<u8> {
     chacha20poly1305_ietf::seal(data, None, &nonce, &key)
+}
+
+pub struct Reader<R: Read> {
+    rest_buffer: Vec<u8>,
+    chunk_buffer: Vec<u8>,
+    key: Key,
+    nonce: Nonce,
+    inner: R,
+}
+
+impl<R: Read> Reader<R> {
+    pub fn new(inner: R, key: Key, nonce: Nonce, chunk_size: usize) -> Self {
+        Reader {
+            rest_buffer: Vec::new(),
+            chunk_buffer: vec![0; chunk_size + chacha20poly1305_ietf::TAGBYTES],
+            key,
+            nonce,
+            inner,
+        }
+    }
+
+    #[allow(unused)]
+    pub fn into_inner(self) -> R {
+        self.inner
+    }
+
+    fn _read_chunk(&mut self) -> io::Result<usize> {
+        let mut read = 0;
+
+        while read < self.chunk_buffer.len() {
+            match self.inner.read(&mut self.chunk_buffer[read..]) {
+                Ok(0) => break,
+                Ok(n) => read += n,
+                Err(ref e) if e.kind() == io::ErrorKind::Interrupted => continue,
+                Err(e) => return Err(e),
+            }
+        }
+
+        if read == 0 {
+            Err(io::Error::new(
+                io::ErrorKind::UnexpectedEof,
+                "No more crypto chucks to consume",
+            ))
+        } else {
+            Ok(read)
+        }
+    }
+}
+
+impl<R: Read> Read for Reader<R> {
+    fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
+        let mut pos = 0;
+
+        // Consume from rest buffer
+        if !self.rest_buffer.is_empty() {
+            let to_copy = cmp::min(self.rest_buffer.len(), buf.len() - pos);
+            buf[pos..pos + to_copy].copy_from_slice(&self.rest_buffer[..to_copy]);
+            pos += to_copy;
+            self.rest_buffer.drain(..to_copy);
+        }
+
+        // Consume from chunks
+        while pos < buf.len() {
+            let chunk_size = self._read_chunk()?;
+
+            let chunk = decrypt(&self.chunk_buffer[..chunk_size], &self.key, &self.nonce).map_err(
+                |_| io::Error::new(io::ErrorKind::InvalidData, "Invalid data in crypto chunk"),
+            )?;
+
+            increment_nonce(&mut self.nonce);
+
+            let to_copy = cmp::min(chunk.len(), buf.len() - pos);
+            buf[pos..pos + to_copy].copy_from_slice(&chunk[..to_copy]);
+            pos += to_copy;
+
+            // Save rest in rest buffer
+            if pos == buf.len() && to_copy < chunk.len() {
+                self.rest_buffer.extend(&chunk[to_copy..]);
+            }
+        }
+
+        Ok(buf.len())
+    }
+}
+
+pub fn decrypt(data: &[u8], key: &Key, nonce: &Nonce) -> VcxCoreResult<Vec<u8>> {
+    chacha20poly1305_ietf::open(data, None, &nonce, &key).map_err(|err| {
+        AriesVcxCoreError::from_msg(AriesVcxCoreErrorKind::InvalidInput, "failed to decrypt")
+    })
 }
