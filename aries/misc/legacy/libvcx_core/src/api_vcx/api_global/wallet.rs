@@ -287,7 +287,10 @@ pub async fn wallet_search_records(xtype: &str, query_json: &str) -> LibvcxResul
 }
 
 pub async fn wallet_import(config: &RestoreWalletConfigs) -> LibvcxResult<()> {
-    map_ariesvcx_core_result(config.import_wallet().await)
+    match config.import_wallet().await {
+        Ok(_) => Ok(()),
+        Err(err) => Err(err.into()),
+    }
 }
 
 pub async fn wallet_migrate(wallet_config: &WalletConfig) -> LibvcxResult<()> {

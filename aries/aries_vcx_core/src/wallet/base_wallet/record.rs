@@ -151,6 +151,11 @@ impl PartialRecord {
             .tags(Some(tags.to_vec().into()))
             .build())
     }
+
+    #[cfg(feature = "askar_wallet")]
+    pub fn try_into_askar_key_entry() -> VcxCoreResult<()> {
+        Ok(())
+    }
 }
 
 #[async_trait]

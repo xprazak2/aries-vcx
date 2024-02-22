@@ -5,6 +5,7 @@ use aries_askar::{
     kms::{KeyAlg, KeyEntry, LocalKey},
     PassKey, Session, Store, StoreKeyMethod,
 };
+use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
 
 use self::{
@@ -16,13 +17,11 @@ use super::{
     base_wallet::{
         did_data::DidData,
         record::{AllRecords, PartialRecord, Record},
-        BaseWallet,
+        BaseWallet, CoreWallet, ManageWallet,
     },
     constants::{DID_CATEGORY, INDY_KEY},
 };
 use crate::errors::error::{AriesVcxCoreError, AriesVcxCoreErrorKind, VcxCoreResult};
-
-use async_trait::async_trait;
 
 mod askar_did_wallet;
 mod askar_record_wallet;
@@ -165,11 +164,54 @@ impl BaseWallet for AskarWallet {
     }
 }
 
+#[derive(Clone)]
 pub struct AskarWalletConfig<'a> {
     db_url: String,
     key_method: StoreKeyMethod,
     pass_key: PassKey<'a>,
     profile: Option<String>,
+}
+
+impl<'a> AskarWalletConfig<'a> {
+    pub fn new(
+        db_url: &str,
+        key_method: StoreKeyMethod,
+        pass_key: PassKey<'a>,
+        profile: Option<String>,
+    ) -> Self {
+        Self {
+            db_url: db_url.into(),
+            key_method,
+            pass_key,
+            profile,
+        }
+    }
+}
+
+#[async_trait]
+impl<'a> ManageWallet for AskarWalletConfig<'a> {
+    async fn create_wallet(&self) -> VcxCoreResult<()> {
+        Ok(())
+    }
+
+    async fn open_wallet(&self) -> VcxCoreResult<CoreWallet> {
+        Ok(CoreWallet::new(AskarWallet {
+            backend: BackendStore(Some(
+                Store::open(
+                    &self.db_url,
+                    Some(self.key_method.clone()),
+                    self.pass_key.clone(),
+                    self.profile.clone(),
+                )
+                .await?,
+            )),
+            profile: self.profile.clone(),
+        }))
+    }
+
+    async fn delete_wallet(&self) -> VcxCoreResult<()> {
+        Ok(())
+    }
 }
 
 impl AskarWallet {
@@ -232,6 +274,22 @@ impl AskarWallet {
                 format!("no key with name '{}' found in wallet", key_name),
             )
         })
+    }
+
+    pub async fn create_key(
+        &self,
+        key_name: &str,
+        value: &KeyValue,
+        tags: Option<&[EntryTag]>,
+    ) -> VcxCoreResult<()> {
+        let mut session = self.backend.session(self.profile.clone()).await?;
+
+        let local_key = LocalKey::from_secret_bytes(KeyAlg::Ed25519, value.signkey.as_bytes())?;
+        session
+            .insert_key(key_name, &local_key, None, tags, None)
+            .await?;
+
+        Ok(())
     }
 
     async fn insert_key(
@@ -322,12 +380,16 @@ impl AskarWallet {
 
 #[cfg(test)]
 pub mod tests {
-    use crate::wallet::base_wallet::BaseWallet;
+    use aries_askar::StoreKeyMethod;
+    use uuid::Uuid;
+
+    use super::{
+        export_crypto::key_derivation_method::KeyDerivationMethod, import::AskarImportConfig,
+        AskarWalletConfig,
+    };
+    use crate::wallet::base_wallet::{BaseWallet, ImportWallet};
 
     pub async fn dev_setup_askar_wallet() -> Box<dyn BaseWallet> {
-        use aries_askar::StoreKeyMethod;
-        use uuid::Uuid;
-
         use crate::wallet::askar::AskarWallet;
 
         Box::new(
@@ -341,5 +403,21 @@ pub mod tests {
             .await
             .unwrap(),
         )
+    }
+
+    pub fn dev_setup_askar_import_config(path: &str, backup_key: &str) -> Box<dyn ImportWallet> {
+        let wallet_config = &AskarWalletConfig::new(
+            "sqlite://:memory:",
+            StoreKeyMethod::Unprotected,
+            None.into(),
+            Some(Uuid::new_v4().to_string()),
+        );
+
+        Box::new(AskarImportConfig::new(
+            wallet_config,
+            path,
+            backup_key,
+            KeyDerivationMethod::default(),
+        ))
     }
 }

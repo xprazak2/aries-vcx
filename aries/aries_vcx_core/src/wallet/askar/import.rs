@@ -3,17 +3,12 @@ use std::{
     io::{BufReader, Read},
 };
 
+use aries_askar::entry::EntryTag as AskarEntryTag;
 use async_trait::async_trait;
 use byteorder::{LittleEndian, ReadBytesExt};
 use serde::{Deserialize, Serialize};
 use sodiumoxide::crypto::{aead::chacha20poly1305_ietf, auth::hmacsha256, pwhash::Salt};
-
 use zeroize::Zeroize;
-
-use crate::{
-    errors::error::{AriesVcxCoreError, AriesVcxCoreErrorKind, VcxCoreResult},
-    wallet::base_wallet::ImportWallet,
-};
 
 use super::{
     export_crypto::{
@@ -23,7 +18,14 @@ use super::{
         key_derivation::KeyDerivationData,
         key_derivation_method::{self, KeyDerivationMethod},
     },
-    AskarWallet, AskarWalletConfig,
+    AskarWallet, AskarWalletConfig, KeyValue,
+};
+use crate::{
+    errors::error::{AriesVcxCoreError, AriesVcxCoreErrorKind, VcxCoreResult},
+    wallet::{
+        base_wallet::{record::Record, record_wallet::RecordWallet, ImportWallet, ManageWallet},
+        constants::INDY_KEY,
+    },
 };
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -122,16 +124,34 @@ pub struct AskarImportConfig<'a> {
     kdf_method: KeyDerivationMethod,
 }
 
+impl<'a> AskarImportConfig<'a> {
+    pub fn new(
+        wallet_config: &AskarWalletConfig<'a>,
+        path: &str,
+        key: &str,
+        kdf_method: KeyDerivationMethod,
+    ) -> Self {
+        Self {
+            wallet_config: wallet_config.clone(),
+            exported_file_path: path.into(),
+            key: key.into(),
+            kdf_method,
+        }
+    }
+}
+
 #[async_trait]
-impl<'a> ImportWallet for AskarImportConfig<'a> {
-    async fn import_wallet(&self) -> VcxCoreResult<()> {
+impl<'a> ImportWallet for AskarImportConfig<'static> {
+    async fn import_wallet(&self) -> VcxCoreResult<Box<dyn ManageWallet>> {
         import(
             &self.exported_file_path,
             &self.key,
             &self.kdf_method,
             &self.wallet_config,
         )
-        .await
+        .await;
+
+        Ok(Box::new(self.wallet_config.clone()))
     }
 }
 
@@ -174,9 +194,9 @@ async fn import<'a>(
 
     let wallet = AskarWallet::open(&wallet_config).await?;
 
-    let mut reader = chacha20poly1305ietf::Reader::new(reader, key, nonce, chunk_size);
+    let mut reader = chacha20poly1305ietf::Reader::new(reader, import_key, nonce, chunk_size);
 
-    read_header(reader)?;
+    read_header(&mut reader)?;
 
     // let mut header_hash = vec![0u8; HASHBYTES];
     // reader.read_exact(&mut header_hash).map_err(_map_io_err)?;
@@ -189,23 +209,28 @@ async fn import<'a>(
     // }
 
     loop {
-        let record_len = reader.read_u32::<LittleEndian>().map_err(_map_io_err)? as usize;
+        let record_len = reader.read_u32::<LittleEndian>()? as usize;
 
         if record_len == 0 {
             break;
         }
 
         let mut record = vec![0u8; record_len];
-        reader.read_exact(&mut record).map_err(_map_io_err)?;
+        reader.read_exact(&mut record)?;
 
-        let record: IndyRecord = rmp_serde::from_slice(&record).to_indy(
-            IndyErrorKind::InvalidStructure,
-            "Record is malformed msgpack",
-        )?;
+        let record: Record = rmp_serde::from_slice(&record)?;
 
-        wallet
-            .add(&record.type_, &record.id, &record.value, &record.tags, true)
-            .await?;
+        match record.category() {
+            INDY_KEY => {
+                let key_value: KeyValue = serde_json::from_str(record.value())?;
+                let askar_tags: Vec<AskarEntryTag> = record.tags().clone().into();
+
+                wallet
+                    .create_key(record.name(), &key_value, Some(askar_tags.as_ref()))
+                    .await?;
+            }
+            _ => wallet.add_record(record).await?,
+        }
     }
 
     // let metadata_json = serde_json::to_vec(&metadata)?;
@@ -334,7 +359,7 @@ fn read_encrypted_header(
     }
 }
 
-fn read_header(reader: &mut BufReader<dyn Read>) -> VcxCoreResult<Header> {
+fn read_header(reader: &mut impl Read) -> VcxCoreResult<Header> {
     let header_len = reader.read_u32::<LittleEndian>()? as usize;
 
     if header_len == 0 {

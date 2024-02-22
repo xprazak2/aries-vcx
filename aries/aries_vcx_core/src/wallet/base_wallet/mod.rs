@@ -44,7 +44,7 @@ impl CoreWallet {
 
 #[async_trait]
 pub trait ImportWallet {
-    async fn import_wallet(&self) -> VcxCoreResult<()>;
+    async fn import_wallet(&self) -> VcxCoreResult<Box<dyn ManageWallet>>;
 }
 
 #[async_trait]
@@ -59,6 +59,8 @@ pub trait ManageWallet {
 #[async_trait]
 pub trait BaseWallet: RecordWallet + DidWallet + Send + Sync + std::fmt::Debug {
     async fn export_wallet(&self, path: &str, backup_key: &str) -> VcxCoreResult<()>;
+
+    // async fn import_wallet(&self, path: &str, backup_key: &str) -> VcxCoreResult<()>;
 
     async fn close_wallet(&mut self) -> VcxCoreResult<()>;
 
@@ -96,16 +98,15 @@ impl BaseWallet for CoreWallet {
 
 #[cfg(test)]
 mod tests {
-    use super::BaseWallet;
+    use super::{BaseWallet, ImportWallet};
     use crate::{
         errors::error::AriesVcxCoreErrorKind,
         wallet::{
             base_wallet::{record::Record, DidWallet, RecordWallet},
             entry_tags::{EntryTag, EntryTags},
+            utils::{did_from_key, random_seed},
         },
     };
-
-    use crate::wallet::utils::{did_from_key, random_seed};
 
     #[allow(unused_variables)]
     async fn build_test_wallet() -> Box<dyn BaseWallet> {
@@ -437,5 +438,37 @@ mod tests {
         let res = wallet.get_record(category, name).await.unwrap();
         assert_eq!(value, res.value());
         assert_eq!(&tags2, res.tags());
+    }
+
+    #[allow(unused_variables)]
+    fn build_import_config(path: &str, backup_key: &str) -> Box<dyn ImportWallet> {
+        #[cfg(feature = "vdrtools_wallet")]
+        let config = {
+            use crate::wallet::indy::tests::dev_setup_indy_import_config;
+            dev_setup_indy_import_config(path, backup_key)
+        };
+
+        #[cfg(feature = "askar_wallet")]
+        let config = {
+            use crate::wallet::askar::tests::dev_setup_askar_import_config;
+            dev_setup_askar_import_config(path, backup_key)
+        };
+
+        config
+    }
+
+    #[tokio::test]
+    async fn base_wallet_should_export() {
+        let wallet = build_test_wallet().await;
+
+        wallet.create_and_store_my_did(None, None).await.unwrap();
+
+        let backup_key = "foo";
+        let path = "./foo.crypt";
+
+        wallet.export_wallet(path, backup_key).await.unwrap();
+
+        let import_config = build_import_config(path, backup_key);
+        let res = import_config.import_wallet().await.unwrap();
     }
 }

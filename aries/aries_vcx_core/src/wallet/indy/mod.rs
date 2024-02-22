@@ -135,8 +135,12 @@ impl AllRecords for AllIndyRecords {
 pub mod tests {
     use std::sync::Arc;
 
+    use indy_api_types::domain::wallet::KeyDerivationMethod;
+    use serde::Deserialize;
+
+    use super::restore_wallet_configs::RestoreWalletConfigs;
     use crate::wallet::{
-        base_wallet::{BaseWallet, CoreWallet, ManageWallet},
+        base_wallet::{BaseWallet, CoreWallet, ImportWallet, ManageWallet},
         indy::wallet_config::WalletConfig,
     };
 
@@ -154,5 +158,15 @@ pub mod tests {
 
         config_wallet.create_wallet().await.unwrap();
         config_wallet.open_wallet().await.unwrap()
+    }
+
+    pub fn dev_setup_indy_import_config(path: &str, backup_key: &str) -> Box<dyn ImportWallet> {
+        Box::new(RestoreWalletConfigs {
+            wallet_name: format!("wallet_{}", uuid::Uuid::new_v4()),
+            wallet_key: "8dvfYSt5d1taSd6yJdpjq4emkwsPDDLYxkNFysFD2cZZ".into(),
+            exported_wallet_path: path.into(),
+            backup_key: backup_key.into(),
+            wallet_key_derivation: None,
+        })
     }
 }
