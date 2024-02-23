@@ -23,7 +23,9 @@ use super::{
 use crate::{
     errors::error::{AriesVcxCoreError, AriesVcxCoreErrorKind, VcxCoreResult},
     wallet::{
-        base_wallet::{record::Record, record_wallet::RecordWallet, ImportWallet, ManageWallet},
+        base_wallet::{
+            record::Record, record_wallet::RecordWallet, CoreWallet, ImportWallet, ManageWallet,
+        },
         constants::INDY_KEY,
     },
 };
@@ -117,6 +119,7 @@ pub struct MetadataRaw {
 // }
 // }
 
+#[derive(Debug)]
 pub struct AskarImportConfig<'a> {
     wallet_config: AskarWalletConfig<'a>,
     exported_file_path: String,
@@ -143,13 +146,17 @@ impl<'a> AskarImportConfig<'a> {
 #[async_trait]
 impl<'a> ImportWallet for AskarImportConfig<'static> {
     async fn import_wallet(&self) -> VcxCoreResult<Box<dyn ManageWallet>> {
+        println!("wallet config: {:?}", self.wallet_config);
+
+        let wallet = self.wallet_config.create_wallet().await?;
+
         import(
             &self.exported_file_path,
             &self.key,
             &self.kdf_method,
-            &self.wallet_config,
+            wallet,
         )
-        .await;
+        .await?;
 
         Ok(Box::new(self.wallet_config.clone()))
     }
@@ -159,10 +166,10 @@ async fn import<'a>(
     path: &str,
     key: &str,
     kdf_method: &KeyDerivationMethod,
-    wallet_config: &AskarWalletConfig<'a>,
+    wallet: CoreWallet,
 ) -> VcxCoreResult<()> {
     let exported_file = fs::OpenOptions::new().read(true).open(&path)?;
-
+    println!("preparing file to import");
     let (reader, import_key_derivation_data, nonce, chunk_size, header_bytes) =
         prepare_file_to_import(exported_file, &key)?;
 
@@ -174,7 +181,7 @@ async fn import<'a>(
     let key_data = KeyDerivationData::from_passphrase_with_new_salt(&key, &kdf_method);
 
     let import_key = import_key_derivation_data.calc_master_key()?;
-    let master_key = key_data.calc_master_key()?;
+    // let master_key = key_data.calc_master_key()?;
 
     // let keys = Keys::new();
 
@@ -192,7 +199,11 @@ async fn import<'a>(
     //     }
     // };
 
-    let wallet = AskarWallet::open(&wallet_config).await?;
+    println!("trying to open a wallet");
+
+    // let wallet = AskarWallet::open(&wallet_config).await?;
+
+    println!("opened wallet");
 
     let mut reader = chacha20poly1305ietf::Reader::new(reader, import_key, nonce, chunk_size);
 

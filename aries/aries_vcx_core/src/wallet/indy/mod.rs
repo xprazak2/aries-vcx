@@ -156,8 +156,8 @@ pub mod tests {
             rekey_derivation_method: None,
         };
 
-        config_wallet.create_wallet().await.unwrap();
-        config_wallet.open_wallet().await.unwrap()
+        config_wallet.create_wallet().await.unwrap()
+        // config_wallet.open_wallet().await.unwrap()
     }
 
     pub fn dev_setup_indy_import_config(path: &str, backup_key: &str) -> Box<dyn ImportWallet> {

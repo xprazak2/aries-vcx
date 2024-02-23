@@ -49,7 +49,7 @@ pub trait ImportWallet {
 
 #[async_trait]
 pub trait ManageWallet {
-    async fn create_wallet(&self) -> VcxCoreResult<()>;
+    async fn create_wallet(&self) -> VcxCoreResult<CoreWallet>;
 
     async fn open_wallet(&self) -> VcxCoreResult<CoreWallet>;
 
@@ -461,7 +461,7 @@ mod tests {
     async fn base_wallet_should_export() {
         let wallet = build_test_wallet().await;
 
-        wallet.create_and_store_my_did(None, None).await.unwrap();
+        let did_data = wallet.create_and_store_my_did(None, None).await.unwrap();
 
         let backup_key = "foo";
         let path = "./foo.crypt";
@@ -469,6 +469,11 @@ mod tests {
         wallet.export_wallet(path, backup_key).await.unwrap();
 
         let import_config = build_import_config(path, backup_key);
-        let res = import_config.import_wallet().await.unwrap();
+
+        let wallet_config = import_config.import_wallet().await.unwrap();
+
+        let import_wallet = wallet_config.open_wallet().await.unwrap();
+
+        let res = import_wallet.key_for_did(did_data.did()).await.unwrap();
     }
 }

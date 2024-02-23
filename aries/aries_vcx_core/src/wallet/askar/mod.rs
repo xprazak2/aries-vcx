@@ -164,7 +164,7 @@ impl BaseWallet for AskarWallet {
     }
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct AskarWalletConfig<'a> {
     db_url: String,
     key_method: StoreKeyMethod,
@@ -190,8 +190,22 @@ impl<'a> AskarWalletConfig<'a> {
 
 #[async_trait]
 impl<'a> ManageWallet for AskarWalletConfig<'a> {
-    async fn create_wallet(&self) -> VcxCoreResult<()> {
-        Ok(())
+    async fn create_wallet(&self) -> VcxCoreResult<CoreWallet> {
+        let backend = Store::provision(
+            &self.db_url,
+            self.key_method.clone(),
+            self.pass_key.clone(),
+            self.profile.clone(),
+            false,
+        )
+        .await?;
+
+        println!("provisioned backend!");
+
+        Ok(CoreWallet::new(AskarWallet {
+            backend: BackendStore(Some(backend)),
+            profile: self.profile.clone(),
+        }))
     }
 
     async fn open_wallet(&self) -> VcxCoreResult<CoreWallet> {
@@ -413,11 +427,15 @@ pub mod tests {
             Some(Uuid::new_v4().to_string()),
         );
 
-        Box::new(AskarImportConfig::new(
+        let config = AskarImportConfig::new(
             wallet_config,
             path,
             backup_key,
             KeyDerivationMethod::default(),
-        ))
+        );
+
+        println!("import config: {:?}", config);
+
+        Box::new(config)
     }
 }

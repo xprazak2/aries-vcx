@@ -40,7 +40,7 @@ pub struct WalletConfig {
 
 #[async_trait]
 impl ManageWallet for WalletConfig {
-    async fn create_wallet(&self) -> VcxCoreResult<()> {
+    async fn create_wallet(&self) -> VcxCoreResult<CoreWallet> {
         let credentials = vdrtools::types::domain::wallet::Credentials {
             key: self.wallet_key.clone(),
             key_derivation_method: parse_key_derivation_method(&self.wallet_key_derivation)?,
@@ -73,14 +73,14 @@ impl ManageWallet for WalletConfig {
             .await;
 
         match res {
-            Ok(()) => Ok(()),
+            Ok(()) => self.open_wallet().await,
 
             Err(err) if err.kind() == IndyErrorKind::WalletAlreadyExists => {
                 warn!(
                     "wallet \"{}\" already exists. skipping creation",
                     self.wallet_name
                 );
-                Ok(())
+                self.open_wallet().await
             }
 
             Err(err) => Err(AriesVcxCoreError::from_msg(
