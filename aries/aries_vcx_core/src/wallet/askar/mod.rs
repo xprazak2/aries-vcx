@@ -191,21 +191,20 @@ impl<'a> AskarWalletConfig<'a> {
 #[async_trait]
 impl<'a> ManageWallet for AskarWalletConfig<'a> {
     async fn create_wallet(&self) -> VcxCoreResult<CoreWallet> {
-        let backend = Store::provision(
-            &self.db_url,
-            self.key_method.clone(),
-            self.pass_key.clone(),
-            self.profile.clone(),
-            false,
-        )
-        .await?;
+        // let backend = Store::provision(
+        //     &self.db_url,
+        //     self.key_method.clone(),
+        //     self.pass_key.clone(),
+        //     self.profile.clone(),
+        //     false,
+        // )
+        // .await?;
+
+        let askar_wallet = AskarWallet::create(&self, false).await?;
 
         println!("provisioned backend!");
 
-        Ok(CoreWallet::new(AskarWallet {
-            backend: BackendStore(Some(backend)),
-            profile: self.profile.clone(),
-        }))
+        Ok(CoreWallet::new(askar_wallet))
     }
 
     async fn open_wallet(&self) -> VcxCoreResult<CoreWallet> {
@@ -229,19 +228,38 @@ impl<'a> ManageWallet for AskarWalletConfig<'a> {
 }
 
 impl AskarWallet {
-    pub async fn create(
-        db_url: &str,
-        key_method: StoreKeyMethod,
-        pass_key: PassKey<'_>,
+    // pub async fn create(
+    //     db_url: &str,
+    //     key_method: StoreKeyMethod,
+    //     pass_key: PassKey<'_>,
+    //     recreate: bool,
+    //     profile: Option<String>,
+    // ) -> Result<Self, AriesVcxCoreError> {
+    //     let backend =
+    //         Store::provision(db_url, key_method, pass_key, profile.clone(), recreate).await?;
+
+    //     Ok(Self {
+    //         backend: BackendStore(Some(backend)),
+    //         profile,
+    //     })
+    // }
+
+    pub async fn create<'a>(
+        wallet_config: &AskarWalletConfig<'a>,
         recreate: bool,
-        profile: Option<String>,
     ) -> Result<Self, AriesVcxCoreError> {
-        let backend =
-            Store::provision(db_url, key_method, pass_key, profile.clone(), recreate).await?;
+        let backend = Store::provision(
+            &wallet_config.db_url,
+            wallet_config.key_method.clone(),
+            wallet_config.pass_key.clone(),
+            wallet_config.profile.clone(),
+            recreate,
+        )
+        .await?;
 
         Ok(Self {
             backend: BackendStore(Some(backend)),
-            profile,
+            profile: wallet_config.profile.clone(),
         })
     }
 
@@ -406,17 +424,14 @@ pub mod tests {
     pub async fn dev_setup_askar_wallet() -> Box<dyn BaseWallet> {
         use crate::wallet::askar::AskarWallet;
 
-        Box::new(
-            AskarWallet::create(
-                "sqlite://:memory:",
-                StoreKeyMethod::Unprotected,
-                None.into(),
-                true,
-                Some(Uuid::new_v4().to_string()),
-            )
-            .await
-            .unwrap(),
-        )
+        let wallet_config = AskarWalletConfig::new(
+            "sqlite://:memory:",
+            StoreKeyMethod::Unprotected,
+            None.into(),
+            Some(Uuid::new_v4().to_string()),
+        );
+
+        Box::new(AskarWallet::create(&wallet_config, true).await.unwrap())
     }
 
     pub fn dev_setup_askar_import_config(path: &str, backup_key: &str) -> Box<dyn ImportWallet> {

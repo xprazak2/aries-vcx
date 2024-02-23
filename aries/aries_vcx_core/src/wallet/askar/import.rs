@@ -148,13 +148,16 @@ impl<'a> ImportWallet for AskarImportConfig<'static> {
     async fn import_wallet(&self) -> VcxCoreResult<Box<dyn ManageWallet>> {
         println!("wallet config: {:?}", self.wallet_config);
 
-        let wallet = self.wallet_config.create_wallet().await?;
+        let askar_wallet = AskarWallet::create(&self.wallet_config, false).await?;
+
+        // let wallet = self.wallet_config.create_wallet().await?;
+        // let w = wallet.into_inner();
 
         import(
             &self.exported_file_path,
             &self.key,
             &self.kdf_method,
-            wallet,
+            askar_wallet,
         )
         .await?;
 
@@ -166,7 +169,7 @@ async fn import<'a>(
     path: &str,
     key: &str,
     kdf_method: &KeyDerivationMethod,
-    wallet: CoreWallet,
+    wallet: AskarWallet,
 ) -> VcxCoreResult<()> {
     let exported_file = fs::OpenOptions::new().read(true).open(&path)?;
     println!("preparing file to import");
@@ -199,11 +202,11 @@ async fn import<'a>(
     //     }
     // };
 
-    println!("trying to open a wallet");
+    // println!("trying to open a wallet");
 
     // let wallet = AskarWallet::open(&wallet_config).await?;
 
-    println!("opened wallet");
+    // println!("opened wallet");
 
     let mut reader = chacha20poly1305ietf::Reader::new(reader, import_key, nonce, chunk_size);
 
