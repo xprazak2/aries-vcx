@@ -98,7 +98,9 @@ pub async fn export(
     writer.write_all(&hash(&header)?)?;
 
     while let Some(partial_record) = all_records.next().await? {
-        let rmp_record = rmp_serde::to_vec(&partial_record.try_into_record()?)?;
+        let rmp_record = rmp_serde::to_vec(&partial_record.clone().try_into_record()?)?;
+
+        println!("record: {:?}, {:?}", rmp_record, partial_record);
 
         writer.write_u32::<LittleEndian>(rmp_record.len() as u32)?;
         writer.write_all(&rmp_record)?;

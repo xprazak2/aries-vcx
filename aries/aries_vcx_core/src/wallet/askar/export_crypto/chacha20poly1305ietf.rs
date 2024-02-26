@@ -162,8 +162,11 @@ impl<R: Read> Read for Reader<R> {
             self.rest_buffer.drain(..to_copy);
         }
 
+        println!("reader buf.len: {:?}", buf.len());
+
         // Consume from chunks
         while pos < buf.len() {
+            print!("reader pos: {:?}", pos);
             let chunk_size = self._read_chunk()?;
 
             let chunk = decrypt(&self.chunk_buffer[..chunk_size], &self.key, &self.nonce).map_err(
