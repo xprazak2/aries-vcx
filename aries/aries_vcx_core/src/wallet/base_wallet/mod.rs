@@ -35,7 +35,15 @@ pub trait BaseWallet: RecordWallet + DidWallet + Send + Sync + std::fmt::Debug {
 
     async fn close_wallet(&self) -> VcxCoreResult<()>;
 
-    async fn configure_issuer(&self, key_seed: &str) -> VcxCoreResult<IssuerConfig>;
+    async fn configure_issuer(&self, key_seed: &str) -> VcxCoreResult<IssuerConfig> {
+        Ok(IssuerConfig {
+            institution_did: self
+                .create_and_store_my_did(Some(key_seed), None)
+                .await?
+                .did()
+                .to_string(),
+        })
+    }
 }
 
 #[async_trait]
@@ -55,6 +63,8 @@ impl BaseWallet for Arc<dyn BaseWallet> {
 
 #[cfg(test)]
 mod tests {
+    use std::str::FromStr;
+
     use super::BaseWallet;
     use crate::{
         errors::error::AriesVcxCoreErrorKind,
@@ -437,6 +447,42 @@ mod tests {
         let res = wallet.get_record(category, name).await.unwrap();
         assert_eq!(value, res.value());
         assert_eq!(&tags2, res.tags());
+    }
+
+    #[tokio::test]
+    async fn record_wallet_should_fetch_all() {
+        let wallet = build_test_wallet().await;
+
+        wallet
+            .create_and_store_my_did(Some(&random_seed()), None)
+            .await
+            .unwrap();
+
+        let mut res = wallet.all_records().await.unwrap();
+
+        if let Some(total_count) = res.total_count().unwrap() {
+            assert_eq!(2, total_count);
+        } else {
+            panic!("expected total count when fetching all records");
+        }
+
+        let mut key_count = 0;
+        let mut did_count = 0;
+
+        while let Some(record) = res.next().await.unwrap() {
+            if let Some(category) = record.category() {
+                match RecordCategory::from_str(&category).unwrap() {
+                    RecordCategory::Did => did_count += 1,
+                    RecordCategory::Key => key_count += 1,
+                    _ => (),
+                }
+            } else {
+                panic!("expected record to have a category");
+            }
+        }
+
+        assert_eq!(1, key_count);
+        assert_eq!(1, did_count);
     }
 }
 

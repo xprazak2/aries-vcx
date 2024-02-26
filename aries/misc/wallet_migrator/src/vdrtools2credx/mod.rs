@@ -24,35 +24,49 @@ pub(crate) const INDY_REV_REG_DEF_PRIV: &str = "Indy::RevocationRegistryDefiniti
 pub fn migrate_any_record(record: Record) -> MigrationResult<Option<Record>> {
     trace!("Migrating wallet record {record:?}");
 
-    let record = match record.category() {
+    let record = match record.category().to_string().as_str() {
         // Indy wallet records - to be left alone!
         INDY_DID | INDY_KEY => Ok(Some(record)),
         // Master secret
-        INDY_MASTER_SECRET => {
-            conv::convert_master_secret(record.into()).map(|res| Some(res.into()))
-        }
+        INDY_MASTER_SECRET => Ok(Some(Record::try_from_indy_record(
+            conv::convert_master_secret(record.into())?,
+        )?)),
         // Credential
-        INDY_CRED => conv::convert_cred(record.into()).map(|res| Some(res.into())),
-        INDY_CRED_DEF => conv::convert_cred_def(record.into()).map(|res| Some(res.into())),
-        INDY_CRED_DEF_PRIV => {
-            conv::convert_cred_def_priv_key(record.into()).map(|res| Some(res.into()))
-        }
-        INDY_CRED_DEF_CR_PROOF => {
-            conv::convert_cred_def_correctness_proof(record.into()).map(|res| Some(res.into()))
-        }
-        // // Schema
-        INDY_SCHEMA => conv::convert_schema(record.into()).map(|res| Some(res.into())),
-        INDY_SCHEMA_ID => conv::convert_schema_id(record.into()).map(|res| Some(res.into())),
-        // // Revocation registry
-        INDY_REV_REG => conv::convert_rev_reg(record.into()).map(|res| Some(res.into())),
-        INDY_REV_REG_DELTA => {
-            conv::convert_rev_reg_delta(record.into()).map(|res| Some(res.into()))
-        }
-        INDY_REV_REG_INFO => conv::convert_rev_reg_info(record.into()).map(|res| Some(res.into())),
-        INDY_REV_REG_DEF => conv::convert_rev_reg_def(record.into()).map(|res| Some(res.into())),
-        INDY_REV_REG_DEF_PRIV => {
-            conv::convert_rev_reg_def_priv(record.into()).map(|res| Some(res.into()))
-        }
+        INDY_CRED => Ok(Some(Record::try_from_indy_record(conv::convert_cred(
+            record.into(),
+        )?)?)),
+        INDY_CRED_DEF => Ok(Some(Record::try_from_indy_record(conv::convert_cred_def(
+            record.into(),
+        )?)?)),
+        INDY_CRED_DEF_PRIV => Ok(Some(Record::try_from_indy_record(
+            conv::convert_cred_def_priv_key(record.into())?,
+        )?)),
+        INDY_CRED_DEF_CR_PROOF => Ok(Some(Record::try_from_indy_record(
+            conv::convert_cred_def_correctness_proof(record.into())?,
+        )?)),
+        // // // Schema
+        INDY_SCHEMA => Ok(Some(Record::try_from_indy_record(conv::convert_schema(
+            record.into(),
+        )?)?)),
+        INDY_SCHEMA_ID => Ok(Some(Record::try_from_indy_record(
+            conv::convert_schema_id(record.into())?,
+        )?)),
+        // // // Revocation registry
+        INDY_REV_REG => Ok(Some(Record::try_from_indy_record(conv::convert_rev_reg(
+            record.into(),
+        )?)?)),
+        INDY_REV_REG_DELTA => Ok(Some(Record::try_from_indy_record(
+            conv::convert_rev_reg_delta(record.into())?,
+        )?)),
+        INDY_REV_REG_INFO => Ok(Some(Record::try_from_indy_record(
+            conv::convert_rev_reg_info(record.into())?,
+        )?)),
+        INDY_REV_REG_DEF => Ok(Some(Record::try_from_indy_record(
+            conv::convert_rev_reg_def(record.into())?,
+        )?)),
+        INDY_REV_REG_DEF_PRIV => Ok(Some(Record::try_from_indy_record(
+            conv::convert_rev_reg_def_priv(record.into())?,
+        )?)),
         _ => Ok(None), // Ignore unknown/uninteresting records
     };
 
@@ -65,18 +79,8 @@ mod tests {
     use std::collections::{HashMap, HashSet};
 
     use aries_vcx_core::{
-<<<<<<< HEAD
         anoncreds::credx_anoncreds::RevocationRegistryInfo,
-        wallet::base_wallet::record_category::RecordCategory,
-=======
-        anoncreds::credx_anoncreds::{
-            RevocationRegistryInfo, CATEGORY_CREDENTIAL, CATEGORY_CRED_DEF, CATEGORY_CRED_DEF_PRIV,
-            CATEGORY_CRED_KEY_CORRECTNESS_PROOF, CATEGORY_CRED_MAP_SCHEMA_ID, CATEGORY_CRED_SCHEMA,
-            CATEGORY_LINK_SECRET, CATEGORY_REV_REG, CATEGORY_REV_REG_DEF,
-            CATEGORY_REV_REG_DEF_PRIV, CATEGORY_REV_REG_DELTA, CATEGORY_REV_REG_INFO,
-        },
-        wallet::indy::IndySdkWallet,
->>>>>>> 0c103982e (refactor: use BaseWallet instead of a specific wallet type, closes #1117)
+        wallet::{base_wallet::record_category::RecordCategory, indy::IndySdkWallet},
     };
     use credx::{
         anoncreds_clsignatures::{bn::BigNumber, LinkSecret as ClLinkSecret},

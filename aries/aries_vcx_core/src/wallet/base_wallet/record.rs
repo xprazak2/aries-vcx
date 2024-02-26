@@ -58,23 +58,41 @@ impl PartialRecord {
         &self.tags
     }
 
-    #[cfg(feature = "vdrtools_wallet")]
-    pub fn from_wallet_record(wallet_record: WalletRecord) -> Self {
-        use crate::wallet::indy::indy_tags::IndyTags;
+    // #[cfg(feature = "askar_wallet")]
+    // pub fn from_askar_entry(entry: aries_askar::entry::Entry) -> VcxCoreResult<Self> {
+    //     use crate::wallet::askar::askar_utils::value_from_entry;
 
-        let name = wallet_record.get_id().into();
-        let category = wallet_record.get_type();
-        let value = wallet_record.get_value();
+    //     Ok(Self::builder()
+    //         .name(entry.name.clone())
+    //         .category(Some(entry.category.clone()))
+    //         .value(Some(value_from_entry(entry.clone())?))
+    //         .tags(Some(entry.tags.into()))
+    //         .build())
+    // }
 
-        let found_tags = wallet_record.get_tags();
+    // #[cfg(feature = "askar_wallet")]
+    // pub fn from_askar_key_entry(key_entry: aries_askar::kms::KeyEntry) -> VcxCoreResult<Self> {
+    //     use crate::wallet::askar::KeyValue;
 
-        Self::builder()
-            .name(name)
-            .category(category.map(Into::into))
-            .value(value.map(Into::into))
-            .tags(found_tags.map(|tags| IndyTags::new(tags.clone()).into_record_tags()))
-            .build()
-    }
+    //     let local_key = key_entry.load_local_key()?;
+    //     let name = key_entry.name();
+    //     let tags = key_entry.tags_as_slice();
+
+    //     // check for private key length!!!!
+    //     let value = KeyValue::new(
+    //         local_key_to_bs58_private_key(&local_key)?,
+    //         local_key_to_bs58_public_key(&local_key)?,
+    //     );
+
+    //     let value = serde_json::to_string(&value)?;
+
+    //     Ok(Self::builder()
+    //         .name(name.into())
+    //         .category(Some(INDY_KEY.into()))
+    //         .value(Some(value))
+    //         .tags(Some(tags.to_vec().into()))
+    //         .build())
+    // }
 }
 
 #[async_trait]

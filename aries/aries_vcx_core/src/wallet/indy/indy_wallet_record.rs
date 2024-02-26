@@ -21,7 +21,7 @@ impl IndyWalletRecord {
 
         Ok(Self {
             id: Some(record.name().into()),
-            record_type: Some(record.category().into()),
+            record_type: Some(record.category().to_string()),
             value: Some(record.value().into()),
             tags,
         })

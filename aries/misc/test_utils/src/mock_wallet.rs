@@ -2,8 +2,14 @@ use aries_vcx_core::{
     errors::error::{AriesVcxCoreError, AriesVcxCoreErrorKind, VcxCoreResult},
     wallet::{
         base_wallet::{
-            did_data::DidData, record::Record, record_category::RecordCategory,
-            search_filter::SearchFilter, BaseWallet, DidWallet, RecordWallet,
+            did_data::DidData,
+            did_wallet::DidWallet,
+            issuer_config::IssuerConfig,
+            record::{AllRecords, PartialRecord, Record},
+            record_category::RecordCategory,
+            record_wallet::RecordWallet,
+            search_filter::SearchFilter,
+            BaseWallet,
         },
         record_tags::RecordTags,
         structs_io::UnpackMessageOutput,
@@ -12,27 +18,6 @@ use aries_vcx_core::{
 use async_trait::async_trait;
 use public_key::{Key, KeyType};
 
-<<<<<<< HEAD:aries/misc/test_utils/src/mock_wallet.rs
-=======
-use super::{
-    base_wallet::{
-        did_data::DidData,
-        did_wallet::DidWallet,
-        issuer_config::IssuerConfig,
-        record::{AllRecords, PartialRecord, Record},
-        record_wallet::RecordWallet,
-        search_filter::SearchFilter,
-        BaseWallet,
-    },
-    record_tags::RecordTags,
-    structs_io::UnpackMessageOutput,
-};
-use crate::{
-    errors::error::{AriesVcxCoreError, AriesVcxCoreErrorKind, VcxCoreResult},
-    utils::{self},
-};
-
->>>>>>> 0c103982e (refactor: use BaseWallet instead of a specific wallet type, closes #1117):aries/aries_vcx_core/src/wallet/mock_wallet.rs
 #[derive(Debug)]
 pub struct MockWallet;
 

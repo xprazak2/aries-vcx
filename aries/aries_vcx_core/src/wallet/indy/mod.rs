@@ -1,149 +1,22 @@
-// #[derive(Debug)]
-// pub struct IndySdkWallet {
-//     wallet_handle: WalletHandle,
-// }
+use std::str::FromStr;
 
-// impl IndySdkWallet {
-//     pub fn new(wallet_handle: WalletHandle) -> Self {
-//         IndySdkWallet { wallet_handle }
-//     }
-
-//     pub fn get_wallet_handle(&self) -> WalletHandle {
-//         self.wallet_handle
-//     }
-
-//     #[allow(unreachable_patterns)]
-//     async fn search(
-//         &self,
-//         category: RecordCategory,
-//         search_filter: Option<SearchFilter>,
-//     ) -> VcxCoreResult<Vec<Record>> {
-//         let json_filter = search_filter
-//             .map(|filter| match filter {
-//                 SearchFilter::JsonFilter(inner) => Ok::<String, AriesVcxCoreError>(inner),
-//                 _ => Err(AriesVcxCoreError::from_msg(
-//                     AriesVcxCoreErrorKind::InvalidInput,
-//                     "filter type not supported",
-//                 )),
-//             })
-//             .transpose()?;
-
-//         let query_json = json_filter.unwrap_or("{}".into());
-
-//         let search_handle = Locator::instance()
-//             .non_secret_controller
-//             .open_search(
-//                 self.wallet_handle,
-//                 category.to_string(),
-//                 query_json,
-//                 SEARCH_OPTIONS.into(),
-//             )
-//             .await?;
-
-//         let next = || async {
-//             let record = Locator::instance()
-//                 .non_secret_controller
-//                 .fetch_search_next_records(self.wallet_handle, search_handle, 1)
-//                 .await?;
-
-//             let indy_res: Value = serde_json::from_str(&record)?;
-
-//             indy_res
-//                 .get("records")
-//                 .and_then(|v| v.as_array())
-//                 .and_then(|arr| arr.first())
-//                 .map(|item| IndyRecord::deserialize(item).map_err(AriesVcxCoreError::from))
-//                 .transpose()
-//         };
-
-//         let mut records = Vec::new();
-//         while let Some(indy_record) = next().await? {
-//             records.push(Record::try_from_indy_record(indy_record)?);
-//         }
-
-//         Ok(records)
-//     }
-// }
-
-// #[derive(Clone, Debug, TypedBuilder, Serialize, Deserialize)]
-// #[builder(field_defaults(default))]
-// pub struct WalletConfig {
-//     pub wallet_name: String,
-//     pub wallet_key: String,
-//     pub wallet_key_derivation: String,
-//     #[serde(skip_serializing_if = "Option::is_none")]
-//     #[builder(setter(strip_option))]
-//     pub wallet_type: Option<String>,
-//     #[serde(skip_serializing_if = "Option::is_none")]
-//     #[builder(setter(strip_option))]
-//     pub storage_config: Option<String>,
-//     #[serde(skip_serializing_if = "Option::is_none")]
-//     #[builder(setter(strip_option))]
-//     pub storage_credentials: Option<String>,
-//     #[serde(skip_serializing_if = "Option::is_none")]
-//     #[builder(setter(strip_option))]
-//     pub rekey: Option<String>,
-//     #[serde(skip_serializing_if = "Option::is_none")]
-//     #[builder(setter(strip_option))]
-//     pub rekey_derivation_method: Option<String>,
-// }
-
-// #[derive(Clone, Debug, TypedBuilder, Serialize, Deserialize)]
-// #[builder(field_defaults(default))]
-// pub struct IssuerConfig {
-//     pub institution_did: String,
-// }
-
-// #[derive(Clone, Debug, Serialize, Deserialize)]
-// struct WalletCredentials {
-//     key: String,
-//     #[serde(skip_serializing_if = "Option::is_none")]
-//     rekey: Option<String>,
-//     #[serde(skip_serializing_if = "Option::is_none")]
-//     storage_credentials: Option<serde_json::Value>,
-//     key_derivation_method: String,
-//     #[serde(skip_serializing_if = "Option::is_none")]
-//     rekey_derivation_method: Option<String>,
-// }
-
-// #[derive(Clone, Debug, Serialize, Deserialize)]
-// pub struct IndyWalletRecord {
-//     id: Option<String>,
-//     #[serde(rename = "type")]
-//     record_type: Option<String>,
-//     pub value: Option<String>,
-//     tags: Option<String>,
-// }
-
-// impl IndyWalletRecord {
-//     pub fn from_record(record: Record) -> VcxCoreResult<Self> {
-//         let tags = if record.tags().is_empty() {
-//             None
-//         } else {
-//             Some(serde_json::to_string(&record.tags())?)
-//         };
-
-//         Ok(Self {
-//             id: Some(record.name().into()),
-//             record_type: Some(record.category().to_string()),
-//             value: Some(record.value().into()),
-//             tags,
-//         })
-//     }
-// }
 use async_trait::async_trait;
 use indy_api_types::domain::wallet::{default_key_derivation_method, IndyRecord};
-use vdrtools::{Locator, WalletRecord};
+use serde::Deserialize;
+use serde_json::Value;
+use vdrtools::{indy_wallet::iterator::WalletIterator, Locator, WalletRecord};
 
 use self::indy_tags::IndyTags;
 use super::base_wallet::{
-    did_wallet::DidWallet,
-    issuer_config::IssuerConfig,
-    record::{PartialRecord, Record},
+    record::{AllRecords, PartialRecord, Record},
     record_category::RecordCategory,
+    search_filter::SearchFilter,
     BaseWallet,
 };
-use crate::{errors::error::VcxCoreResult, WalletHandle};
+use crate::{
+    errors::error::{AriesVcxCoreError, AriesVcxCoreErrorKind, VcxCoreResult},
+    WalletHandle,
+};
 
 mod indy_did_wallet;
 mod indy_record_wallet;
@@ -165,7 +38,7 @@ impl PartialRecord {
             .name(name)
             .category(category.map(Into::into))
             .value(value.map(Into::into))
-            .tags(found_tags.map(|tags| IndyTags::new(tags.clone()).into_entry_tags()))
+            .tags(found_tags.map(|tags| IndyTags::new(tags.clone()).into_record_tags()))
             .build()
     }
 }
@@ -205,6 +78,58 @@ impl IndySdkWallet {
     pub fn get_wallet_handle(&self) -> WalletHandle {
         self.wallet_handle
     }
+
+    #[allow(unreachable_patterns)]
+    async fn search(
+        &self,
+        category: RecordCategory,
+        search_filter: Option<SearchFilter>,
+    ) -> VcxCoreResult<Vec<Record>> {
+        let json_filter = search_filter
+            .map(|filter| match filter {
+                SearchFilter::JsonFilter(inner) => Ok::<String, AriesVcxCoreError>(inner),
+                _ => Err(AriesVcxCoreError::from_msg(
+                    AriesVcxCoreErrorKind::InvalidInput,
+                    "filter type not supported",
+                )),
+            })
+            .transpose()?;
+
+        let query_json = json_filter.unwrap_or("{}".into());
+
+        let search_handle = Locator::instance()
+            .non_secret_controller
+            .open_search(
+                self.wallet_handle,
+                category.to_string(),
+                query_json,
+                SEARCH_OPTIONS.into(),
+            )
+            .await?;
+
+        let next = || async {
+            let record = Locator::instance()
+                .non_secret_controller
+                .fetch_search_next_records(self.wallet_handle, search_handle, 1)
+                .await?;
+
+            let indy_res: Value = serde_json::from_str(&record)?;
+
+            indy_res
+                .get("records")
+                .and_then(|v| v.as_array())
+                .and_then(|arr| arr.first())
+                .map(|item| IndyRecord::deserialize(item).map_err(AriesVcxCoreError::from))
+                .transpose()
+        };
+
+        let mut records = Vec::new();
+        while let Some(indy_record) = next().await? {
+            records.push(Record::try_from_indy_record(indy_record)?);
+        }
+
+        Ok(records)
+    }
 }
 
 const WALLET_OPTIONS: &str =
@@ -239,13 +164,28 @@ impl BaseWallet for IndySdkWallet {
 
         Ok(())
     }
+}
 
-    async fn configure_issuer(&self, key_seed: &str) -> VcxCoreResult<IssuerConfig> {
-        let did_data = self.create_and_store_my_did(Some(key_seed), None).await?;
+pub struct AllIndyRecords {
+    iterator: WalletIterator,
+}
 
-        Ok(IssuerConfig {
-            institution_did: did_data.did().to_string(),
-        })
+impl AllIndyRecords {
+    pub fn new(iterator: WalletIterator) -> Self {
+        Self { iterator }
+    }
+}
+
+#[async_trait]
+impl AllRecords for AllIndyRecords {
+    fn total_count(&self) -> VcxCoreResult<Option<usize>> {
+        Ok(self.iterator.get_total_count()?)
+    }
+
+    async fn next(&mut self) -> VcxCoreResult<Option<PartialRecord>> {
+        let item = self.iterator.next().await?;
+
+        Ok(item.map(PartialRecord::from_wallet_record))
     }
 }
 

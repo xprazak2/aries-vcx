@@ -3,19 +3,24 @@ use aries_askar::{
     kms::{KeyAlg, KeyEntry, LocalKey},
     PassKey, Session, Store, StoreKeyMethod,
 };
+use async_trait::async_trait;
 use public_key::Key;
 
 use self::{askar_utils::local_key_to_bs58_name, rng_method::RngMethod};
 use super::base_wallet::{did_value::DidValue, record_category::RecordCategory, BaseWallet};
+
 use crate::errors::error::{AriesVcxCoreError, AriesVcxCoreErrorKind, VcxCoreResult};
 
+mod all_askar_records;
 mod askar_did_wallet;
 mod askar_record_wallet;
 mod askar_utils;
 mod entry;
 mod entry_tags;
+mod key_value;
 mod pack;
 mod packing_types;
+mod partial_record;
 mod rng_method;
 mod sig_type;
 mod unpack;
@@ -26,7 +31,16 @@ pub struct AskarWallet {
     profile: String,
 }
 
-impl BaseWallet for AskarWallet {}
+#[async_trait]
+impl BaseWallet for AskarWallet {
+    async fn export_wallet(&self, _path: &str, _backup_key: &str) -> VcxCoreResult<()> {
+        todo!()
+    }
+
+    async fn close_wallet(&self) -> VcxCoreResult<()> {
+        todo!()
+    }
+}
 
 impl AskarWallet {
     pub async fn create(

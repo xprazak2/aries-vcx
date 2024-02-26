@@ -16,8 +16,8 @@ use aries_vcx_core::{
     wallet::{
         base_wallet::{
             did_wallet::DidWallet, issuer_config::IssuerConfig, record::Record,
-            record_wallet::RecordWallet, search_filter::SearchFilter, BaseWallet, ImportWallet,
-            ManageWallet,
+            record_category::RecordCategory, record_wallet::RecordWallet,
+            search_filter::SearchFilter, BaseWallet, ImportWallet, ManageWallet,
         },
         indy::{
             indy_wallet_record::IndyWalletRecord, restore_wallet_configs::ImportWalletConfigs,
@@ -98,8 +98,7 @@ pub async fn create_main_wallet(config: &WalletConfig) -> LibvcxResult<()> {
 
     // If MS is already in wallet then just continue
     get_main_anoncreds()?
-        // .prover_create_link_secret(wallet.as_ref(), &DEFAULT_LINK_SECRET_ALIAS.to_string())
-        .prover_create_link_secret(&wallet, DEFAULT_LINK_SECRET_ALIAS)
+        .prover_create_link_secret(&wallet, &DEFAULT_LINK_SECRET_ALIAS.to_string())
         .await
         .ok();
 
@@ -302,7 +301,10 @@ pub async fn wallet_delete_wallet_record(xtype: &str, id: &str) -> LibvcxResult<
 pub async fn wallet_search_records(xtype: &str, query_json: &str) -> LibvcxResult<String> {
     let wallet = get_main_wallet()?;
     let records = wallet
-        .search_record(xtype, Some(SearchFilter::JsonFilter(query_json.into())))
+        .search_record(
+            RecordCategory::from_str(xtype)?,
+            Some(SearchFilter::JsonFilter(query_json.into())),
+        )
         .await?;
 
     let indy_records = records
@@ -344,7 +346,10 @@ pub mod test_utils {
         DEFAULT_WALLET_BACKUP_KEY, DEFAULT_WALLET_KEY, WALLET_KDF_RAW,
     };
     use aries_vcx_core::wallet::{
-        base_wallet::{did_wallet::DidWallet, record::Record, record_wallet::RecordWallet},
+        base_wallet::{
+            did_wallet::DidWallet, record::Record, record_category::RecordCategory,
+            record_wallet::RecordWallet,
+        },
         indy::wallet_config::WalletConfig,
     };
 
@@ -423,7 +428,7 @@ mod tests {
     };
 
     use aries_vcx_core::wallet::{
-        base_wallet::ManageWallet,
+        base_wallet::{record_category::RecordCategory, ManageWallet},
         indy::{indy_wallet_record::IndyWalletRecord, wallet_config::WalletConfig},
     };
     use test_utils::devsetup::{SetupMocks, TempFile};
