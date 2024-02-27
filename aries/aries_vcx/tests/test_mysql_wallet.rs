@@ -40,8 +40,7 @@ mod dbtests {
             .storage_credentials(storage_credentials)
             .build();
 
-        config_wallet.create_wallet().await?;
-        let wallet = config_wallet.open_wallet().await?;
+        let wallet = config_wallet.create_wallet().await?;
         wallet.configure_issuer(enterprise_seed).await?;
 
         wallet.create_and_store_my_did(None, None).await?;

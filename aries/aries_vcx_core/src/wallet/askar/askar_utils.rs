@@ -3,7 +3,6 @@ use aries_askar::{
     kms::{KeyAlg, LocalKey},
 };
 use public_key::{Key, KeyType};
-
 use serde::Deserialize;
 
 use crate::{

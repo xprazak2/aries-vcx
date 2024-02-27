@@ -44,14 +44,14 @@ pub fn migrate_any_record(record: Record) -> MigrationResult<Option<Record>> {
         INDY_CRED_DEF_CR_PROOF => Ok(Some(Record::try_from_indy_record(
             conv::convert_cred_def_correctness_proof(record.into())?,
         )?)),
-        // // // Schema
+        // Schema
         INDY_SCHEMA => Ok(Some(Record::try_from_indy_record(conv::convert_schema(
             record.into(),
         )?)?)),
         INDY_SCHEMA_ID => Ok(Some(Record::try_from_indy_record(
             conv::convert_schema_id(record.into())?,
         )?)),
-        // // // Revocation registry
+        // Revocation registry
         INDY_REV_REG => Ok(Some(Record::try_from_indy_record(conv::convert_rev_reg(
             record.into(),
         )?)?)),

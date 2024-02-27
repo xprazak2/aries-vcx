@@ -49,8 +49,7 @@ impl AgentBuilder<Arc<dyn BaseWallet>> {
     pub async fn new_from_wallet_config(
         config: WalletConfig,
     ) -> Result<Agent<sqlx::MySqlPool>, AriesVcxCoreError> {
-        config.create_wallet().await?;
-        let wallet = config.open_wallet().await?;
+        let wallet = config.create_wallet().await?;
 
         info!("Connecting to persistence layer");
         let persistence = Arc::new(get_persistence().await);

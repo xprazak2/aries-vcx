@@ -25,16 +25,44 @@ impl Deref for NapiWallet {
     }
 }
 
+#[allow(unused_variables)]
+fn parse_wallet_config(config: &str) -> napi::Result<Box<dyn ManageWallet + Sync + Send>> {
+    #[cfg(feature = "vdrtools_wallet")]
+    let wallet_config = {
+        Box::new(
+            serde_json::from_str::<WalletConfig>(config)
+                .map_err(|err| {
+                    LibvcxError::from_msg(
+                        LibvcxErrorKind::InvalidConfiguration,
+                        format!("Serialization error: {:?}", err),
+                    )
+                })
+                .map_err(to_napi_err)?,
+        )
+    };
+
+    #[cfg(feature = "askar_wallet")]
+    let wallet_config = {
+        use libvcx_core::aries_vcx::aries_vcx_core::wallet::askar::askar_wallet_config::AskarWalletConfig;
+
+        Box::new(
+            serde_json::from_str::<AskarWalletConfig>(config)
+                .map_err(|err| {
+                    LibvcxError::from_msg(
+                        LibvcxErrorKind::InvalidConfiguration,
+                        format!("Serialization error: {:?}", err),
+                    )
+                })
+                .map_err(to_napi_err)?,
+        )
+    };
+
+    Ok(wallet_config)
+}
+
 #[napi]
 pub async fn wallet_open_as_main(wallet_config: String) -> napi::Result<NapiWallet> {
-    let wallet_config = serde_json::from_str::<WalletConfig>(&wallet_config)
-        .map_err(|err| {
-            LibvcxError::from_msg(
-                LibvcxErrorKind::InvalidConfiguration,
-                format!("Serialization error: {:?}", err),
-            )
-        })
-        .map_err(to_napi_err)?;
+    let wallet_config = parse_wallet_config(&wallet_config)?;
     let wallet = wallet::open_as_main_wallet(&wallet_config)
         .await
         .map_err(to_napi_err)?;
@@ -43,14 +71,7 @@ pub async fn wallet_open_as_main(wallet_config: String) -> napi::Result<NapiWall
 
 #[napi]
 pub async fn wallet_create_main(wallet_config: String) -> napi::Result<()> {
-    let wallet_config = serde_json::from_str::<WalletConfig>(&wallet_config)
-        .map_err(|err| {
-            LibvcxError::from_msg(
-                LibvcxErrorKind::InvalidConfiguration,
-                format!("Serialization error: {:?}", err),
-            )
-        })
-        .map_err(to_napi_err)?;
+    let wallet_config = parse_wallet_config(&wallet_config)?;
     wallet::create_main_wallet(&wallet_config)
         .await
         .map_err(to_napi_err)

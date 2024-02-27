@@ -22,8 +22,7 @@ pub async fn dev_setup_wallet_indy(key_seed: &str) -> (String, Arc<dyn BaseWalle
         rekey_derivation_method: None,
     };
 
-    config_wallet.create_wallet().await.unwrap();
-    let wallet = config_wallet.open_wallet().await.unwrap();
+    let wallet = config_wallet.create_wallet().await.unwrap();
 
     let did_data = wallet
         .create_and_store_my_did(Some(key_seed), None)

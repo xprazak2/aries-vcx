@@ -22,11 +22,26 @@ pub trait ImportWallet {
 
 #[async_trait]
 pub trait ManageWallet {
-    async fn create_wallet(&self) -> VcxCoreResult<()>;
+    async fn create_wallet(&self) -> VcxCoreResult<Arc<dyn BaseWallet>>;
 
     async fn open_wallet(&self) -> VcxCoreResult<Arc<dyn BaseWallet>>;
 
     async fn delete_wallet(&self) -> VcxCoreResult<()>;
+}
+
+#[async_trait]
+impl ManageWallet for Box<dyn ManageWallet + Send + Sync> {
+    async fn create_wallet(&self) -> VcxCoreResult<Arc<dyn BaseWallet>> {
+        self.as_ref().create_wallet().await
+    }
+
+    async fn open_wallet(&self) -> VcxCoreResult<Arc<dyn BaseWallet>> {
+        self.as_ref().open_wallet().await
+    }
+
+    async fn delete_wallet(&self) -> VcxCoreResult<()> {
+        self.as_ref().delete_wallet().await
+    }
 }
 
 #[async_trait]
@@ -63,7 +78,7 @@ impl BaseWallet for Arc<dyn BaseWallet> {
 
 #[cfg(test)]
 mod tests {
-    use std::str::FromStr;
+    use std::{str::FromStr, sync::Arc};
 
     use super::BaseWallet;
     use crate::{
@@ -76,7 +91,7 @@ mod tests {
     };
 
     #[allow(unused_variables)]
-    async fn build_test_wallet() -> Box<dyn BaseWallet> {
+    async fn build_test_wallet() -> Arc<dyn BaseWallet> {
         #[cfg(feature = "vdrtools_wallet")]
         let wallet = {
             use crate::wallet::indy::tests::dev_setup_indy_wallet;
@@ -471,7 +486,7 @@ mod tests {
 
         while let Some(record) = res.next().await.unwrap() {
             if let Some(category) = record.category() {
-                match RecordCategory::from_str(&category).unwrap() {
+                match RecordCategory::from_str(category).unwrap() {
                     RecordCategory::Did => did_count += 1,
                     RecordCategory::Key => key_count += 1,
                     _ => (),
@@ -489,14 +504,16 @@ mod tests {
 #[cfg(test)]
 #[cfg(all(feature = "vdrtools_wallet", feature = "askar_wallet"))]
 mod compat_tests {
+    use std::sync::Arc;
+
     use crate::wallet::{
         askar::tests::dev_setup_askar_wallet, base_wallet::BaseWallet,
         indy::tests::dev_setup_indy_wallet,
     };
 
     async fn pack_and_unpack_anoncrypt(
-        sender: Box<dyn BaseWallet>,
-        recipient: Box<dyn BaseWallet>,
+        sender: Arc<dyn BaseWallet>,
+        recipient: Arc<dyn BaseWallet>,
     ) {
         let did_data = recipient.create_and_store_my_did(None, None).await.unwrap();
 
@@ -513,8 +530,8 @@ mod compat_tests {
     }
 
     async fn pack_and_unpack_authcrypt(
-        sender: Box<dyn BaseWallet>,
-        recipient: Box<dyn BaseWallet>,
+        sender: Arc<dyn BaseWallet>,
+        recipient: Arc<dyn BaseWallet>,
     ) {
         let sender_did_data = sender.create_and_store_my_did(None, None).await.unwrap();
         let recipient_did_data = recipient.create_and_store_my_did(None, None).await.unwrap();

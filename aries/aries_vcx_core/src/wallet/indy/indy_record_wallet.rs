@@ -1,13 +1,13 @@
 use async_trait::async_trait;
 use indy_api_types::domain::wallet::IndyRecord;
-use vdrtools::{indy_wallet::iterator::WalletIterator, Locator};
+use vdrtools::Locator;
 
-use super::{indy_tags::IndyTags, WALLET_OPTIONS};
+use super::{all_indy_records::AllIndyRecords, indy_tags::IndyTags, WALLET_OPTIONS};
 use crate::{
     errors::error::VcxCoreResult,
     wallet::{
         base_wallet::{
-            record::{AllRecords, PartialRecord, Record},
+            record::{AllRecords, Record},
             record_category::RecordCategory,
             record_wallet::RecordWallet,
             search_filter::SearchFilter,
@@ -16,29 +16,6 @@ use crate::{
         record_tags::RecordTags,
     },
 };
-
-pub struct AllIndyRecords {
-    iterator: WalletIterator,
-}
-
-impl AllIndyRecords {
-    pub fn new(iterator: WalletIterator) -> Self {
-        Self { iterator }
-    }
-}
-
-#[async_trait]
-impl AllRecords for AllIndyRecords {
-    fn total_count(&self) -> VcxCoreResult<Option<usize>> {
-        Ok(self.iterator.get_total_count()?)
-    }
-
-    async fn next(&mut self) -> VcxCoreResult<Option<PartialRecord>> {
-        let item = self.iterator.next().await?;
-
-        Ok(item.map(PartialRecord::from_wallet_record))
-    }
-}
 
 #[async_trait]
 impl RecordWallet for IndySdkWallet {

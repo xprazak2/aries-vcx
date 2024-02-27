@@ -1,22 +1,26 @@
 use aries_askar::{
     entry::EntryTag,
     kms::{KeyAlg, KeyEntry, LocalKey},
-    PassKey, Session, Store, StoreKeyMethod,
+    Session, Store,
 };
 use async_trait::async_trait;
 use public_key::Key;
 
-use self::{askar_utils::local_key_to_bs58_name, rng_method::RngMethod};
+use self::{
+    askar_utils::local_key_to_bs58_name, askar_wallet_config::AskarWalletConfig,
+    rng_method::RngMethod,
+};
 use super::base_wallet::{did_value::DidValue, record_category::RecordCategory, BaseWallet};
-
 use crate::errors::error::{AriesVcxCoreError, AriesVcxCoreErrorKind, VcxCoreResult};
 
 mod all_askar_records;
 mod askar_did_wallet;
 mod askar_record_wallet;
 mod askar_utils;
+pub mod askar_wallet_config;
 mod entry;
 mod entry_tags;
+mod key_method;
 mod key_value;
 mod pack;
 mod packing_types;
@@ -44,30 +48,34 @@ impl BaseWallet for AskarWallet {
 
 impl AskarWallet {
     pub async fn create(
-        db_url: &str,
-        key_method: StoreKeyMethod,
-        pass_key: PassKey<'_>,
+        wallet_config: &AskarWalletConfig,
         recreate: bool,
-        profile: &str,
     ) -> Result<Self, AriesVcxCoreError> {
-        let backend =
-            Store::provision(db_url, key_method, pass_key, Some(profile.into()), recreate).await?;
+        let backend = Store::provision(
+            wallet_config.db_url(),
+            (*wallet_config.key_method()).into(),
+            wallet_config.pass_key().into(),
+            Some(wallet_config.profile().to_owned()),
+            recreate,
+        )
+        .await?;
 
         Ok(Self {
             backend,
-            profile: profile.into(),
+            profile: wallet_config.profile().into(),
         })
     }
 
-    pub async fn open(
-        db_url: &str,
-        key_method: Option<StoreKeyMethod>,
-        pass_key: PassKey<'_>,
-        profile: &str,
-    ) -> Result<Self, AriesVcxCoreError> {
+    pub async fn open(wallet_config: &AskarWalletConfig) -> Result<Self, AriesVcxCoreError> {
         Ok(Self {
-            backend: Store::open(db_url, key_method, pass_key, Some(profile.into())).await?,
-            profile: profile.into(),
+            backend: Store::open(
+                wallet_config.db_url(),
+                Some((*wallet_config.key_method()).into()),
+                wallet_config.pass_key().into(),
+                Some(wallet_config.profile().into()),
+            )
+            .await?,
+            profile: wallet_config.profile().into(),
         })
     }
 
@@ -191,24 +199,23 @@ impl AskarWallet {
 
 #[cfg(test)]
 pub mod tests {
-    use crate::wallet::base_wallet::BaseWallet;
+    use std::sync::Arc;
 
-    pub async fn dev_setup_askar_wallet() -> Box<dyn BaseWallet> {
-        use aries_askar::StoreKeyMethod;
+    use crate::wallet::{
+        askar::{askar_wallet_config::AskarWalletConfig, key_method::KeyMethod},
+        base_wallet::{BaseWallet, ManageWallet},
+    };
+
+    pub async fn dev_setup_askar_wallet() -> Arc<dyn BaseWallet> {
         use uuid::Uuid;
 
-        use crate::wallet::askar::AskarWallet;
+        let config = AskarWalletConfig::new(
+            "sqlite://:memory:",
+            KeyMethod::Unprotected,
+            "",
+            &Uuid::new_v4().to_string(),
+        );
 
-        Box::new(
-            AskarWallet::create(
-                "sqlite://:memory:",
-                StoreKeyMethod::Unprotected,
-                None.into(),
-                true,
-                &Uuid::new_v4().to_string(),
-            )
-            .await
-            .unwrap(),
-        )
+        config.create_wallet().await.unwrap()
     }
 }

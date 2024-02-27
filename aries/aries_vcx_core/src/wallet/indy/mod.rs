@@ -4,44 +4,26 @@ use async_trait::async_trait;
 use indy_api_types::domain::wallet::{default_key_derivation_method, IndyRecord};
 use serde::Deserialize;
 use serde_json::Value;
-use vdrtools::{indy_wallet::iterator::WalletIterator, Locator, WalletRecord};
+use vdrtools::Locator;
 
 use self::indy_tags::IndyTags;
 use super::base_wallet::{
-    record::{AllRecords, PartialRecord, Record},
-    record_category::RecordCategory,
-    search_filter::SearchFilter,
-    BaseWallet,
+    record::Record, record_category::RecordCategory, search_filter::SearchFilter, BaseWallet,
 };
 use crate::{
     errors::error::{AriesVcxCoreError, AriesVcxCoreErrorKind, VcxCoreResult},
     WalletHandle,
 };
 
+mod all_indy_records;
 mod indy_did_wallet;
 mod indy_record_wallet;
 mod indy_tags;
 mod indy_utils;
 pub mod indy_wallet_record;
+mod partial_record;
 pub mod restore_wallet_configs;
 pub mod wallet_config;
-
-impl PartialRecord {
-    pub fn from_wallet_record(wallet_record: WalletRecord) -> Self {
-        let name = wallet_record.get_id().into();
-        let category = wallet_record.get_type();
-        let value = wallet_record.get_value();
-
-        let found_tags = wallet_record.get_tags();
-
-        Self::builder()
-            .name(name)
-            .category(category.map(Into::into))
-            .value(value.map(Into::into))
-            .tags(found_tags.map(|tags| IndyTags::new(tags.clone()).into_record_tags()))
-            .build()
-    }
-}
 
 impl Record {
     pub fn try_from_indy_record(indy_record: IndyRecord) -> VcxCoreResult<Record> {
@@ -166,29 +148,6 @@ impl BaseWallet for IndySdkWallet {
     }
 }
 
-pub struct AllIndyRecords {
-    iterator: WalletIterator,
-}
-
-impl AllIndyRecords {
-    pub fn new(iterator: WalletIterator) -> Self {
-        Self { iterator }
-    }
-}
-
-#[async_trait]
-impl AllRecords for AllIndyRecords {
-    fn total_count(&self) -> VcxCoreResult<Option<usize>> {
-        Ok(self.iterator.get_total_count()?)
-    }
-
-    async fn next(&mut self) -> VcxCoreResult<Option<PartialRecord>> {
-        let item = self.iterator.next().await?;
-
-        Ok(item.map(PartialRecord::from_wallet_record))
-    }
-}
-
 #[cfg(test)]
 pub mod tests {
     use std::sync::Arc;
@@ -210,7 +169,6 @@ pub mod tests {
             rekey_derivation_method: None,
         };
 
-        config_wallet.create_wallet().await.unwrap();
-        config_wallet.open_wallet().await.unwrap()
+        config_wallet.create_wallet().await.unwrap()
     }
 }

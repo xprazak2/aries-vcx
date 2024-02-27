@@ -26,7 +26,6 @@ impl IndyTags {
             .into_iter()
             .map(|(key, val)| RecordTag::new(&key, &val))
             .collect();
-        // let mut items: Vec<RecordTag> = self.0.into_iter().map(RecordTag::from_pair).collect();
         items.sort();
 
         RecordTags::new(items)

@@ -61,8 +61,7 @@ pub fn new_indy_profile(
     enable_logging();
 
     block_on(async {
-        wallet_config.create_wallet().await?;
-        let wallet = wallet_config.open_wallet().await?;
+        let wallet = wallet_config.create_wallet().await?;
 
         let anoncreds = IndyCredxAnonCreds;
 

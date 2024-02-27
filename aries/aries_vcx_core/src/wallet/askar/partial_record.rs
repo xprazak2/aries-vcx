@@ -1,3 +1,4 @@
+use super::{askar_utils::value_from_entry, key_value::KeyValue};
 use crate::{
     errors::error::VcxCoreResult,
     wallet::{
@@ -5,8 +6,6 @@ use crate::{
         base_wallet::{record::PartialRecord, record_category::RecordCategory},
     },
 };
-
-use super::{askar_utils::value_from_entry, key_value::KeyValue};
 
 impl PartialRecord {
     pub fn from_askar_entry(entry: aries_askar::entry::Entry) -> VcxCoreResult<Self> {

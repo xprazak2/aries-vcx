@@ -58,8 +58,8 @@ fn setup_global_wallet(wallet: Arc<dyn BaseWallet>) -> LibvcxResult<()> {
     Ok(())
 }
 
-pub async fn open_as_main_wallet(
-    wallet_config: &WalletConfig,
+pub async fn open_as_main_wallet<T: ManageWallet + Send + Sync>(
+    wallet_config: &T,
 ) -> LibvcxResult<Arc<dyn BaseWallet>> {
     let wallet = wallet_config.open_wallet().await?;
     setup_global_wallet(wallet.clone())?;
@@ -67,10 +67,9 @@ pub async fn open_as_main_wallet(
 }
 
 pub async fn create_and_open_as_main_wallet(
-    wallet_config: &WalletConfig,
+    wallet_config: &impl ManageWallet,
 ) -> LibvcxResult<Arc<dyn BaseWallet>> {
-    wallet_config.create_wallet().await?;
-    let wallet = wallet_config.open_wallet().await?;
+    let wallet = wallet_config.create_wallet().await?;
 
     setup_global_wallet(wallet.clone())?;
     Ok(wallet)
@@ -91,7 +90,7 @@ pub async fn close_main_wallet() -> LibvcxResult<()> {
     Ok(())
 }
 
-pub async fn create_main_wallet(config: &WalletConfig) -> LibvcxResult<()> {
+pub async fn create_main_wallet<T: ManageWallet>(config: &T) -> LibvcxResult<()> {
     let wallet_handle = create_and_open_as_main_wallet(config).await?;
     trace!("Created wallet with handle {:?}", wallet_handle);
     let wallet = get_main_wallet()?;
@@ -324,10 +323,8 @@ pub async fn wallet_import(config: &ImportWalletConfigs) -> LibvcxResult<()> {
 
 pub async fn wallet_migrate(wallet_config: &WalletConfig) -> LibvcxResult<()> {
     let src_wallet = get_main_wallet()?;
-    info!("Assuring target wallet exists.");
-    wallet_config.create_wallet().await?;
-    let dest_wallet = wallet_config.open_wallet().await?;
     info!("Opening target wallet.");
+    let dest_wallet = wallet_config.create_wallet().await?;
 
     let migration_res = wallet_migrator::migrate_wallet(
         src_wallet,
@@ -426,7 +423,6 @@ mod tests {
         aries_vcx_core::wallet::indy::restore_wallet_configs::ImportWalletConfigs,
         global::settings::{DEFAULT_WALLET_BACKUP_KEY, DEFAULT_WALLET_KEY, WALLET_KDF_RAW},
     };
-
     use aries_vcx_core::wallet::{
         base_wallet::{record_category::RecordCategory, ManageWallet},
         indy::{indy_wallet_record::IndyWalletRecord, wallet_config::WalletConfig},
