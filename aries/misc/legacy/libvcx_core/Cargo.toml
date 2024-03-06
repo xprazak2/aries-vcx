@@ -7,7 +7,7 @@ edition.workspace = true
 
 [features]
 fatal_warnings = []
-
+# default = ["vdrtools_wallet"]
 askar_wallet = ["aries_vcx/askar_wallet", "aries_vcx_core/askar_wallet"]
 vdrtools_wallet = ["aries_vcx/vdrtools_wallet", "aries_vcx_core/vdrtools_wallet"]
 

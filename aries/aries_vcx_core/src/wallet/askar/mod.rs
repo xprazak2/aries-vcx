@@ -15,12 +15,13 @@ use crate::errors::error::{AriesVcxCoreError, AriesVcxCoreErrorKind, VcxCoreResu
 
 mod all_askar_records;
 mod askar_did_wallet;
+pub mod askar_import_config;
 mod askar_record_wallet;
 mod askar_utils;
 pub mod askar_wallet_config;
 mod entry;
 mod entry_tags;
-mod key_method;
+pub mod key_method;
 mod key_value;
 mod pack;
 mod packing_types;
@@ -199,14 +200,14 @@ impl AskarWallet {
 
 #[cfg(test)]
 pub mod tests {
-    use std::sync::Arc;
-
     use crate::wallet::{
         askar::{askar_wallet_config::AskarWalletConfig, key_method::KeyMethod},
-        base_wallet::{BaseWallet, ManageWallet},
+        base_wallet::ManageWallet,
     };
 
-    pub async fn dev_setup_askar_wallet() -> Arc<dyn BaseWallet> {
+    use super::AskarWallet;
+
+    pub async fn dev_setup_askar_wallet() -> AskarWallet {
         use uuid::Uuid;
 
         let config = AskarWalletConfig::new(

@@ -38,20 +38,20 @@ impl HolderWrapper {
     }
 }
 
-pub struct ServiceCredentialsHolder {
+pub struct ServiceCredentialsHolder<T> {
     ledger_read: Arc<DefaultIndyLedgerRead>,
     anoncreds: IndyCredxAnonCreds,
-    wallet: Arc<dyn BaseWallet>,
+    wallet: Arc<T>,
     creds_holder: ObjectCache<HolderWrapper>,
-    service_connections: Arc<ServiceConnections>,
+    service_connections: Arc<ServiceConnections<T>>,
 }
 
-impl ServiceCredentialsHolder {
+impl<T: BaseWallet> ServiceCredentialsHolder<T> {
     pub fn new(
         ledger_read: Arc<DefaultIndyLedgerRead>,
         anoncreds: IndyCredxAnonCreds,
-        wallet: Arc<dyn BaseWallet>,
-        service_connections: Arc<ServiceConnections>,
+        wallet: Arc<T>,
+        service_connections: Arc<ServiceConnections<T>>,
     ) -> Self {
         Self {
             service_connections,
@@ -82,7 +82,11 @@ impl ServiceCredentialsHolder {
         let mut holder = Holder::create("")?;
         holder.set_proposal(propose_credential.clone())?;
         connection
-            .send_message(&self.wallet, &propose_credential.into(), &VcxHttpClient)
+            .send_message(
+                self.wallet.as_ref(),
+                &propose_credential.into(),
+                &VcxHttpClient,
+            )
             .await?;
 
         self.creds_holder.insert(
@@ -122,13 +126,13 @@ impl ServiceCredentialsHolder {
         let send_closure: SendClosure = Box::new(|msg: AriesMessage| {
             Box::pin(async move {
                 connection
-                    .send_message(&self.wallet, &msg, &VcxHttpClient)
+                    .send_message(self.wallet.as_ref(), &msg, &VcxHttpClient)
                     .await
             })
         });
         let msg_response = holder
             .prepare_credential_request(
-                &self.wallet,
+                self.wallet.as_ref(),
                 self.ledger_read.as_ref(),
                 &self.anoncreds,
                 pw_did.parse()?,
@@ -152,7 +156,7 @@ impl ServiceCredentialsHolder {
 
         holder
             .process_credential(
-                &self.wallet,
+                self.wallet.as_ref(),
                 self.ledger_read.as_ref(),
                 &self.anoncreds,
                 msg_issue_credential.clone(),
@@ -164,7 +168,7 @@ impl ServiceCredentialsHolder {
                 let send_closure: SendClosure = Box::new(|msg: AriesMessage| {
                     Box::pin(async move {
                         connection
-                            .send_message(&self.wallet, &msg, &VcxHttpClient)
+                            .send_message(self.wallet.as_ref(), &msg, &VcxHttpClient)
                             .await
                     })
                 });

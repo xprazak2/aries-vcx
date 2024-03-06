@@ -37,18 +37,18 @@ impl IssuerWrapper {
     }
 }
 
-pub struct ServiceCredentialsIssuer {
+pub struct ServiceCredentialsIssuer<T> {
     anoncreds: IndyCredxAnonCreds,
-    wallet: Arc<dyn BaseWallet>,
+    wallet: Arc<T>,
     creds_issuer: ObjectCache<IssuerWrapper>,
-    service_connections: Arc<ServiceConnections>,
+    service_connections: Arc<ServiceConnections<T>>,
 }
 
-impl ServiceCredentialsIssuer {
+impl<T: BaseWallet> ServiceCredentialsIssuer<T> {
     pub fn new(
         anoncreds: IndyCredxAnonCreds,
-        wallet: Arc<dyn BaseWallet>,
-        service_connections: Arc<ServiceConnections>,
+        wallet: Arc<T>,
+        service_connections: Arc<ServiceConnections<T>>,
     ) -> Self {
         Self {
             service_connections,
@@ -94,13 +94,13 @@ impl ServiceCredentialsIssuer {
         };
         let connection = self.service_connections.get_by_id(&connection_id)?;
         issuer
-            .build_credential_offer_msg(&self.wallet, &self.anoncreds, offer_info, None)
+            .build_credential_offer_msg(self.wallet.as_ref(), &self.anoncreds, offer_info, None)
             .await?;
 
         let send_closure: SendClosure = Box::new(|msg: AriesMessage| {
             Box::pin(async move {
                 connection
-                    .send_message(&self.wallet, &msg, &VcxHttpClient)
+                    .send_message(self.wallet.as_ref(), &msg, &VcxHttpClient)
                     .await
             })
         });
@@ -153,13 +153,13 @@ impl ServiceCredentialsIssuer {
         let send_closure: SendClosure = Box::new(|msg: AriesMessage| {
             Box::pin(async move {
                 connection
-                    .send_message(&self.wallet, &msg, &VcxHttpClient)
+                    .send_message(self.wallet.as_ref(), &msg, &VcxHttpClient)
                     .await
             })
         });
 
         issuer
-            .build_credential(&self.wallet, &self.anoncreds)
+            .build_credential(self.wallet.as_ref(), &self.anoncreds)
             .await?;
         match issuer.get_state() {
             IssuerState::Failed => {

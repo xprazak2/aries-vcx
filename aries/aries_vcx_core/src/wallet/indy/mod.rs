@@ -150,14 +150,11 @@ impl BaseWallet for IndySdkWallet {
 
 #[cfg(test)]
 pub mod tests {
-    use std::sync::Arc;
+    use crate::wallet::{base_wallet::ManageWallet, indy::wallet_config::WalletConfig};
 
-    use crate::wallet::{
-        base_wallet::{BaseWallet, ManageWallet},
-        indy::wallet_config::WalletConfig,
-    };
+    use super::IndySdkWallet;
 
-    pub async fn dev_setup_indy_wallet() -> Arc<dyn BaseWallet> {
+    pub async fn dev_setup_indy_wallet() -> IndySdkWallet {
         let config_wallet = WalletConfig {
             wallet_name: format!("wallet_{}", uuid::Uuid::new_v4()),
             wallet_key: "8dvfYSt5d1taSd6yJdpjq4emkwsPDDLYxkNFysFD2cZY".into(),

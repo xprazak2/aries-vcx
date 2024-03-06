@@ -1,3 +1,4 @@
+use aries_vcx_core::wallet::base_wallet::BaseWallet;
 use messages::msg_fields::protocols::coordinate_mediation::{
     CoordinateMediation, MediateGrant, MediateGrantContent, MediateGrantDecorators,
 };
@@ -6,7 +7,7 @@ use uuid::Uuid;
 use super::utils::prelude::*;
 
 pub async fn handle_mediation_coord(
-    agent: &ArcAgent<impl MediatorPersistence>,
+    agent: &ArcAgent<impl BaseWallet, impl MediatorPersistence>,
     coord_msg: CoordinateMediation,
     auth_pubkey: &str,
 ) -> Result<CoordinateMediation, String> {

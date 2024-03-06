@@ -1,15 +1,13 @@
-use std::sync::Arc;
-
 use aries_vcx_core::{
     global::settings::{DEFAULT_WALLET_KEY, WALLET_KDF_RAW},
     wallet::{
-        base_wallet::{BaseWallet, ManageWallet},
-        indy::wallet_config::WalletConfig,
+        base_wallet::{did_wallet::DidWallet, ManageWallet},
+        indy::{wallet_config::WalletConfig, IndySdkWallet},
     },
 };
 use log::info;
 
-pub async fn dev_setup_wallet_indy(key_seed: &str) -> (String, Arc<dyn BaseWallet>) {
+pub async fn dev_setup_wallet_indy(key_seed: &str) -> (String, IndySdkWallet) {
     info!("dev_setup_wallet_indy >>");
     let config_wallet = WalletConfig {
         wallet_name: format!("wallet_{}", uuid::Uuid::new_v4()),

@@ -28,14 +28,14 @@ use crate::{
     AgentResult,
 };
 
-pub struct ServiceOutOfBand {
-    wallet: Arc<dyn BaseWallet>,
+pub struct ServiceOutOfBand<T> {
+    wallet: Arc<T>,
     service_endpoint: ServiceEndpoint,
     out_of_band: Arc<ObjectCache<GenericOutOfBand>>,
 }
 
-impl ServiceOutOfBand {
-    pub fn new(wallet: Arc<dyn BaseWallet>, service_endpoint: ServiceEndpoint) -> Self {
+impl<T: BaseWallet> ServiceOutOfBand<T> {
+    pub fn new(wallet: Arc<T>, service_endpoint: ServiceEndpoint) -> Self {
         Self {
             wallet,
             service_endpoint,
@@ -44,7 +44,7 @@ impl ServiceOutOfBand {
     }
 
     pub async fn create_invitation(&self) -> AgentResult<AriesMessage> {
-        let public_key = generate_keypair(&self.wallet, KeyType::Ed25519).await?;
+        let public_key = generate_keypair(self.wallet.as_ref(), KeyType::Ed25519).await?;
         let service = {
             let service_id = Uuid::new_v4().to_string();
             ServiceSov::DIDCommV1(ServiceDidCommV1::new(

@@ -13,8 +13,8 @@ pub struct MigrationStats {
 }
 
 pub async fn migrate_records<E>(
-    src_wallet: impl BaseWallet,
-    dest_wallet: impl BaseWallet,
+    src_wallet: &impl BaseWallet,
+    dest_wallet: &impl BaseWallet,
     mut migrate_fn: impl FnMut(Record) -> Result<Option<Record>, E>,
 ) -> VcxCoreResult<MigrationStats>
 where

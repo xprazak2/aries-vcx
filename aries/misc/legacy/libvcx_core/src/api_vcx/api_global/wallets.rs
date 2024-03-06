@@ -17,16 +17,12 @@ use aries_vcx_core::{
         base_wallet::{
             did_wallet::DidWallet, issuer_config::IssuerConfig, record::Record,
             record_category::RecordCategory, record_wallet::RecordWallet,
-            search_filter::SearchFilter, BaseWallet, ImportWallet, ManageWallet,
+            search_filter::SearchFilter, BaseWallet, ManageWallet,
         },
-        indy::{
-            indy_wallet_record::IndyWalletRecord, restore_wallet_configs::ImportWalletConfigs,
-            wallet_config::WalletConfig,
-        },
+        indy::indy_wallet_record::IndyWalletRecord,
         record_tags::RecordTags,
     },
 };
-use futures::FutureExt;
 use public_key::{Key, KeyType};
 
 use crate::{
@@ -40,41 +36,96 @@ use crate::{
     },
 };
 
-pub static GLOBAL_BASE_WALLET: RwLock<Option<Arc<dyn BaseWallet>>> = RwLock::new(None);
+#[cfg(feature = "vdrtools_wallet")]
+use aries_vcx_core::wallet::indy::{
+    indy_wallet_record::IndyWalletRecord, restore_wallet_configs::ImportWalletConfigs,
+    wallet_config::WalletConfig, IndySdkWallet,
+};
+
+#[cfg(feature = "askar_wallet")]
+use aries_vcx_core::wallet::askar::askar_import_config::AskarImportConfig;
+#[cfg(feature = "askar_wallet")]
+use aries_vcx_core::wallet::askar::AskarWallet;
+
+#[cfg(feature = "askar_wallet")]
+use aries_vcx_core::wallet::askar::askar_wallet_config::AskarWalletConfig;
+
+#[cfg(feature = "vdrtools_wallet")]
+pub static GLOBAL_INDY_WALLET: RwLock<Option<Arc<IndySdkWallet>>> = RwLock::new(None);
+
+#[cfg(feature = "askar_wallet")]
+pub static GLOBAL_ASKAR_WALLET: RwLock<Option<Arc<AskarWallet>>> = RwLock::new(None);
+
 pub static GLOBAL_BASE_ANONCREDS: RwLock<Option<Arc<IndyCredxAnonCreds>>> = RwLock::new(None);
 
 pub async fn export_main_wallet(path: &str, backup_key: &str) -> LibvcxResult<()> {
     let main_wallet = get_main_wallet()?;
-    map_ariesvcx_core_result(main_wallet.export_wallet(path, backup_key).await)
+    map_ariesvcx_core_result(main_wallet.as_ref().export_wallet(path, backup_key).await)
 }
 
-fn setup_global_wallet(wallet: Arc<dyn BaseWallet>) -> LibvcxResult<()> {
-    let mut b_wallet = GLOBAL_BASE_WALLET.write()?;
+#[cfg(all(feature = "vdrtools_wallet", feature = "askar_wallet"))]
+compile_error!("features `vdrtools_wallet` and `askar_wallet` are mutually exclusive");
+
+#[cfg(feature = "vdrtools_wallet")]
+fn setup_global_wallet(wallet: Arc<IndySdkWallet>) -> LibvcxResult<()> {
+    let mut b_wallet = GLOBAL_INDY_WALLET.write()?;
     *b_wallet = Some(wallet);
-    // anoncreds
+
+    setup_global_anoncreds()
+}
+
+#[cfg(feature = "askar_wallet")]
+fn setup_global_wallet(wallet: Arc<AskarWallet>) -> LibvcxResult<()> {
+    let mut b_wallet = GLOBAL_ASKAR_WALLET.write()?;
+    *b_wallet = Some(wallet);
+
+    setup_global_anoncreds()
+}
+
+fn setup_global_anoncreds() -> LibvcxResult<()> {
     let base_anoncreds_impl = Arc::new(IndyCredxAnonCreds);
     let mut b_anoncreds = GLOBAL_BASE_ANONCREDS.write()?;
     *b_anoncreds = Some(base_anoncreds_impl);
     Ok(())
 }
 
-pub async fn open_as_main_wallet<T: ManageWallet + Send + Sync>(
-    wallet_config: &T,
-) -> LibvcxResult<Arc<dyn BaseWallet>> {
-    let wallet = wallet_config.open_wallet().await?;
+#[cfg(feature = "vdrtools_wallet")]
+pub async fn open_as_main_wallet(wallet_config: &WalletConfig) -> LibvcxResult<Arc<IndySdkWallet>> {
+    let wallet = Arc::new(wallet_config.open_wallet().await?);
     setup_global_wallet(wallet.clone())?;
     Ok(wallet)
 }
 
+#[cfg(feature = "askar_wallet")]
+pub async fn open_as_main_wallet(
+    wallet_config: &AskarWalletConfig,
+) -> LibvcxResult<Arc<impl BaseWallet>> {
+    let wallet = Arc::new(wallet_config.open_wallet().await?);
+    setup_global_wallet(wallet.clone())?;
+    Ok(wallet)
+}
+
+#[cfg(feature = "vdrtools_wallet")]
 pub async fn create_and_open_as_main_wallet(
-    wallet_config: &impl ManageWallet,
-) -> LibvcxResult<Arc<dyn BaseWallet>> {
-    let wallet = wallet_config.create_wallet().await?;
+    wallet_config: &WalletConfig,
+) -> LibvcxResult<Arc<impl BaseWallet>> {
+    let wallet = Arc::new(wallet_config.create_wallet().await?);
 
     setup_global_wallet(wallet.clone())?;
     Ok(wallet)
 }
 
+#[cfg(feature = "askar_wallet")]
+pub async fn create_and_open_as_main_wallet(
+    wallet_config: &AskarWalletConfig,
+) -> LibvcxResult<Arc<impl BaseWallet>> {
+    let wallet = Arc::new(wallet_config.create_wallet().await?);
+
+    setup_global_wallet(wallet.clone())?;
+    Ok(wallet)
+}
+
+#[cfg(feature = "vdrtools_wallet")]
 pub async fn close_main_wallet() -> LibvcxResult<()> {
     let wallet = try_get_main_wallet()?;
     match wallet {
@@ -83,21 +134,54 @@ pub async fn close_main_wallet() -> LibvcxResult<()> {
         }
         Some(wallet) => {
             wallet.close_wallet().await?;
-            let mut b_wallet = GLOBAL_BASE_WALLET.write()?;
+            let mut b_wallet = GLOBAL_INDY_WALLET.write()?;
             *b_wallet = None;
         }
     }
     Ok(())
 }
 
-pub async fn create_main_wallet<T: ManageWallet>(config: &T) -> LibvcxResult<()> {
-    let wallet_handle = create_and_open_as_main_wallet(config).await?;
-    trace!("Created wallet with handle {:?}", wallet_handle);
+#[cfg(feature = "askar_wallet")]
+pub async fn close_main_wallet() -> LibvcxResult<()> {
+    let wallet = try_get_main_wallet()?;
+    match wallet {
+        None => {
+            warn!("Skipping wallet close, no global wallet component available.")
+        }
+        Some(wallet) => {
+            wallet.close_wallet().await?;
+            let mut b_wallet = GLOBAL_ASKAR_WALLET.write()?;
+            *b_wallet = None;
+        }
+    }
+    Ok(())
+}
+
+#[cfg(feature = "vdrtools_wallet")]
+pub async fn create_main_wallet(config: &WalletConfig) -> LibvcxResult<()> {
+    let wallet = create_and_open_as_main_wallet(&config).await?;
+    trace!("Created wallet {:?}", wallet);
     let wallet = get_main_wallet()?;
 
     // If MS is already in wallet then just continue
     get_main_anoncreds()?
-        .prover_create_link_secret(&wallet, &DEFAULT_LINK_SECRET_ALIAS.to_string())
+        .prover_create_link_secret(wallet.as_ref(), &DEFAULT_LINK_SECRET_ALIAS.to_string())
+        .await
+        .ok();
+
+    close_main_wallet().await?;
+    Ok(())
+}
+
+#[cfg(feature = "askar_wallet")]
+pub async fn create_main_wallet(config: &AskarWalletConfig) -> LibvcxResult<()> {
+    let wallet = create_and_open_as_main_wallet(config).await?;
+    trace!("Created wallet {:?}", wallet);
+    let wallet = get_main_wallet()?;
+
+    // If MS is already in wallet then just continue
+    get_main_anoncreds()?
+        .prover_create_link_secret(wallet.as_ref(), &DEFAULT_LINK_SECRET_ALIAS.to_string())
         .await
         .ok();
 
@@ -140,7 +224,7 @@ pub async fn rotate_verkey_apply(did: &str, temp_vk: &str) -> LibvcxResult<()> {
     let wallet = get_main_wallet()?;
     map_ariesvcx_result(
         aries_vcx::common::keys::rotate_verkey_apply(
-            &wallet,
+            wallet.as_ref(),
             get_main_ledger_write()?.as_ref(),
             &did.parse()?,
             temp_vk,
@@ -279,12 +363,12 @@ pub async fn wallet_get_wallet_record(
     map_ariesvcx_result(
         wallet
             .get_record(RecordCategory::from_str(xtype)?, id)
+            .await
             .map(|res| {
-                let wallet_record = IndyWalletRecord::from_record(res?)?;
+                let wallet_record = IndyWalletRecord::from_record(res)?;
 
                 Ok(serde_json::to_string(&wallet_record)?)
-            })
-            .await,
+            })?,
     )
 }
 
@@ -317,18 +401,41 @@ pub async fn wallet_search_records(xtype: &str, query_json: &str) -> LibvcxResul
     map_ariesvcx_core_result(res)
 }
 
+#[cfg(feature = "vdrtools_wallet")]
 pub async fn wallet_import(config: &ImportWalletConfigs) -> LibvcxResult<()> {
     map_ariesvcx_core_result(config.import_wallet().await)
 }
 
+#[cfg(feature = "askar_wallet")]
+pub async fn wallet_import(config: &AskarImportConfig) -> LibvcxResult<()> {
+    map_ariesvcx_core_result(config.import_wallet().await)
+}
+
+#[cfg(feature = "vdrtools_wallet")]
 pub async fn wallet_migrate(wallet_config: &WalletConfig) -> LibvcxResult<()> {
     let src_wallet = get_main_wallet()?;
     info!("Opening target wallet.");
     let dest_wallet = wallet_config.create_wallet().await?;
 
     let migration_res = wallet_migrator::migrate_wallet(
-        src_wallet,
-        dest_wallet,
+        src_wallet.as_ref(),
+        &dest_wallet,
+        wallet_migrator::vdrtools2credx::migrate_any_record,
+    )
+    .await;
+
+    migration_res.map_err(|e| LibvcxError::from_msg(LibvcxErrorKind::WalletMigrationFailed, e))
+}
+
+#[cfg(feature = "askar_wallet")]
+pub async fn wallet_migrate(wallet_config: &impl ManageWallet) -> LibvcxResult<()> {
+    let src_wallet = get_main_wallet()?;
+    info!("Opening target wallet.");
+    let dest_wallet = wallet_config.create_wallet().await?;
+
+    let migration_res = wallet_migrator::migrate_wallet(
+        src_wallet.as_ref(),
+        &dest_wallet,
         wallet_migrator::vdrtools2credx::migrate_any_record,
     )
     .await;
@@ -343,17 +450,19 @@ pub mod test_utils {
         DEFAULT_WALLET_BACKUP_KEY, DEFAULT_WALLET_KEY, WALLET_KDF_RAW,
     };
     use aries_vcx_core::wallet::{
+        askar::{askar_wallet_config::AskarWalletConfig, key_method::KeyMethod},
         base_wallet::{
             did_wallet::DidWallet, record::Record, record_category::RecordCategory,
-            record_wallet::RecordWallet,
+            record_wallet::RecordWallet, BaseWallet, ManageWallet,
         },
         indy::wallet_config::WalletConfig,
     };
+    use uuid::Uuid;
 
     use crate::{
         api_vcx::api_global::{
             profile::get_main_wallet,
-            wallet::{
+            wallets::{
                 close_main_wallet, create_and_open_as_main_wallet, create_main_wallet,
                 export_main_wallet, open_as_main_wallet,
             },
@@ -361,11 +470,8 @@ pub mod test_utils {
         errors::error::LibvcxResult,
     };
 
+    #[cfg(feature = "vdrtools_wallet")]
     pub async fn _create_main_wallet_and_its_backup() -> (TempFile, String, WalletConfig) {
-        let wallet_name = &format!("export_test_wallet_{}", uuid::Uuid::new_v4());
-
-        let export_file = TempFile::prepare_path(wallet_name);
-
         let wallet_config = WalletConfig {
             wallet_name: wallet_name.into(),
             wallet_key: DEFAULT_WALLET_KEY.into(),
@@ -376,10 +482,70 @@ pub mod test_utils {
             rekey: None,
             rekey_derivation_method: None,
         };
-        create_and_open_as_main_wallet(&wallet_config)
+        let wallet = create_and_open_as_main_wallet(&wallet_config)
             .await
             .unwrap();
-        let wallet = get_main_wallet().unwrap();
+        // // let wallet = get_main_wallet().unwrap();
+        // wallet.create_and_store_my_did(None, None).await.unwrap();
+
+        // let new_record = Record::builder()
+        //     .name("id1".to_owned())
+        //     .category(RecordCategory::default())
+        //     .value("value1".to_owned())
+        //     .build();
+
+        // wallet.add_record(new_record).await.unwrap();
+        // export_main_wallet(&export_file.path, DEFAULT_WALLET_BACKUP_KEY)
+        //     .await
+        //     .unwrap();
+
+        // close_main_wallet().await.unwrap();
+
+        setup_wallet_backup(&wallet_config).await;
+
+        // todo: import and verify
+        (export_file, wallet_name.to_string(), wallet_config)
+    }
+
+    #[cfg(feature = "askar_wallet")]
+    pub async fn _create_main_wallet_and_its_backup() -> (TempFile, String, AskarWalletConfig) {
+        let wallet_config = AskarWalletConfig::new(
+            "sqlite://:memory:",
+            KeyMethod::Unprotected,
+            "",
+            &Uuid::new_v4().to_string(),
+        );
+
+        let wallet_name = &format!("export_test_wallet_{}", uuid::Uuid::new_v4());
+
+        let export_file = TempFile::prepare_path(wallet_name);
+
+        let wallet = create_and_open_as_main_wallet(&wallet_config)
+            .await
+            .unwrap();
+        // let wallet = get_main_wallet().unwrap();
+        // wallet.create_and_store_my_did(None, None).await.unwrap();
+
+        // let new_record = Record::builder()
+        //     .name("id1".to_owned())
+        //     .category(RecordCategory::default())
+        //     .value("value1".to_owned())
+        //     .build();
+
+        // wallet.add_record(new_record).await.unwrap();
+        // export_main_wallet(&export_file.path, DEFAULT_WALLET_BACKUP_KEY)
+        //     .await
+        //     .unwrap();
+
+        // close_main_wallet().await.unwrap();
+
+        setup_wallet_backup(wallet.as_ref(), &export_file).await;
+
+        // todo: import and verify
+        (export_file, wallet_name.to_string(), wallet_config)
+    }
+
+    async fn setup_wallet_backup(wallet: &impl BaseWallet, export_file: &TempFile) {
         wallet.create_and_store_my_did(None, None).await.unwrap();
 
         let new_record = Record::builder()
@@ -394,12 +560,22 @@ pub mod test_utils {
             .unwrap();
 
         close_main_wallet().await.unwrap();
-
-        // todo: import and verify
-        (export_file, wallet_name.to_string(), wallet_config)
     }
 
-    pub async fn _create_wallet() -> LibvcxResult<WalletConfig> {
+    // pub async fn _create_wallet() -> LibvcxResult<WalletConfig> {
+    //     let wallet_name = format!("test_create_wallet_{}", uuid::Uuid::new_v4());
+    //     let config_wallet: WalletConfig = serde_json::from_value(json!({
+    //         "wallet_name": wallet_name,
+    //         "wallet_key": DEFAULT_WALLET_KEY,
+    //         "wallet_key_derivation": WALLET_KDF_RAW
+    //     }))?;
+    //     create_main_wallet(&config_wallet).await?;
+    //     Ok(config_wallet)
+    // }
+
+    #[cfg(feature = "vdrtools_wallet")]
+    pub async fn _create_and_open_wallet() -> LibvcxResult<WalletConfig> {
+        // let config_wallet = _create_wallet().await?;
         let wallet_name = format!("test_create_wallet_{}", uuid::Uuid::new_v4());
         let config_wallet: WalletConfig = serde_json::from_value(json!({
             "wallet_name": wallet_name,
@@ -407,11 +583,21 @@ pub mod test_utils {
             "wallet_key_derivation": WALLET_KDF_RAW
         }))?;
         create_main_wallet(&config_wallet).await?;
+
+        open_as_main_wallet(&config_wallet).await?;
         Ok(config_wallet)
     }
 
-    pub async fn _create_and_open_wallet() -> LibvcxResult<WalletConfig> {
-        let config_wallet = _create_wallet().await?;
+    #[cfg(feature = "askar_wallet")]
+    pub async fn _create_and_open_wallet() -> LibvcxResult<AskarWalletConfig> {
+        // let config_wallet = _create_wallet().await?;
+        let config_wallet: AskarWalletConfig = AskarWalletConfig::new(
+            "sqlite://:memory:",
+            KeyMethod::Unprotected,
+            "",
+            &Uuid::new_v4().to_string(),
+        );
+        create_main_wallet(&config_wallet).await?;
         open_as_main_wallet(&config_wallet).await?;
         Ok(config_wallet)
     }
@@ -430,7 +616,7 @@ mod tests {
     use test_utils::devsetup::{SetupMocks, TempFile};
 
     use crate::{
-        api_vcx::api_global::wallet::{
+        api_vcx::api_global::wallets::{
             close_main_wallet, create_and_open_as_main_wallet, create_main_wallet,
             export_main_wallet, open_as_main_wallet,
             test_utils::{_create_and_open_wallet, _create_main_wallet_and_its_backup},
@@ -440,6 +626,7 @@ mod tests {
         errors::error::{LibvcxErrorKind, LibvcxResult},
     };
 
+    #[cfg(feature = "vdrtools_wallet")]
     #[tokio::test]
     async fn test_wallet_migrate() {
         let wallet_name = format!("test_create_wallet_{}", uuid::Uuid::new_v4());
@@ -463,6 +650,33 @@ mod tests {
         super::wallet_migrate(&new_config).await.unwrap();
     }
 
+    #[cfg(feature = "askar_wallet")]
+    #[tokio::test]
+    async fn test_wallet_migrate() {
+        use aries_vcx_core::wallet::askar::askar_wallet_config::AskarWalletConfig;
+        use aries_vcx_core::wallet::askar::key_method::KeyMethod;
+        use uuid::Uuid;
+
+        let config = AskarWalletConfig::new(
+            "sqlite://:memory:",
+            KeyMethod::Unprotected,
+            "",
+            &Uuid::new_v4().to_string(),
+        );
+
+        create_and_open_as_main_wallet(&config).await.unwrap();
+
+        let new_config = AskarWalletConfig::new(
+            "sqlite://:memory:",
+            KeyMethod::Unprotected,
+            "",
+            &Uuid::new_v4().to_string(),
+        );
+
+        wallets::wallet_migrate(&new_config).await.unwrap();
+    }
+
+    #[cfg(feature = "vdrtools_wallet")]
     #[tokio::test]
     async fn test_wallet_create() {
         let _setup = SetupMocks::init();
@@ -474,6 +688,25 @@ mod tests {
             "wallet_key_derivation": WALLET_KDF_RAW
         }))
         .unwrap();
+
+        create_main_wallet(&config).await.unwrap();
+    }
+
+    #[cfg(feature = "askar_wallet")]
+    #[tokio::test]
+    async fn test_wallet_create() {
+        use aries_vcx_core::wallet::askar::askar_wallet_config::AskarWalletConfig;
+        use aries_vcx_core::wallet::askar::key_method::KeyMethod;
+        use uuid::Uuid;
+
+        let _setup = SetupMocks::init();
+
+        let config = AskarWalletConfig::new(
+            "sqlite://:memory:",
+            KeyMethod::Unprotected,
+            "",
+            &Uuid::new_v4().to_string(),
+        );
 
         create_main_wallet(&config).await.unwrap();
     }
@@ -585,6 +818,7 @@ mod tests {
         assert_eq!(err.kind(), LibvcxErrorKind::WalletRecordNotFound);
     }
 
+    #[cfg(feature = "vdrtools_wallet")]
     #[tokio::test]
     async fn test_wallet_export_import() {
         let _setup = SetupMocks::init();
@@ -621,6 +855,7 @@ mod tests {
         wallet_config.delete_wallet().await.unwrap();
     }
 
+    #[cfg(feature = "vdrtools_wallet")]
     #[tokio::test]
     async fn test_wallet_open_with_incorrect_key_fails() {
         let _setup = SetupMocks::init();
@@ -645,6 +880,7 @@ mod tests {
         assert_eq!(err.kind(), LibvcxErrorKind::WalletAccessFailed);
     }
 
+    #[cfg(feature = "vdrtools_wallet")]
     #[tokio::test]
     async fn test_wallet_open_with_wrong_name_fails() {
         let _setup = SetupMocks::init();
@@ -665,6 +901,7 @@ mod tests {
         )
     }
 
+    #[cfg(feature = "vdrtools_wallet")]
     #[tokio::test]
     async fn test_wallet_open_of_imported_wallet_succeeds() {
         let _setup = SetupMocks::init();
@@ -693,6 +930,7 @@ mod tests {
         open_as_main_wallet(&wallet_config).await.unwrap();
     }
 
+    #[cfg(feature = "vdrtools_wallet")]
     #[tokio::test]
     async fn test_wallet_import_of_opened_wallet_fails() {
         let _setup = SetupMocks::init();

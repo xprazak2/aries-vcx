@@ -159,7 +159,7 @@ mod tests {
         api_vcx::api_global::{
             pool::{close_main_pool, open_main_pool, reset_ledger_components, LibvcxLedgerConfig},
             profile::get_main_ledger_read,
-            wallet::{close_main_wallet, test_utils::_create_and_open_wallet},
+            wallet::wallet::{close_main_wallet, test_utils::_create_and_open_wallet},
         },
         errors::error::LibvcxErrorKind,
     };

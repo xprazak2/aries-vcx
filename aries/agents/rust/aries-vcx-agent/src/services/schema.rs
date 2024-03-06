@@ -15,21 +15,21 @@ use crate::{
     storage::{object_cache::ObjectCache, Storage},
 };
 
-pub struct ServiceSchemas {
+pub struct ServiceSchemas<T> {
     ledger_read: Arc<DefaultIndyLedgerRead>,
     ledger_write: Arc<DefaultIndyLedgerWrite>,
     anoncreds: IndyCredxAnonCreds,
-    wallet: Arc<dyn BaseWallet>,
+    wallet: Arc<T>,
     issuer_did: Did,
     schemas: ObjectCache<Schema>,
 }
 
-impl ServiceSchemas {
+impl<T: BaseWallet> ServiceSchemas<T> {
     pub fn new(
         ledger_read: Arc<DefaultIndyLedgerRead>,
         ledger_write: Arc<DefaultIndyLedgerWrite>,
         anoncreds: IndyCredxAnonCreds,
-        wallet: Arc<dyn BaseWallet>,
+        wallet: Arc<T>,
         issuer_did: String,
     ) -> Self {
         Self {
@@ -64,7 +64,7 @@ impl ServiceSchemas {
     pub async fn publish_schema(&self, thread_id: &str) -> AgentResult<()> {
         let schema = self.schemas.get(thread_id)?;
         let schema = schema
-            .publish(&self.wallet, self.ledger_write.as_ref())
+            .publish(self.wallet.as_ref(), self.ledger_write.as_ref())
             .await?;
         self.schemas.insert(thread_id, schema)?;
         Ok(())

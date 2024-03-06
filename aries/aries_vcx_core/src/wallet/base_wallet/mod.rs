@@ -1,5 +1,3 @@
-use std::sync::Arc;
-
 use async_trait::async_trait;
 
 use self::{did_wallet::DidWallet, issuer_config::IssuerConfig, record_wallet::RecordWallet};
@@ -22,26 +20,13 @@ pub trait ImportWallet {
 
 #[async_trait]
 pub trait ManageWallet {
-    async fn create_wallet(&self) -> VcxCoreResult<Arc<dyn BaseWallet>>;
+    type ManagedWalletType: BaseWallet;
 
-    async fn open_wallet(&self) -> VcxCoreResult<Arc<dyn BaseWallet>>;
+    async fn create_wallet(&self) -> VcxCoreResult<Self::ManagedWalletType>;
+
+    async fn open_wallet(&self) -> VcxCoreResult<Self::ManagedWalletType>;
 
     async fn delete_wallet(&self) -> VcxCoreResult<()>;
-}
-
-#[async_trait]
-impl ManageWallet for Box<dyn ManageWallet + Send + Sync> {
-    async fn create_wallet(&self) -> VcxCoreResult<Arc<dyn BaseWallet>> {
-        self.as_ref().create_wallet().await
-    }
-
-    async fn open_wallet(&self) -> VcxCoreResult<Arc<dyn BaseWallet>> {
-        self.as_ref().open_wallet().await
-    }
-
-    async fn delete_wallet(&self) -> VcxCoreResult<()> {
-        self.as_ref().delete_wallet().await
-    }
 }
 
 #[async_trait]
@@ -61,37 +46,25 @@ pub trait BaseWallet: RecordWallet + DidWallet + Send + Sync + std::fmt::Debug {
     }
 }
 
-#[async_trait]
-impl BaseWallet for Arc<dyn BaseWallet> {
-    async fn export_wallet(&self, path: &str, backup_key: &str) -> VcxCoreResult<()> {
-        self.as_ref().export_wallet(path, backup_key).await
-    }
-
-    async fn close_wallet(&self) -> VcxCoreResult<()> {
-        self.as_ref().close_wallet().await
-    }
-
-    async fn configure_issuer(&self, key_seed: &str) -> VcxCoreResult<IssuerConfig> {
-        self.as_ref().configure_issuer(key_seed).await
-    }
-}
-
 #[cfg(test)]
 mod tests {
-    use std::{str::FromStr, sync::Arc};
+    use std::str::FromStr;
 
     use super::BaseWallet;
     use crate::{
         errors::error::AriesVcxCoreErrorKind,
         wallet::{
-            base_wallet::{record::Record, record_category::RecordCategory},
+            base_wallet::{
+                did_wallet::DidWallet, record::Record, record_category::RecordCategory,
+                record_wallet::RecordWallet,
+            },
             record_tags::{RecordTag, RecordTags},
             utils::{did_from_key, random_seed},
         },
     };
 
     #[allow(unused_variables)]
-    async fn build_test_wallet() -> Arc<dyn BaseWallet> {
+    async fn build_test_wallet() -> impl BaseWallet {
         #[cfg(feature = "vdrtools_wallet")]
         let wallet = {
             use crate::wallet::indy::tests::dev_setup_indy_wallet;
@@ -504,17 +477,12 @@ mod tests {
 #[cfg(test)]
 #[cfg(all(feature = "vdrtools_wallet", feature = "askar_wallet"))]
 mod compat_tests {
-    use std::sync::Arc;
-
     use crate::wallet::{
         askar::tests::dev_setup_askar_wallet, base_wallet::BaseWallet,
         indy::tests::dev_setup_indy_wallet,
     };
 
-    async fn pack_and_unpack_anoncrypt(
-        sender: Arc<dyn BaseWallet>,
-        recipient: Arc<dyn BaseWallet>,
-    ) {
+    async fn pack_and_unpack_anoncrypt(sender: impl BaseWallet, recipient: impl BaseWallet) {
         let did_data = recipient.create_and_store_my_did(None, None).await.unwrap();
 
         let msg = "send me";
@@ -529,10 +497,7 @@ mod compat_tests {
         assert_eq!(msg, unpacked.message);
     }
 
-    async fn pack_and_unpack_authcrypt(
-        sender: Arc<dyn BaseWallet>,
-        recipient: Arc<dyn BaseWallet>,
-    ) {
+    async fn pack_and_unpack_authcrypt(sender: impl BaseWallet, recipient: impl BaseWallet) {
         let sender_did_data = sender.create_and_store_my_did(None, None).await.unwrap();
         let recipient_did_data = recipient.create_and_store_my_did(None, None).await.unwrap();
 

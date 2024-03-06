@@ -33,23 +33,23 @@ pub mod client;
 pub mod utils;
 
 #[derive(Clone)]
-pub struct Agent<P: MediatorPersistence> {
-    wallet: Arc<dyn BaseWallet>,
+pub struct Agent<T: BaseWallet, P: MediatorPersistence> {
+    wallet: Arc<T>,
     persistence: Arc<P>,
     service: Option<AriesService>,
 }
 
-pub type ArcAgent<P> = Arc<Agent<P>>;
+pub type ArcAgent<T, P> = Arc<Agent<T, P>>;
 
 pub struct AgentBuilder<T: BaseWallet> {
     _type_wallet: PhantomData<T>,
 }
 /// Constructors
-impl AgentBuilder<Arc<dyn BaseWallet>> {
+impl<T: BaseWallet> AgentBuilder<T> {
     pub async fn new_from_wallet_config(
-        config: WalletConfig,
-    ) -> Result<Agent<sqlx::MySqlPool>, AriesVcxCoreError> {
-        let wallet = config.create_wallet().await?;
+        config: impl ManageWallet,
+    ) -> Result<Agent<impl BaseWallet, sqlx::MySqlPool>, AriesVcxCoreError> {
+        let wallet = Arc::new(config.create_wallet().await?);
 
         info!("Connecting to persistence layer");
         let persistence = Arc::new(get_persistence().await);
@@ -59,7 +59,8 @@ impl AgentBuilder<Arc<dyn BaseWallet>> {
             service: None,
         })
     }
-    pub async fn new_demo_agent() -> Result<Agent<sqlx::MySqlPool>, AriesVcxCoreError> {
+    pub async fn new_demo_agent(
+    ) -> Result<Agent<impl BaseWallet, sqlx::MySqlPool>, AriesVcxCoreError> {
         let config = WalletConfig {
             wallet_name: uuid::Uuid::new_v4().to_string(),
             wallet_key: "8dvfYSt5d1taSd6yJdpjq4emkwsPDDLYxkNFysFD2cZY".into(),
@@ -75,8 +76,8 @@ impl AgentBuilder<Arc<dyn BaseWallet>> {
 }
 
 // Utils
-impl<P: MediatorPersistence> Agent<P> {
-    pub fn get_wallet_ref(&self) -> Arc<dyn BaseWallet> {
+impl<T: BaseWallet, P: MediatorPersistence> Agent<T, P> {
+    pub fn get_wallet_ref(&self) -> Arc<T> {
         self.wallet.clone()
     }
     pub fn get_persistence_ref(&self) -> Arc<impl MediatorPersistence> {
@@ -136,7 +137,7 @@ impl<P: MediatorPersistence> Agent<P> {
         our_vk: &VerKey,
         their_diddoc: &AriesDidDoc,
     ) -> Result<EncryptionEnvelope, String> {
-        EncryptionEnvelope::create(&self.wallet, message, Some(our_vk), their_diddoc)
+        EncryptionEnvelope::create(self.wallet.as_ref(), message, Some(our_vk), their_diddoc)
             .await
             .map_err(string_from_std_error)
     }
@@ -184,7 +185,7 @@ impl<P: MediatorPersistence> Agent<P> {
             .to_owned();
 
         let response: Response = utils::build_response_content(
-            &self.wallet,
+            self.wallet.as_ref(),
             thread_id,
             old_vk.clone(),
             did_data.did().into(),
@@ -197,7 +198,7 @@ impl<P: MediatorPersistence> Agent<P> {
         let aries_response = AriesMessage::Connection(Connection::Response(response));
         let their_diddoc = request.content.connection.did_doc;
         let packed_response_envelope = EncryptionEnvelope::create(
-            &self.wallet,
+            self.wallet.as_ref(),
             json!(aries_response).to_string().as_bytes(),
             Some(&old_vk),
             &their_diddoc,
@@ -233,6 +234,7 @@ mod test {
         protocols::oob::oob_invitation_to_legacy_did_doc,
         utils::encryption_envelope::EncryptionEnvelope,
     };
+    use aries_vcx_core::wallet::indy::IndySdkWallet;
     use log::info;
     use serde_json::Value;
     use test_utils::mockdata::mock_ledger::MockLedger;
@@ -243,7 +245,9 @@ mod test {
     pub async fn test_pack_unpack() {
         let message: Value = serde_json::from_str("{}").unwrap();
         let message_bytes = serde_json::to_vec(&message).unwrap();
-        let mut agent = AgentBuilder::new_demo_agent().await.unwrap();
+        let mut agent = AgentBuilder::<IndySdkWallet>::new_demo_agent()
+            .await
+            .unwrap();
         agent
             .init_service(
                 vec![],

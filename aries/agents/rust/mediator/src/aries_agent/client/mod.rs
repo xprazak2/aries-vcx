@@ -13,6 +13,7 @@ use aries_vcx::{
     },
     utils::encryption_envelope::EncryptionEnvelope,
 };
+use aries_vcx_core::wallet::base_wallet::BaseWallet;
 use messages::{
     msg_fields::protocols::{
         connection::{response::Response, Connection},
@@ -30,7 +31,7 @@ use super::Agent;
 use crate::utils::prelude::*;
 
 // client role utilities
-impl<P: MediatorPersistence> Agent<P> {
+impl<T: BaseWallet, P: MediatorPersistence> Agent<T, P> {
     /// Starting from a new connection object, tries to create connection request object for the
     /// specified OOB invite endpoint
     pub async fn gen_connection_request(
@@ -70,7 +71,7 @@ impl<P: MediatorPersistence> Agent<P> {
         // encrypt/pack the connection request message
         let EncryptionEnvelope(packed_aries_msg_bytes) = client_conn
             .encrypt_message(
-                &self.wallet,
+                self.wallet.as_ref(),
                 &AriesMessage::Connection(Connection::Request(req_msg.clone())),
             )
             .await
@@ -85,7 +86,7 @@ impl<P: MediatorPersistence> Agent<P> {
         response: Response,
     ) -> Result<InviteeConnection<Completed>, String> {
         state
-            .handle_response(&self.wallet, response)
+            .handle_response(self.wallet.as_ref(), response)
             .await
             .map_err(|err| err.to_string())
     }

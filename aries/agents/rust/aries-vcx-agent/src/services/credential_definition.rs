@@ -13,20 +13,20 @@ use crate::{
     storage::{object_cache::ObjectCache, Storage},
 };
 
-pub struct ServiceCredentialDefinitions {
+pub struct ServiceCredentialDefinitions<T> {
     ledger_read: Arc<DefaultIndyLedgerRead>,
     ledger_write: Arc<DefaultIndyLedgerWrite>,
     anoncreds: IndyCredxAnonCreds,
-    wallet: Arc<dyn BaseWallet>,
+    wallet: Arc<T>,
     cred_defs: ObjectCache<CredentialDef>,
 }
 
-impl ServiceCredentialDefinitions {
+impl<T: BaseWallet> ServiceCredentialDefinitions<T> {
     pub fn new(
         ledger_read: Arc<DefaultIndyLedgerRead>,
         ledger_write: Arc<DefaultIndyLedgerWrite>,
         anoncreds: IndyCredxAnonCreds,
-        wallet: Arc<dyn BaseWallet>,
+        wallet: Arc<T>,
     ) -> Self {
         Self {
             cred_defs: ObjectCache::new("cred-defs"),
@@ -44,7 +44,7 @@ impl ServiceCredentialDefinitions {
         tag: String,
     ) -> AgentResult<String> {
         let cd = CredentialDef::create(
-            &self.wallet,
+            self.wallet.as_ref(),
             self.ledger_read.as_ref(),
             &self.anoncreds,
             "".to_string(),
@@ -61,7 +61,7 @@ impl ServiceCredentialDefinitions {
         let cred_def = self.cred_defs.get(thread_id)?;
         let cred_def = cred_def
             .publish_cred_def(
-                &self.wallet,
+                self.wallet.as_ref(),
                 self.ledger_read.as_ref(),
                 self.ledger_write.as_ref(),
             )

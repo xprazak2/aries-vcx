@@ -11,7 +11,10 @@ use aries_vcx_core::{
     self,
     anoncreds::{base_anoncreds::BaseAnonCreds, credx_anoncreds::IndyCredxAnonCreds},
     ledger::indy_vdr_ledger::DefaultIndyLedgerRead,
-    wallet::{base_wallet::ManageWallet, indy::wallet_config::WalletConfig},
+    wallet::{
+        base_wallet::{BaseWallet, ManageWallet},
+        indy::{wallet_config::WalletConfig, IndySdkWallet},
+    },
 };
 use did_peer::resolver::PeerDidResolver;
 use did_resolver_registry::ResolverRegistry;
@@ -56,7 +59,7 @@ pub struct InitConfig {
     pub service_endpoint: ServiceEndpoint,
 }
 
-impl Agent {
+impl Agent<IndySdkWallet> {
     pub async fn initialize(init_config: InitConfig) -> AgentResult<Self> {
         let config_wallet = WalletConfig {
             wallet_name: init_config.wallet_config.wallet_name,
@@ -70,7 +73,7 @@ impl Agent {
         };
 
         config_wallet.create_wallet().await.unwrap();
-        let wallet = config_wallet.open_wallet().await.unwrap();
+        let wallet = Arc::new(config_wallet.open_wallet().await.unwrap());
         let config_issuer = wallet
             .configure_issuer(&init_config.enterprise_seed)
             .await
@@ -92,14 +95,14 @@ impl Agent {
         let ledger_write = Arc::new(ledger_write);
 
         anoncreds
-            .prover_create_link_secret(&wallet, &DEFAULT_LINK_SECRET_ALIAS.to_string())
+            .prover_create_link_secret(wallet.as_ref(), &DEFAULT_LINK_SECRET_ALIAS.to_string())
             .await
             .unwrap();
 
         // TODO: This setup should be easier
         // The default issuer did can't be used - its verkey is not in base58 - TODO: double-check
         let (public_did, _verkey) = add_new_did(
-            &wallet,
+            wallet.as_ref(),
             ledger_write.as_ref(),
             &config_issuer.institution_did.parse()?,
             None,
@@ -108,7 +111,13 @@ impl Agent {
         let endpoint = EndpointDidSov::create()
             .set_service_endpoint(init_config.service_endpoint.clone())
             .set_types(Some(vec![DidSovServiceType::DidCommunication]));
-        write_endpoint(&wallet, ledger_write.as_ref(), &public_did, &endpoint).await?;
+        write_endpoint(
+            wallet.as_ref(),
+            ledger_write.as_ref(),
+            &public_did,
+            &endpoint,
+        )
+        .await?;
 
         let did_peer_resolver = PeerDidResolver::new();
         let did_sov_resolver: DidSovResolver<Arc<DefaultIndyLedgerRead>, DefaultIndyLedgerRead> =

@@ -1,13 +1,8 @@
-use std::sync::Arc;
-
 use async_trait::async_trait;
 use serde::Deserialize;
 
 use super::{key_method::KeyMethod, AskarWallet};
-use crate::{
-    errors::error::VcxCoreResult,
-    wallet::base_wallet::{BaseWallet, ManageWallet},
-};
+use crate::{errors::error::VcxCoreResult, wallet::base_wallet::ManageWallet};
 
 #[derive(Clone, Debug, Deserialize)]
 pub struct AskarWalletConfig {
@@ -46,13 +41,15 @@ impl AskarWalletConfig {
 
 #[async_trait]
 impl ManageWallet for AskarWalletConfig {
-    async fn create_wallet(&self) -> VcxCoreResult<Arc<dyn BaseWallet>> {
+    type ManagedWalletType = AskarWallet;
+
+    async fn create_wallet(&self) -> VcxCoreResult<Self::ManagedWalletType> {
         let askar_wallet = AskarWallet::create(self, false).await?;
-        Ok(Arc::new(askar_wallet))
+        Ok(askar_wallet)
     }
 
-    async fn open_wallet(&self) -> VcxCoreResult<Arc<dyn BaseWallet>> {
-        Ok(Arc::new(AskarWallet::open(self).await?))
+    async fn open_wallet(&self) -> VcxCoreResult<Self::ManagedWalletType> {
+        Ok(AskarWallet::open(self).await?)
     }
 
     async fn delete_wallet(&self) -> VcxCoreResult<()> {

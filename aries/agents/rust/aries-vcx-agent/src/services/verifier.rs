@@ -43,20 +43,20 @@ impl VerifierWrapper {
     }
 }
 
-pub struct ServiceVerifier {
+pub struct ServiceVerifier<T> {
     ledger_read: Arc<DefaultIndyLedgerRead>,
     anoncreds: IndyCredxAnonCreds,
-    wallet: Arc<dyn BaseWallet>,
+    wallet: Arc<T>,
     verifiers: ObjectCache<VerifierWrapper>,
-    service_connections: Arc<ServiceConnections>,
+    service_connections: Arc<ServiceConnections<T>>,
 }
 
-impl ServiceVerifier {
+impl<T: BaseWallet> ServiceVerifier<T> {
     pub fn new(
         ledger_read: Arc<DefaultIndyLedgerRead>,
         anoncreds: IndyCredxAnonCreds,
-        wallet: Arc<dyn BaseWallet>,
-        service_connections: Arc<ServiceConnections>,
+        wallet: Arc<T>,
+        service_connections: Arc<ServiceConnections<T>>,
     ) -> Self {
         Self {
             service_connections,
@@ -83,7 +83,7 @@ impl ServiceVerifier {
         let send_closure: SendClosure = Box::new(|msg: AriesMessage| {
             Box::pin(async move {
                 connection
-                    .send_message(&self.wallet, &msg, &VcxHttpClient)
+                    .send_message(self.wallet.as_ref(), &msg, &VcxHttpClient)
                     .await
             })
         });
@@ -118,7 +118,7 @@ impl ServiceVerifier {
         let send_closure: SendClosure = Box::new(|msg: AriesMessage| {
             Box::pin(async move {
                 connection
-                    .send_message(&self.wallet, &msg, &VcxHttpClient)
+                    .send_message(self.wallet.as_ref(), &msg, &VcxHttpClient)
                     .await
             })
         });

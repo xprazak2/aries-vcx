@@ -1,11 +1,9 @@
-use std::{ops::Deref, sync::Arc};
-
 use libvcx_core::{
-    api_vcx::api_global::{ledger, wallet},
-    aries_vcx::aries_vcx_core::wallet::{
-        base_wallet::{BaseWallet, ManageWallet},
-        indy::{restore_wallet_configs::ImportWalletConfigs, wallet_config::WalletConfig},
+    api_vcx::api_global::{
+        ledger,
+        wallet::{self},
     },
+    aries_vcx::aries_vcx_core::wallet::base_wallet::ManageWallet,
     errors::error::{LibvcxError, LibvcxErrorKind},
     serde_json::{self, json},
 };
@@ -14,72 +12,60 @@ use napi_derive::napi;
 
 use crate::error::to_napi_err;
 
-#[napi]
-pub struct NapiWallet(Arc<dyn BaseWallet>);
+#[cfg(feature = "askar_wallet")]
+use libvcx_core::aries_vcx::aries_vcx_core::wallet::askar::askar_wallet_config::AskarWalletConfig;
 
-impl Deref for NapiWallet {
-    type Target = Arc<dyn BaseWallet>;
+use super::napi_wallet::napi_wallet::NapiWallet;
 
-    fn deref(&self) -> &Self::Target {
-        &self.0
-    }
+#[cfg(feature = "vdrtools_wallet")]
+use libvcx_core::aries_vcx::aries_vcx_core::wallet::indy::wallet_config::WalletConfig;
+
+#[cfg(feature = "vdrtools_wallet")]
+fn parse_wallet_config(config: &str) -> napi::Result<WalletConfig> {
+    Ok(serde_json::from_str::<WalletConfig>(config)
+        .map_err(|err| {
+            LibvcxError::from_msg(
+                LibvcxErrorKind::InvalidConfiguration,
+                format!("Serialization error: {:?}", err),
+            )
+        })
+        .map_err(to_napi_err)?)
 }
 
-#[allow(unused_variables)]
-fn parse_wallet_config(config: &str) -> napi::Result<Box<dyn ManageWallet + Sync + Send>> {
-    #[cfg(feature = "vdrtools_wallet")]
-    let wallet_config = {
-        Box::new(
-            serde_json::from_str::<WalletConfig>(config)
-                .map_err(|err| {
-                    LibvcxError::from_msg(
-                        LibvcxErrorKind::InvalidConfiguration,
-                        format!("Serialization error: {:?}", err),
-                    )
-                })
-                .map_err(to_napi_err)?,
-        )
-    };
-
-    #[cfg(feature = "askar_wallet")]
-    let wallet_config = {
-        use libvcx_core::aries_vcx::aries_vcx_core::wallet::askar::askar_wallet_config::AskarWalletConfig;
-
-        Box::new(
-            serde_json::from_str::<AskarWalletConfig>(config)
-                .map_err(|err| {
-                    LibvcxError::from_msg(
-                        LibvcxErrorKind::InvalidConfiguration,
-                        format!("Serialization error: {:?}", err),
-                    )
-                })
-                .map_err(to_napi_err)?,
-        )
-    };
-
-    Ok(wallet_config)
+#[cfg(feature = "askar_wallet")]
+fn parse_wallet_config(config: &str) -> napi::Result<AskarWalletConfig> {
+    Ok(serde_json::from_str::<AskarWalletConfig>(config)
+        .map_err(|err| {
+            LibvcxError::from_msg(
+                LibvcxErrorKind::InvalidConfiguration,
+                format!("Serialization error: {:?}", err),
+            )
+        })
+        .map_err(to_napi_err)?)
 }
 
 #[napi]
 pub async fn wallet_open_as_main(wallet_config: String) -> napi::Result<NapiWallet> {
     let wallet_config = parse_wallet_config(&wallet_config)?;
-    let wallet = wallet::open_as_main_wallet(&wallet_config)
+    let wallet = wallet::wallet::open_as_main_wallet(&wallet_config)
         .await
         .map_err(to_napi_err)?;
-    Ok(NapiWallet(wallet))
+    Ok(NapiWallet::new(wallet))
 }
 
 #[napi]
 pub async fn wallet_create_main(wallet_config: String) -> napi::Result<()> {
     let wallet_config = parse_wallet_config(&wallet_config)?;
-    wallet::create_main_wallet(&wallet_config)
+    wallet::wallet::create_main_wallet(&wallet_config)
         .await
         .map_err(to_napi_err)
 }
 
 #[napi]
 pub async fn wallet_close_main() -> napi::Result<()> {
-    wallet::close_main_wallet().await.map_err(to_napi_err)
+    wallet::wallet::close_main_wallet()
+        .await
+        .map_err(to_napi_err)
 }
 
 #[napi]
@@ -109,7 +95,7 @@ pub async fn create_and_store_did(seed: Option<String>) -> napi::Result<String> 
 
 #[napi]
 pub async fn wallet_import(config: String) -> napi::Result<()> {
-    let config = serde_json::from_str::<ImportWalletConfigs>(&config)
+    let config = serde_json::from_str(&config)
         .map_err(|err| {
             LibvcxError::from_msg(
                 LibvcxErrorKind::InvalidConfiguration,
@@ -117,7 +103,9 @@ pub async fn wallet_import(config: String) -> napi::Result<()> {
             )
         })
         .map_err(to_napi_err)?;
-    wallet::wallet_import(&config).await.map_err(to_napi_err)
+    wallet::wallet::wallet_import(&config)
+        .await
+        .map_err(to_napi_err)
 }
 
 #[napi]
@@ -129,30 +117,16 @@ pub async fn wallet_export(path: String, backup_key: String) -> napi::Result<()>
 
 #[napi]
 pub async fn wallet_migrate(wallet_config: String) -> napi::Result<()> {
-    let wallet_config = serde_json::from_str(&wallet_config)
-        .map_err(|err| {
-            LibvcxError::from_msg(
-                LibvcxErrorKind::InvalidConfiguration,
-                format!("Serialization error: {:?}", err),
-            )
-        })
-        .map_err(to_napi_err)?;
+    let wallet_config = parse_wallet_config(&wallet_config)?;
 
-    wallet::wallet_migrate(&wallet_config)
+    wallet::wallet::wallet_migrate(&wallet_config)
         .await
         .map_err(|e| napi::Error::from_reason(e.to_string()))
 }
 
 #[napi]
 pub async fn wallet_delete(wallet_config: String) -> napi::Result<()> {
-    let wallet_config: WalletConfig = serde_json::from_str(&wallet_config)
-        .map_err(|err| {
-            LibvcxError::from_msg(
-                LibvcxErrorKind::InvalidConfiguration,
-                format!("Serialization error: {:?}", err),
-            )
-        })
-        .map_err(to_napi_err)?;
+    let wallet_config = parse_wallet_config(&wallet_config)?;
 
     wallet_config
         .delete_wallet()

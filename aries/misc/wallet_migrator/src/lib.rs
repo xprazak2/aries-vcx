@@ -13,8 +13,8 @@ pub use vdrtools::types::domain::wallet::IndyRecord;
 /// by applying the `migrate_fn` argument. The records are then
 /// placed in the destination wallet.
 pub async fn migrate_wallet<E>(
-    src_wallet: impl BaseWallet,
-    dest_wallet: impl BaseWallet,
+    src_wallet: &impl BaseWallet,
+    dest_wallet: &impl BaseWallet,
     migrate_fn: impl FnMut(Record) -> Result<Option<Record>, E>,
 ) -> MigrationResult<()>
 where

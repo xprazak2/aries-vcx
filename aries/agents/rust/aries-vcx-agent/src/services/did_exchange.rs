@@ -26,19 +26,19 @@ use crate::{
     AgentError, AgentErrorKind, AgentResult,
 };
 
-pub struct ServiceDidExchange {
+pub struct ServiceDidExchange<T> {
     ledger_read: Arc<DefaultIndyLedgerRead>,
-    wallet: Arc<dyn BaseWallet>,
+    wallet: Arc<T>,
     resolver_registry: Arc<ResolverRegistry>,
     service_endpoint: ServiceEndpoint,
     did_exchange: Arc<ObjectCache<GenericDidExchange>>,
     public_did: String,
 }
 
-impl ServiceDidExchange {
+impl<T: BaseWallet> ServiceDidExchange<T> {
     pub fn new(
         ledger_read: Arc<DefaultIndyLedgerRead>,
-        wallet: Arc<dyn BaseWallet>,
+        wallet: Arc<T>,
         resolver_registry: Arc<ResolverRegistry>,
         service_endpoint: ServiceEndpoint,
         public_did: String,
@@ -74,7 +74,7 @@ impl ServiceDidExchange {
         let ddo_their = requester.their_did_doc();
         let ddo_our = requester.our_did_document();
         let encryption_envelope =
-            pairwise_encrypt(ddo_our, ddo_their, &self.wallet, &request.into()).await?;
+            pairwise_encrypt(ddo_our, ddo_their, self.wallet.as_ref(), &request.into()).await?;
         VcxHttpClient
             .send_message(encryption_envelope.0, get_their_endpoint(ddo_their)?)
             .await?;
@@ -103,7 +103,7 @@ impl ServiceDidExchange {
         let invitation_key =
             resolve_key_from_invitation(&invitation, &self.resolver_registry).await?;
         let (responder, response) = GenericDidExchange::handle_request(
-            &self.wallet,
+            self.wallet.as_ref(),
             self.resolver_registry.clone(),
             request,
             self.service_endpoint.clone(),
@@ -115,7 +115,7 @@ impl ServiceDidExchange {
         let ddo_their = responder.their_did_doc();
         let ddo_our = responder.our_did_document();
         let encryption_envelope =
-            pairwise_encrypt(ddo_our, ddo_their, &self.wallet, &response.into()).await?;
+            pairwise_encrypt(ddo_our, ddo_their, self.wallet.as_ref(), &response.into()).await?;
         VcxHttpClient
             .send_message(encryption_envelope.0, get_their_endpoint(ddo_their)?)
             .await?;
@@ -132,7 +132,7 @@ impl ServiceDidExchange {
         let ddo_their = requester.their_did_doc();
         let ddo_our = requester.our_did_document();
         let encryption_envelope =
-            pairwise_encrypt(ddo_our, ddo_their, &self.wallet, &complete.into()).await?;
+            pairwise_encrypt(ddo_our, ddo_their, self.wallet.as_ref(), &complete.into()).await?;
         VcxHttpClient
             .send_message(encryption_envelope.0, get_their_endpoint(ddo_their)?)
             .await?;
