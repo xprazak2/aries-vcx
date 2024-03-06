@@ -13,16 +13,16 @@ use napi_derive::napi;
 use crate::error::to_napi_err;
 
 #[cfg(feature = "askar_wallet")]
-use libvcx_core::aries_vcx::aries_vcx_core::wallet::askar::askar_wallet_config::AskarWalletConfig;
+use libvcx_core::aries_vcx::aries_vcx_core::wallet::askar::askar_wallet_config::AskarIndyWalletConfig;
 
 use super::napi_wallet::napi_wallet::NapiWallet;
 
 #[cfg(feature = "vdrtools_wallet")]
-use libvcx_core::aries_vcx::aries_vcx_core::wallet::indy::wallet_config::WalletConfig;
+use libvcx_core::aries_vcx::aries_vcx_core::wallet::indy::wallet_config::IndyWalletConfig;
 
 #[cfg(feature = "vdrtools_wallet")]
-fn parse_wallet_config(config: &str) -> napi::Result<WalletConfig> {
-    Ok(serde_json::from_str::<WalletConfig>(config)
+fn parse_wallet_config(config: &str) -> napi::Result<IndyWalletConfig> {
+    Ok(serde_json::from_str::<IndyWalletConfig>(config)
         .map_err(|err| {
             LibvcxError::from_msg(
                 LibvcxErrorKind::InvalidConfiguration,
@@ -33,8 +33,8 @@ fn parse_wallet_config(config: &str) -> napi::Result<WalletConfig> {
 }
 
 #[cfg(feature = "askar_wallet")]
-fn parse_wallet_config(config: &str) -> napi::Result<AskarWalletConfig> {
-    Ok(serde_json::from_str::<AskarWalletConfig>(config)
+fn parse_wallet_config(config: &str) -> napi::Result<AskarIndyWalletConfig> {
+    Ok(serde_json::from_str::<AskarIndyWalletConfig>(config)
         .map_err(|err| {
             LibvcxError::from_msg(
                 LibvcxErrorKind::InvalidConfiguration,

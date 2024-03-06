@@ -12,7 +12,7 @@ use crate::{
 
 #[derive(Clone, Debug, TypedBuilder, Serialize, Deserialize)]
 #[builder(field_defaults(default))]
-pub struct WalletConfig {
+pub struct IndyWalletConfig {
     pub wallet_name: String,
     pub wallet_key: String,
     pub wallet_key_derivation: String,
@@ -34,7 +34,7 @@ pub struct WalletConfig {
 }
 
 #[async_trait]
-impl ManageWallet for WalletConfig {
+impl ManageWallet for IndyWalletConfig {
     type ManagedWalletType = IndySdkWallet;
 
     async fn create_wallet(&self) -> VcxCoreResult<Self::ManagedWalletType> {

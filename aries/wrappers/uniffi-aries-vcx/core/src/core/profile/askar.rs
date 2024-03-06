@@ -1,5 +1,5 @@
 use aries_vcx::aries_vcx_core::wallet::askar::{
-    askar_wallet_config::AskarWalletConfig, AskarWallet,
+    askar_wallet_config::AskarIndyWalletConfig, AskarWallet,
 };
 
 use aries_vcx::aries_vcx_core::{
@@ -28,7 +28,7 @@ pub struct UniffiProfile {
 }
 
 pub fn new_indy_profile(
-    wallet_config: AskarWalletConfig,
+    wallet_config: AskarIndyWalletConfig,
     genesis_file_path: String,
 ) -> VcxUniFFIResult<Arc<ProfileHolder>> {
     // Enable android logging

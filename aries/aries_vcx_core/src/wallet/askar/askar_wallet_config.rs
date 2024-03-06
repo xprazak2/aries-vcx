@@ -5,14 +5,14 @@ use super::{key_method::KeyMethod, AskarWallet};
 use crate::{errors::error::VcxCoreResult, wallet::base_wallet::ManageWallet};
 
 #[derive(Clone, Debug, Deserialize)]
-pub struct AskarWalletConfig {
+pub struct AskarIndyWalletConfig {
     db_url: String,
     key_method: KeyMethod,
     pass_key: String,
     profile: String,
 }
 
-impl AskarWalletConfig {
+impl AskarIndyWalletConfig {
     pub fn new(db_url: &str, key_method: KeyMethod, pass_key: &str, profile: &str) -> Self {
         Self {
             db_url: db_url.into(),
@@ -40,7 +40,7 @@ impl AskarWalletConfig {
 }
 
 #[async_trait]
-impl ManageWallet for AskarWalletConfig {
+impl ManageWallet for AskarIndyWalletConfig {
     type ManagedWalletType = AskarWallet;
 
     async fn create_wallet(&self) -> VcxCoreResult<Self::ManagedWalletType> {

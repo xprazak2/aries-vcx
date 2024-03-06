@@ -6,7 +6,7 @@ use super::indy_utils::parse_key_derivation_method;
 use crate::{errors::error::VcxCoreResult, wallet::base_wallet::ImportWallet};
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
-pub struct ImportWalletConfigs {
+pub struct IndyImportConfig {
     pub wallet_name: String,
     pub wallet_key: String,
     pub exported_wallet_path: String,
@@ -16,7 +16,7 @@ pub struct ImportWalletConfigs {
 }
 
 #[async_trait]
-impl ImportWallet for ImportWalletConfigs {
+impl ImportWallet for IndyImportConfig {
     async fn import_wallet(&self) -> VcxCoreResult<()> {
         Locator::instance()
             .wallet_controller

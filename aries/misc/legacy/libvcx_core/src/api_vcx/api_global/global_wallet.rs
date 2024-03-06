@@ -1,7 +1,7 @@
 use aries_vcx_core::{
     errors::error::VcxCoreResult,
     wallet::{
-        askar::{askar_wallet_config::AskarWalletConfig, AskarWallet},
+        askar::{askar_wallet_config::AskarIndyWalletConfig, AskarWallet},
         base_wallet::{
             did_data::DidData,
             did_wallet::DidWallet,
@@ -11,7 +11,7 @@ use aries_vcx_core::{
             search_filter::SearchFilter,
             BaseWallet, ManageWallet,
         },
-        indy::{wallet_config::WalletConfig, IndySdkWallet},
+        indy::{wallet_config::IndyWalletConfig, IndySdkWallet},
         record_tags::RecordTags,
         structs_io::UnpackMessageOutput,
     },
@@ -187,32 +187,32 @@ impl BaseWallet for GlobalWallet {
     }
 }
 
-pub enum GlobalWalletConfig {
-    Indy(WalletConfig),
-    Askar(AskarWalletConfig),
+pub enum GlobalIndyWalletConfig {
+    Indy(IndyWalletConfig),
+    Askar(AskarIndyWalletConfig),
 }
 
-impl ManageWallet for GlobalWalletConfig {
+impl ManageWallet for GlobalIndyWalletConfig {
     type ManagedWalletType = GlobalWallet;
 
     async fn create_wallet(&self) -> VcxCoreResult<Self::ManagedWalletType> {
         match self {
-            GlobalWalletConfig::Indy(inner) => inner.create_wallet().await,
-            GlobalWalletConfig::Askar(inner) => inner.create_wallet().await,
+            GlobalIndyWalletConfig::Indy(inner) => inner.create_wallet().await,
+            GlobalIndyWalletConfig::Askar(inner) => inner.create_wallet().await,
         }
     }
 
     async fn open_wallet(&self) -> VcxCoreResult<Self::ManagedWalletType> {
         match self {
-            GlobalWalletConfig::Indy(inner) => inner.open_wallet().await,
-            GlobalWalletConfig::Askar(inner) => inner.open_wallet().await,
+            GlobalIndyWalletConfig::Indy(inner) => inner.open_wallet().await,
+            GlobalIndyWalletConfig::Askar(inner) => inner.open_wallet().await,
         }
     }
 
     async fn delete_wallet(&self) -> VcxCoreResult<()> {
         match self {
-            GlobalWalletConfig::Indy(inner) => inner.delete_wallet().await,
-            GlobalWalletConfig::Askar(inner) => inner.delete_wallet().await,
+            GlobalIndyWalletConfig::Indy(inner) => inner.delete_wallet().await,
+            GlobalIndyWalletConfig::Askar(inner) => inner.delete_wallet().await,
         }
     }
 }

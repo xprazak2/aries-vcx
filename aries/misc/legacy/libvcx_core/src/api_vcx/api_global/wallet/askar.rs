@@ -6,7 +6,7 @@ use crate::errors::error::LibvcxResult;
 use aries_vcx_core::anoncreds::base_anoncreds::BaseAnonCreds;
 use aries_vcx_core::global::settings::DEFAULT_LINK_SECRET_ALIAS;
 use aries_vcx_core::wallet::askar::askar_import_config::AskarImportConfig;
-use aries_vcx_core::wallet::askar::askar_wallet_config::AskarWalletConfig;
+use aries_vcx_core::wallet::askar::askar_wallet_config::AskarIndyWalletConfig;
 use aries_vcx_core::wallet::askar::AskarWallet;
 use std::sync::Arc;
 use std::sync::RwLock;
@@ -29,7 +29,7 @@ fn setup_global_wallet(wallet: Arc<AskarWallet>) -> LibvcxResult<()> {
 }
 
 pub async fn open_as_main_wallet(
-    wallet_config: &AskarWalletConfig,
+    wallet_config: &AskarIndyWalletConfig,
 ) -> LibvcxResult<Arc<AskarWallet>> {
     let wallet = Arc::new(wallet_config.open_wallet().await?);
     setup_global_wallet(wallet.clone())?;
@@ -37,7 +37,7 @@ pub async fn open_as_main_wallet(
 }
 
 pub async fn create_and_open_as_main_wallet(
-    wallet_config: &AskarWalletConfig,
+    wallet_config: &AskarIndyWalletConfig,
 ) -> LibvcxResult<Arc<impl BaseWallet>> {
     let wallet = Arc::new(wallet_config.create_wallet().await?);
 
@@ -60,7 +60,7 @@ pub async fn close_main_wallet() -> LibvcxResult<()> {
     Ok(())
 }
 
-pub async fn create_main_wallet(config: &AskarWalletConfig) -> LibvcxResult<()> {
+pub async fn create_main_wallet(config: &AskarIndyWalletConfig) -> LibvcxResult<()> {
     let wallet = create_and_open_as_main_wallet(config).await?;
     trace!("Created wallet {:?}", wallet);
     let wallet = get_main_wallet()?;
@@ -99,7 +99,7 @@ pub mod test_utils {
     use crate::api_vcx::api_global::wallet::askar::create_and_open_as_main_wallet;
     use crate::api_vcx::api_global::wallet::test_utils::setup_wallet_backup;
     use crate::errors::error::LibvcxResult;
-    use aries_vcx_core::wallet::askar::askar_wallet_config::AskarWalletConfig;
+    use aries_vcx_core::wallet::askar::askar_wallet_config::AskarIndyWalletConfig;
     use aries_vcx_core::wallet::askar::key_method::KeyMethod;
     use uuid::Uuid;
 
@@ -109,8 +109,8 @@ pub mod test_utils {
     // use crate::api_vcx::api_global::wallet::askar::open_main_wallet;
     use crate::api_vcx::api_global::wallet::askar::open_as_main_wallet;
 
-    pub async fn _create_main_wallet_and_its_backup() -> (TempFile, String, AskarWalletConfig) {
-        let wallet_config = AskarWalletConfig::new(
+    pub async fn _create_main_wallet_and_its_backup() -> (TempFile, String, AskarIndyWalletConfig) {
+        let wallet_config = AskarIndyWalletConfig::new(
             "sqlite://:memory:",
             KeyMethod::Unprotected,
             "",
@@ -146,9 +146,9 @@ pub mod test_utils {
         (export_file, wallet_name.to_string(), wallet_config)
     }
 
-    pub async fn _create_and_open_wallet() -> LibvcxResult<AskarWalletConfig> {
+    pub async fn _create_and_open_wallet() -> LibvcxResult<AskarIndyWalletConfig> {
         // let config_wallet = _create_wallet().await?;
-        let config_wallet: AskarWalletConfig = AskarWalletConfig::new(
+        let config_wallet: AskarIndyWalletConfig = AskarIndyWalletConfig::new(
             "sqlite://:memory:",
             KeyMethod::Unprotected,
             "",
@@ -167,13 +167,13 @@ pub mod tests {
 
     #[tokio::test]
     async fn test_wallet_migrate() {
-        use aries_vcx_core::wallet::askar::askar_wallet_config::AskarWalletConfig;
+        use aries_vcx_core::wallet::askar::askar_wallet_config::AskarIndyWalletConfig;
         use aries_vcx_core::wallet::askar::key_method::KeyMethod;
         use uuid::Uuid;
 
         use crate::api_vcx::api_global::wallet::askar::create_and_open_as_main_wallet;
 
-        let config = AskarWalletConfig::new(
+        let config = AskarIndyWalletConfig::new(
             "sqlite://:memory:",
             KeyMethod::Unprotected,
             "",
@@ -182,7 +182,7 @@ pub mod tests {
 
         create_and_open_as_main_wallet(&config).await.unwrap();
 
-        let new_config = AskarWalletConfig::new(
+        let new_config = AskarIndyWalletConfig::new(
             "sqlite://:memory:",
             KeyMethod::Unprotected,
             "",
@@ -194,13 +194,13 @@ pub mod tests {
 
     #[tokio::test]
     async fn test_wallet_create() {
-        use aries_vcx_core::wallet::askar::askar_wallet_config::AskarWalletConfig;
+        use aries_vcx_core::wallet::askar::askar_wallet_config::AskarIndyWalletConfig;
         use aries_vcx_core::wallet::askar::key_method::KeyMethod;
         use uuid::Uuid;
 
         let _setup = SetupMocks::init();
 
-        let config = AskarWalletConfig::new(
+        let config = AskarIndyWalletConfig::new(
             "sqlite://:memory:",
             KeyMethod::Unprotected,
             "",

@@ -17,12 +17,12 @@ use crate::{
 
 mod all_indy_records;
 mod indy_did_wallet;
+pub mod indy_import_config;
 mod indy_record_wallet;
 mod indy_tags;
 mod indy_utils;
 pub mod indy_wallet_record;
 mod partial_record;
-pub mod restore_wallet_configs;
 pub mod wallet_config;
 
 impl Record {
@@ -150,12 +150,12 @@ impl BaseWallet for IndySdkWallet {
 
 #[cfg(test)]
 pub mod tests {
-    use crate::wallet::{base_wallet::ManageWallet, indy::wallet_config::WalletConfig};
+    use crate::wallet::{base_wallet::ManageWallet, indy::wallet_config::IndyWalletConfig};
 
     use super::IndySdkWallet;
 
     pub async fn dev_setup_indy_wallet() -> IndySdkWallet {
-        let config_wallet = WalletConfig {
+        let config_wallet = IndyWalletConfig {
             wallet_name: format!("wallet_{}", uuid::Uuid::new_v4()),
             wallet_key: "8dvfYSt5d1taSd6yJdpjq4emkwsPDDLYxkNFysFD2cZY".into(),
             wallet_key_derivation: "RAW".into(),

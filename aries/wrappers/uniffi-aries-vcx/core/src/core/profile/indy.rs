@@ -1,4 +1,4 @@
-use aries_vcx::aries_vcx_core::wallet::indy::{wallet_config::WalletConfig, IndySdkWallet};
+use aries_vcx::aries_vcx_core::wallet::indy::{wallet_config::IndyWalletConfig, IndySdkWallet};
 
 use aries_vcx::aries_vcx_core::{
     anoncreds::{base_anoncreds::BaseAnonCreds, credx_anoncreds::IndyCredxAnonCreds},
@@ -26,7 +26,7 @@ pub struct UniffiProfile {
 }
 
 pub fn new_indy_profile(
-    wallet_config: WalletConfig,
+    wallet_config: IndyWalletConfig,
     genesis_file_path: String,
 ) -> VcxUniFFIResult<Arc<ProfileHolder>> {
     // Enable android logging

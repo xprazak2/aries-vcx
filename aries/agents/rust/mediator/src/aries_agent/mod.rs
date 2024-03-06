@@ -9,7 +9,7 @@ use aries_vcx_core::{
     errors::error::AriesVcxCoreError,
     wallet::{
         base_wallet::{BaseWallet, ManageWallet},
-        indy::wallet_config::WalletConfig,
+        indy::wallet_config::IndyWalletConfig,
         structs_io::UnpackMessageOutput,
     },
 };
@@ -61,7 +61,7 @@ impl<T: BaseWallet> AgentBuilder<T> {
     }
     pub async fn new_demo_agent(
     ) -> Result<Agent<impl BaseWallet, sqlx::MySqlPool>, AriesVcxCoreError> {
-        let config = WalletConfig {
+        let config = IndyWalletConfig {
             wallet_name: uuid::Uuid::new_v4().to_string(),
             wallet_key: "8dvfYSt5d1taSd6yJdpjq4emkwsPDDLYxkNFysFD2cZY".into(),
             wallet_key_derivation: "RAW".into(),

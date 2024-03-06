@@ -8,7 +8,7 @@ mod dbtests {
     use aries_vcx::global::settings;
     use aries_vcx_core::wallet::{
         base_wallet::{did_wallet::DidWallet, BaseWallet, ManageWallet},
-        indy::wallet_config::WalletConfig,
+        indy::wallet_config::IndyWalletConfig,
     };
     use libvcx_logger::LibvcxDefaultLogger;
 
@@ -31,7 +31,7 @@ mod dbtests {
         })
         .to_string();
         let enterprise_seed = "000000000000000000000000Trustee1";
-        let config_wallet = WalletConfig::builder()
+        let config_wallet = IndyWalletConfig::builder()
             .wallet_name(format!("faber_wallet_{}", uuid::Uuid::new_v4()))
             .wallet_key(settings::DEFAULT_WALLET_KEY.into())
             .wallet_key_derivation(settings::WALLET_KDF_RAW.into())

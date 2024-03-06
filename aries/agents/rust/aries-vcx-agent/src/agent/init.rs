@@ -13,7 +13,7 @@ use aries_vcx_core::{
     ledger::indy_vdr_ledger::DefaultIndyLedgerRead,
     wallet::{
         base_wallet::{BaseWallet, ManageWallet},
-        indy::{wallet_config::WalletConfig, IndySdkWallet},
+        indy::{wallet_config::IndyWalletConfig, IndySdkWallet},
     },
 };
 use did_peer::resolver::PeerDidResolver;
@@ -61,7 +61,7 @@ pub struct InitConfig {
 
 impl Agent<IndySdkWallet> {
     pub async fn initialize(init_config: InitConfig) -> AgentResult<Self> {
-        let config_wallet = WalletConfig {
+        let config_wallet = IndyWalletConfig {
             wallet_name: init_config.wallet_config.wallet_name,
             wallet_key: init_config.wallet_config.wallet_key,
             wallet_key_derivation: init_config.wallet_config.wallet_kdf,

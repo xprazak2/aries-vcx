@@ -7,7 +7,7 @@ use async_trait::async_trait;
 use public_key::Key;
 
 use self::{
-    askar_utils::local_key_to_bs58_name, askar_wallet_config::AskarWalletConfig,
+    askar_utils::local_key_to_bs58_name, askar_wallet_config::AskarIndyWalletConfig,
     rng_method::RngMethod,
 };
 use super::base_wallet::{did_value::DidValue, record_category::RecordCategory, BaseWallet};
@@ -49,7 +49,7 @@ impl BaseWallet for AskarWallet {
 
 impl AskarWallet {
     pub async fn create(
-        wallet_config: &AskarWalletConfig,
+        wallet_config: &AskarIndyWalletConfig,
         recreate: bool,
     ) -> Result<Self, AriesVcxCoreError> {
         let backend = Store::provision(
@@ -67,7 +67,7 @@ impl AskarWallet {
         })
     }
 
-    pub async fn open(wallet_config: &AskarWalletConfig) -> Result<Self, AriesVcxCoreError> {
+    pub async fn open(wallet_config: &AskarIndyWalletConfig) -> Result<Self, AriesVcxCoreError> {
         Ok(Self {
             backend: Store::open(
                 wallet_config.db_url(),
@@ -201,7 +201,7 @@ impl AskarWallet {
 #[cfg(test)]
 pub mod tests {
     use crate::wallet::{
-        askar::{askar_wallet_config::AskarWalletConfig, key_method::KeyMethod},
+        askar::{askar_wallet_config::AskarIndyWalletConfig, key_method::KeyMethod},
         base_wallet::ManageWallet,
     };
 
@@ -210,7 +210,7 @@ pub mod tests {
     pub async fn dev_setup_askar_wallet() -> AskarWallet {
         use uuid::Uuid;
 
-        let config = AskarWalletConfig::new(
+        let config = AskarIndyWalletConfig::new(
             "sqlite://:memory:",
             KeyMethod::Unprotected,
             "",

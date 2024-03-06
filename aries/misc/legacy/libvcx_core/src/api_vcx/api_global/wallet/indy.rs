@@ -11,8 +11,8 @@ use aries_vcx_core::global::settings::DEFAULT_LINK_SECRET_ALIAS;
 use aries_vcx_core::wallet::base_wallet::BaseWallet;
 use aries_vcx_core::wallet::base_wallet::ImportWallet;
 use aries_vcx_core::wallet::base_wallet::ManageWallet;
-use aries_vcx_core::wallet::indy::restore_wallet_configs::ImportWalletConfigs;
-use aries_vcx_core::wallet::indy::wallet_config::WalletConfig;
+use aries_vcx_core::wallet::indy::indy_import_config::IndyImportConfig;
+use aries_vcx_core::wallet::indy::wallet_config::IndyWalletConfig;
 use aries_vcx_core::wallet::indy::IndySdkWallet;
 use std::sync::Arc;
 use std::sync::RwLock;
@@ -26,14 +26,16 @@ fn setup_global_wallet(wallet: Arc<IndySdkWallet>) -> LibvcxResult<()> {
     setup_global_anoncreds()
 }
 
-pub async fn open_as_main_wallet(wallet_config: &WalletConfig) -> LibvcxResult<Arc<IndySdkWallet>> {
+pub async fn open_as_main_wallet(
+    wallet_config: &IndyWalletConfig,
+) -> LibvcxResult<Arc<IndySdkWallet>> {
     let wallet = Arc::new(wallet_config.open_wallet().await?);
     setup_global_wallet(wallet.clone())?;
     Ok(wallet)
 }
 
 pub async fn create_and_open_as_main_wallet(
-    wallet_config: &WalletConfig,
+    wallet_config: &IndyWalletConfig,
 ) -> LibvcxResult<Arc<IndySdkWallet>> {
     let wallet = Arc::new(wallet_config.create_wallet().await?);
 
@@ -56,7 +58,7 @@ pub async fn close_main_wallet() -> LibvcxResult<()> {
     Ok(())
 }
 
-pub async fn create_main_wallet(config: &WalletConfig) -> LibvcxResult<()> {
+pub async fn create_main_wallet(config: &IndyWalletConfig) -> LibvcxResult<()> {
     let wallet = create_and_open_as_main_wallet(&config).await?;
     trace!("Created wallet {:?}", wallet);
     let wallet = get_main_wallet()?;
@@ -71,11 +73,11 @@ pub async fn create_main_wallet(config: &WalletConfig) -> LibvcxResult<()> {
     Ok(())
 }
 
-pub async fn wallet_import(config: &ImportWalletConfigs) -> LibvcxResult<()> {
+pub async fn wallet_import(config: &IndyImportConfig) -> LibvcxResult<()> {
     map_ariesvcx_core_result(config.import_wallet().await)
 }
 
-pub async fn wallet_migrate(wallet_config: &WalletConfig) -> LibvcxResult<()> {
+pub async fn wallet_migrate(wallet_config: &IndyWalletConfig) -> LibvcxResult<()> {
     let src_wallet = get_main_wallet()?;
     info!("Opening target wallet.");
     let dest_wallet = wallet_config.create_wallet().await?;
@@ -95,16 +97,16 @@ pub mod test_utils {
     use crate::api_vcx::api_global::wallet::indy::create_and_open_as_main_wallet;
     use crate::api_vcx::api_global::wallet::indy::create_main_wallet;
     use crate::api_vcx::api_global::wallet::indy::open_as_main_wallet;
-    use crate::api_vcx::api_global::wallet::indy::WalletConfig;
+    use crate::api_vcx::api_global::wallet::indy::IndyWalletConfig;
     use crate::api_vcx::api_global::wallet::test_utils::setup_wallet_backup;
     use crate::errors::error::LibvcxResult;
     use aries_vcx_core::global::settings::DEFAULT_WALLET_KEY;
     use aries_vcx_core::global::settings::WALLET_KDF_RAW;
     use test_utils::devsetup::TempFile;
 
-    pub async fn _create_and_open_wallet() -> LibvcxResult<WalletConfig> {
+    pub async fn _create_and_open_wallet() -> LibvcxResult<IndyWalletConfig> {
         let wallet_name = format!("test_create_wallet_{}", uuid::Uuid::new_v4());
-        let config_wallet: WalletConfig = serde_json::from_value(json!({
+        let config_wallet: IndyWalletConfig = serde_json::from_value(json!({
             "wallet_name": wallet_name,
             "wallet_key": DEFAULT_WALLET_KEY,
             "wallet_key_derivation": WALLET_KDF_RAW
@@ -114,10 +116,10 @@ pub mod test_utils {
         Ok(config_wallet)
     }
 
-    pub async fn _create_main_wallet_and_its_backup() -> (TempFile, String, WalletConfig) {
+    pub async fn _create_main_wallet_and_its_backup() -> (TempFile, String, IndyWalletConfig) {
         let wallet_name = format!("test_create_wallet_{}", uuid::Uuid::new_v4());
 
-        let wallet_config = WalletConfig {
+        let wallet_config = IndyWalletConfig {
             wallet_name: wallet_name.clone(),
             wallet_key: DEFAULT_WALLET_KEY.into(),
             wallet_key_derivation: WALLET_KDF_RAW.into(),
@@ -148,8 +150,8 @@ pub mod tests {
     use crate::api_vcx::api_global::wallet::indy::open_as_main_wallet;
     use crate::api_vcx::api_global::wallet::indy::test_utils::_create_main_wallet_and_its_backup;
     use crate::api_vcx::api_global::wallet::indy::wallet_import;
-    use crate::api_vcx::api_global::wallet::indy::ImportWalletConfigs;
-    use crate::api_vcx::api_global::wallet::indy::WalletConfig;
+    use crate::api_vcx::api_global::wallet::indy::IndyImportConfig;
+    use crate::api_vcx::api_global::wallet::indy::IndyWalletConfig;
     use crate::errors::error::LibvcxErrorKind;
     use aries_vcx_core::global::settings::DEFAULT_WALLET_BACKUP_KEY;
     use aries_vcx_core::global::settings::DEFAULT_WALLET_KEY;
@@ -163,7 +165,7 @@ pub mod tests {
         let _setup = SetupMocks::init();
 
         let wallet_name = format!("test_create_wallet_{}", uuid::Uuid::new_v4());
-        let config: WalletConfig = serde_json::from_value(json!({
+        let config: IndyWalletConfig = serde_json::from_value(json!({
             "wallet_name": wallet_name,
             "wallet_key": DEFAULT_WALLET_KEY,
             "wallet_key_derivation": WALLET_KDF_RAW
@@ -176,7 +178,7 @@ pub mod tests {
     #[tokio::test]
     async fn test_wallet_migrate() {
         let wallet_name = format!("test_create_wallet_{}", uuid::Uuid::new_v4());
-        let config: WalletConfig = serde_json::from_value(json!({
+        let config: IndyWalletConfig = serde_json::from_value(json!({
             "wallet_name": wallet_name,
             "wallet_key": DEFAULT_WALLET_KEY,
             "wallet_key_derivation": WALLET_KDF_RAW
@@ -186,7 +188,7 @@ pub mod tests {
         create_and_open_as_main_wallet(&config).await.unwrap();
 
         let wallet_name = format!("test_migrate_wallet_{}", uuid::Uuid::new_v4());
-        let new_config: WalletConfig = serde_json::from_value(json!({
+        let new_config: IndyWalletConfig = serde_json::from_value(json!({
             "wallet_name": wallet_name,
             "wallet_key": DEFAULT_WALLET_KEY,
             "wallet_key_derivation": WALLET_KDF_RAW
@@ -201,7 +203,7 @@ pub mod tests {
         let _setup = SetupMocks::init();
         let wallet_name = uuid::Uuid::new_v4().to_string();
         let export_file = TempFile::prepare_path(&wallet_name);
-        let wallet_config = WalletConfig {
+        let wallet_config = IndyWalletConfig {
             wallet_name,
             wallet_key: DEFAULT_WALLET_KEY.into(),
             wallet_key_derivation: WALLET_KDF_RAW.into(),
@@ -220,7 +222,7 @@ pub mod tests {
             .unwrap();
         close_main_wallet().await.unwrap();
         wallet_config.delete_wallet().await.unwrap();
-        let import_config: ImportWalletConfigs = serde_json::from_value(json!({
+        let import_config: IndyImportConfig = serde_json::from_value(json!({
             "wallet_name": wallet_config.wallet_name.clone(),
             "wallet_key": wallet_config.wallet_key.clone(),
             "exported_wallet_path": export_file.path,
@@ -237,7 +239,7 @@ pub mod tests {
         let _setup = SetupMocks::init();
         let wallet_name = uuid::Uuid::new_v4().to_string();
         let _export_file = TempFile::prepare_path(&wallet_name);
-        let mut wallet_config = WalletConfig {
+        let mut wallet_config = IndyWalletConfig {
             wallet_name,
             wallet_key: DEFAULT_WALLET_KEY.into(),
             wallet_key_derivation: WALLET_KDF_RAW.into(),
@@ -260,7 +262,7 @@ pub mod tests {
     async fn test_wallet_open_with_wrong_name_fails() {
         let _setup = SetupMocks::init();
 
-        let wallet_config: WalletConfig = serde_json::from_value(json!({
+        let wallet_config: IndyWalletConfig = serde_json::from_value(json!({
             "wallet_name": "different_wallet_name",
             "wallet_key": DEFAULT_WALLET_KEY,
             "wallet_key_derivation": WALLET_KDF_RAW,
@@ -285,7 +287,7 @@ pub mod tests {
 
         wallet_config.delete_wallet().await.unwrap();
 
-        let import_config = ImportWalletConfigs {
+        let import_config = IndyImportConfig {
             wallet_name: wallet_name.clone(),
             wallet_key: DEFAULT_WALLET_KEY.into(),
             exported_wallet_path: export_wallet_path.path.clone(),
@@ -294,7 +296,7 @@ pub mod tests {
         };
         wallet_import(&import_config).await.unwrap();
 
-        let wallet_config: WalletConfig = serde_json::from_value(json!({
+        let wallet_config: IndyWalletConfig = serde_json::from_value(json!({
             "wallet_name": &wallet_name,
             "wallet_key": DEFAULT_WALLET_KEY,
             "wallet_key_derivation": WALLET_KDF_RAW,
@@ -313,7 +315,7 @@ pub mod tests {
 
         open_as_main_wallet(&wallet_config).await.unwrap();
 
-        let import_config = ImportWalletConfigs {
+        let import_config = IndyImportConfig {
             wallet_name,
             wallet_key: DEFAULT_WALLET_KEY.into(),
             exported_wallet_path: export_wallet_path.path.clone(),

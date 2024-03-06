@@ -2,14 +2,14 @@ use aries_vcx_core::{
     global::settings::{DEFAULT_WALLET_KEY, WALLET_KDF_RAW},
     wallet::{
         base_wallet::{did_wallet::DidWallet, ManageWallet},
-        indy::{wallet_config::WalletConfig, IndySdkWallet},
+        indy::{wallet_config::IndyWalletConfig, IndySdkWallet},
     },
 };
 use log::info;
 
 pub async fn dev_setup_wallet_indy(key_seed: &str) -> (String, IndySdkWallet) {
     info!("dev_setup_wallet_indy >>");
-    let config_wallet = WalletConfig {
+    let config_wallet = IndyWalletConfig {
         wallet_name: format!("wallet_{}", uuid::Uuid::new_v4()),
         wallet_key: DEFAULT_WALLET_KEY.into(),
         wallet_key_derivation: WALLET_KDF_RAW.into(),
